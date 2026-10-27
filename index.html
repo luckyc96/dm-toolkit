@@ -208,6 +208,13 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .skill h3{margin:.1rem 0}
 .skill .ab{font-family:"Alegreya Sans",sans-serif;font-weight:500;font-size:.8rem;color:var(--muted);margin-left:.2rem}
 .skill .def{font-style:italic;margin:.1rem 0 .3rem}
+/* drive pill */
+.drive-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.2rem .7rem;cursor:pointer;font-size:.85rem;white-space:nowrap}
+.drive-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.drive-pill.s-synced .dot{background:var(--heal)}
+.drive-pill.s-saving .dot,.drive-pill.s-syncing .dot{background:var(--brass)}
+.drive-pill.s-needtoken{border-color:var(--brass)} .drive-pill.s-needtoken .dot{background:var(--brass)}
+.drive-pill.s-pending,.drive-pill.s-error{border-color:var(--blood);color:var(--blood)} .drive-pill.s-pending .dot,.drive-pill.s-error .dot{background:var(--blood)}
 /* campaigns */
 .camp-btn{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.2rem .75rem;cursor:pointer;font-weight:700;min-width:0;max-width:15rem}
 .camp-btn .camp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -384,6 +391,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
       <input id="q" type="search" placeholder="Search rules (press /)" autocomplete="off" aria-label="Search rules" aria-controls="results">
       <div id="results" class="results" role="listbox" hidden></div>
     </div>
+    <button class="drive-pill" id="drive-pill" data-act="drive-pill" hidden><span class="dot" aria-hidden="true"></span><span class="lbl"></span></button>
     <button class="btn" id="notes-btn" data-act="toggle-notes">Notes</button>
     <button class="icon-btn" id="more-btn" data-act="more" aria-label="More options" style="font-size:1.3rem">⋯</button>
   </div>
@@ -722,7 +730,7 @@ function commit(){
   if(i>=0) G.campaigns[i]=indexEntry(S); else G.campaigns.push(indexEntry(S));
   if(!lsSet(CK(S.id), S)) toast('This device’s storage is full. Save a campaign file to keep a copy.');
   lsSet(G_KEY, G);
-  scheduleRemote();
+  scheduleRemote(); scheduleDrive();
 }
 
 /* account sync (only when running inside Claude) */
@@ -810,10 +818,15 @@ async function initRemote(){
 /* ================= campaigns ================= */
 function resetSession(){ undoStack=[]; genResult=null; genHistory=[]; npcQ=''; npcF='All'; openPC=null; partyDC=''; encCollapsed=false; }
 function renderCampBtn(){ const b=$('#camp-btn'); if(b){ b.querySelector('.camp-name').textContent=S.name; b.title='Campaign: '+S.name; } }
-function activate(c, msg){ S=normalize(c); G.activeId=S.id; resetSession(); commit(); renderAll(); if(msg) toast(msg); }
+function activate(c, msg, touch){
+  S=normalize(c); if(touch) S.updatedAt=Date.now();
+  G.activeId=S.id; G.updatedAt=Date.now();
+  const i=G.campaigns.findIndex(x=>x.id===S.id); if(i>=0) G.campaigns[i]=indexEntry(S); else G.campaigns.push(indexEntry(S));
+  lsSet(CK(S.id), S); lsSet(G_KEY, G); scheduleRemote(); if(touch) scheduleDrive();
+  resetSession(); renderAll(); if(msg) toast(msg);
+}
 function switchCampaign(id){
   if(id===S.id) return;
-  commit();
   const c=lsGet(CK(id)); if(!c){ toast('That campaign isn’t on this device yet.'); return; }
   activate(c, `Switched to ${c.name}.`);
 }
@@ -849,7 +862,7 @@ function saveCampDlg(){
   const c=newCampaign(name||'New campaign', kind);
   if($('#cp-party').checked) c.party=clone(S.party);
   if($('#cp-lib').checked) c.library=clone(S.library);
-  commit(); dlgCamp.close(); activate(c, `Started ${c.name}.`);
+  dlgCamp.close(); activate(c, `Started ${c.name}.`, true);
 }
 async function saveFile(filename, text){
   const dl = (window.claude && window.claude.use) ? await claude.use('downloads').catch(()=>null) : null;
@@ -864,7 +877,7 @@ async function exportCampaign(c){
 }
 function closeCampaign(){
   const c=S;
-  confirmBox(`Close ${c.name}?`, 'Closing removes it from the toolkit on every device. Save its campaign file first so you can open it again later.', [
+  confirmBox(`Close ${c.name}?`, 'Closing removes it from the toolkit on every device'+(D.connected?', and moves its Google Drive file to Drive’s trash':'')+'. Save its campaign file first so you can open it again later.', [
     {label:'Cancel'},
     {label:'Close without a file', danger:true, fn:()=>removeCampaign(c.id)},
     {label:'Save file and close', primary:true, fn:async()=>{ if(await exportCampaign(c)) removeCampaign(c.id); }}
@@ -875,6 +888,7 @@ function removeCampaign(id){
   G.campaigns = G.campaigns.filter(x=>x.id!==id);
   try{ localStorage.removeItem(CK(id)); }catch(e){}
   if(db){ ['camp-','log-'].forEach(p=>{ db.doc(docPath(p+id)).delete().catch(()=>{}); delete lastPushed[p+id]; }); }
+  driveForget(id);
   const next = G.campaigns.map(x=>lsGet(CK(x.id))).find(Boolean) || newCampaign('My campaign');
   activate(next, `${name} closed.`);
 }
@@ -885,7 +899,7 @@ function importCampaignObject(o, filename){
   if(!camp){ toast('That file isn’t a toolkit campaign file.'); return; }
   camp=normalize(camp); if(!camp.id) camp.id=uid(); if(!camp.createdAt) camp.createdAt=Date.now(); if(!camp.name) camp.name='Imported campaign';
   const existing=G.campaigns.find(c=>c.id===camp.id);
-  const open = c => { commit(); lsSet(CK(c.id), c); activate(c, `Opened ${c.name}.`); };
+  const open = c => activate(c, `Opened ${c.name}.`, true);
   if(existing){
     const when = o.exportedAt ? ` saved ${new Date(o.exportedAt).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}` : '';
     confirmBox(`${existing.name} is already open`, `Replace it with the version in this file${when}, or open the file as a separate copy?`, [
@@ -1788,6 +1802,205 @@ function confirmBox(title, body, actions){
 }
 dlgCf.addEventListener('click', e=>{ const b=e.target.closest('[data-cf]'); if(!b) return; const a=dlgCf._a[+b.dataset.cf]; dlgCf.close(); if(a.fn) withUndo(a.label, a.fn); });
 
+
+/* ================= Google Drive sync (self-hosted copy only) ================= */
+const DRIVE_CLIENT_ID='130710118046-0c4lcgevurere0sb152qs2j0u42gt569.apps.googleusercontent.com';
+const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
+const DRIVE_FOLDER='DM Toolkit', DRIVE_KEY='dmmt.drive';
+const DAPI='https://www.googleapis.com/drive/v3/files', DUP='https://www.googleapis.com/upload/drive/v3/files';
+const driveOK = !window.claude;
+let D = lsGet(DRIVE_KEY) || {};
+D = Object.assign({connected:false, folderId:null, files:{}, closed:[]}, D);
+const saveD = () => lsSet(DRIVE_KEY, D);
+let gTok=null, gTokExp=0, tokenClient=null, driveState='idle', driveTimer=null, driveBusy=false, driveAgain=false;
+const tokenOK = () => !!gTok && Date.now() < gTokExp;
+const ago = t => new Date(t).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+const pendingDrive = () => (S.updatedAt||0) > ((D.files[S.id]||{}).syncedAt||0);
+
+function loadGis(){
+  if(window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+  if(loadGis.p) return loadGis.p;
+  return loadGis.p = new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.async=true; s.onload=res; s.onerror=()=>{ loadGis.p=null; rej(); }; document.head.appendChild(s); });
+}
+function initGis(){
+  if(tokenClient || !(window.google && google.accounts && google.accounts.oauth2)) return;
+  tokenClient = google.accounts.oauth2.initTokenClient({client_id:DRIVE_CLIENT_ID, scope:DRIVE_SCOPE, callback:onToken,
+    error_callback:e=>{ setDrive(D.connected ? (pendingDrive()?'pending':'needtoken') : 'idle'); if(!e || e.type!=='popup_closed') toast('Google sign-in didn’t finish. If nothing appeared, allow pop-ups for this site and try again.'); }});
+}
+function driveConnect(){
+  if(!driveOK) return;
+  initGis();
+  if(!tokenClient){ toast('Google sign-in is still loading. Try again in a moment.'); loadGis().then(initGis).catch(()=>toast('Couldn’t reach Google. Check your connection.')); return; }
+  tokenClient.requestAccessToken({prompt: D.connected ? '' : 'consent'});
+}
+function onToken(r){
+  if(!r || r.error || !r.access_token){ setDrive(D.connected?'needtoken':'idle'); toast('Google Drive wasn’t connected.'); return; }
+  if(!google.accounts.oauth2.hasGrantedAllScopes(r, DRIVE_SCOPE)){ setDrive(D.connected?'needtoken':'idle'); toast('The toolkit needs permission to save its own files in your Drive. Connect again and leave that box checked.'); return; }
+  gTok=r.access_token; gTokExp=Date.now()+((+r.expires_in||3600)-120)*1000;
+  const first=!D.connected; D.connected=true; saveD();
+  driveSyncAll(first);
+}
+function driveDisconnect(){
+  confirmBox('Disconnect Google Drive?', 'Your campaigns stay on this device, and the files already in Drive stay there. This device just stops syncing until you connect again.', [
+    {label:'Cancel'},
+    {label:'Disconnect', danger:true, fn:()=>{ try{ if(gTok) google.accounts.oauth2.revoke(gTok, ()=>{}); }catch(e){} gTok=null; D={connected:false, folderId:null, files:{}, closed:[]}; saveD(); setDrive('idle'); toast('Google Drive disconnected.'); }}
+  ]);
+}
+async function gapi(url, opts={}){
+  if(!tokenOK()){ gTok=null; throw {code:'auth'}; }
+  const res = await fetch(url, Object.assign({}, opts, {headers:Object.assign({Authorization:'Bearer '+gTok}, opts.headers||{})}));
+  if(res.status===401){ gTok=null; throw {code:'auth'}; }
+  if(!res.ok) throw {code:'http', status:res.status};
+  return res;
+}
+const gjson = async (url, opts) => (await gapi(url, opts)).json();
+async function ensureFolder(){
+  if(D.folderId){ try{ const r=await gjson(`${DAPI}/${D.folderId}?fields=id,trashed`); if(!r.trashed) return D.folderId; }catch(e){ if(e.code==='auth') throw e; } }
+  const q=encodeURIComponent(`name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const found=await gjson(`${DAPI}?q=${q}&fields=files(id)&spaces=drive`);
+  if(found.files && found.files.length) D.folderId=found.files[0].id;
+  else D.folderId=(await gjson(`${DAPI}?fields=id`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:DRIVE_FOLDER, mimeType:'application/vnd.google-apps.folder'})})).id;
+  saveD(); return D.folderId;
+}
+async function driveUpload(c){
+  const meta=D.files[c.id], b='dmtk'+uid(), name=`${slug(c.name)}.dmtoolkit.json`;
+  const md = meta ? {name} : {name, mimeType:'application/json', parents:[await ensureFolder()], appProperties:{campaignId:c.id}};
+  const text = JSON.stringify({format:'dm-toolkit-campaign', version:2, exportedAt:new Date().toISOString(), campaign:c});
+  const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(md)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${text}\r\n--${b}--`;
+  const r = await gjson(meta ? `${DUP}/${meta.id}?uploadType=multipart&fields=id,modifiedTime` : `${DUP}?uploadType=multipart&fields=id,modifiedTime`,
+    {method: meta?'PATCH':'POST', headers:{'Content-Type':`multipart/related; boundary=${b}`}, body});
+  D.files[c.id]={id:r.id, syncedAt:c.updatedAt||0, remoteMod:r.modifiedTime}; saveD();
+}
+async function driveDownload(f){
+  const o=await gjson(`${DAPI}/${f.id}?alt=media`);
+  if(!o || o.format!=='dm-toolkit-campaign' || !o.campaign) throw {code:'bad'};
+  return normalize(o.campaign);
+}
+function storeCampaign(c){
+  lsSet(CK(c.id), c);
+  const i=G.campaigns.findIndex(x=>x.id===c.id); if(i>=0) G.campaigns[i]=indexEntry(c); else G.campaigns.push(indexEntry(c));
+  lsSet(G_KEY, G); scheduleRemote();
+  if(c.id===S.id){ S=normalize(c); resetSession(); renderAll(); } else renderCampBtn();
+}
+function removeLocalOnly(id){
+  G.campaigns=G.campaigns.filter(x=>x.id!==id); try{ localStorage.removeItem(CK(id)); }catch(e){}
+  if(S.id===id){ const next=G.campaigns.map(x=>lsGet(CK(x.id))).find(Boolean) || newCampaign('My campaign'); activate(next); }
+  else { lsSet(G_KEY, G); renderCampBtn(); }
+}
+function driveForget(id){
+  const meta=D.files[id]; if(!meta) return;
+  delete D.files[id];
+  if(tokenOK()) gapi(`${DAPI}/${meta.id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})}).catch(()=>{ D.closed.push(id); saveD(); });
+  else D.closed.push(id);
+  saveD();
+}
+function ask(title, body, labels){
+  return new Promise(res=>{
+    confirmBox(title, body, labels.map((l,i)=>Object.assign(typeof l==='string'?{label:l}:l, {fn:()=>res(i)})));
+    dlgCf.addEventListener('close', ()=>setTimeout(()=>res(-1),0), {once:true});
+  });
+}
+const sameContent = (a,b) => JSON.stringify(Object.assign(normalize(a),{updatedAt:0})) === JSON.stringify(Object.assign(normalize(b),{updatedAt:0}));
+async function driveSyncAll(first){
+  if(!driveOK || !D.connected) return;
+  if(!tokenOK()){ setDrive(pendingDrive()?'pending':'needtoken'); return; }
+  if(driveBusy){ driveAgain=true; return; }
+  driveBusy=true; setDrive('syncing');
+  let added=0;
+  try{
+    const folder=await ensureFolder();
+    const q=encodeURIComponent(`'${folder}' in parents and trashed=false`);
+    const list=(await gjson(`${DAPI}?q=${q}&fields=files(id,name,modifiedTime,appProperties)&pageSize=1000`)).files||[];
+    const remote={}; list.forEach(f=>{ const cid=f.appProperties && f.appProperties.campaignId; if(cid) remote[cid]=f; });
+    for(const cid of [...D.closed]){ if(remote[cid]){ await gapi(`${DAPI}/${remote[cid].id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})}); delete remote[cid]; } }
+    D.closed=[]; saveD();
+    for(const [cid,f] of Object.entries(remote)){
+      const local=lsGet(CK(cid)), meta=D.files[cid];
+      const rChanged = !meta || meta.id!==f.id || meta.remoteMod!==f.modifiedTime;
+      const lChanged = !!local && (!meta || (local.updatedAt||0) > (meta.syncedAt||0));
+      if(!local){ const c=await driveDownload(f); D.files[cid]={id:f.id, syncedAt:c.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); storeCampaign(c); added++; continue; }
+      if(rChanged && lChanged){
+        const rc=await driveDownload(f);
+        if(sameContent(rc, local)){ D.files[cid]={id:f.id, syncedAt:local.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); continue; }
+        const ch=await ask(`${local.name} changed in two places`, `This device has changes from ${ago(local.updatedAt)}, and the copy in Google Drive was saved ${ago(f.modifiedTime)}. Which version should win?`, ['Keep both', 'Use Drive’s', {label:'Keep this device’s', primary:true}]);
+        if(ch===1){ D.files[cid]={id:f.id, syncedAt:rc.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); storeCampaign(rc); }
+        else if(ch===2){ D.files[cid]={id:f.id, syncedAt:-1, remoteMod:f.modifiedTime}; await driveUpload(local); }
+        else if(ch===0){
+          D.files[cid]={id:f.id, syncedAt:-1, remoteMod:f.modifiedTime}; await driveUpload(local);
+          const copy=Object.assign(rc, {id:uid(), name:rc.name+' (from Drive)', createdAt:Date.now(), updatedAt:Date.now()});
+          storeCampaign(copy); await driveUpload(copy);
+        }
+        continue;
+      }
+      if(rChanged){ const c=await driveDownload(f); D.files[cid]={id:f.id, syncedAt:c.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); storeCampaign(c); continue; }
+      if(lChanged) await driveUpload(local);
+    }
+    for(const e of [...G.campaigns]){
+      if(remote[e.id]) continue;
+      const local=lsGet(CK(e.id)); if(!local) continue;
+      if(D.files[e.id]){
+        const ch=await ask(`${local.name} isn’t in Google Drive anymore`, 'It may have been closed on another device, or its file was deleted from Drive. Remove it from this device too, or put it back in Drive?', ['Not now', {label:'Remove it here', danger:true}, {label:'Put it back in Drive', primary:true}]);
+        if(ch===1){ delete D.files[e.id]; saveD(); removeLocalOnly(e.id); }
+        else if(ch===2){ delete D.files[e.id]; saveD(); await driveUpload(local); }
+      } else if(!(local.updatedAt>0)){
+        if(Object.keys(remote).length) removeLocalOnly(e.id);
+      } else await driveUpload(local);
+    }
+    setDrive('synced');
+    if(first) toast(added ? `Google Drive connected. ${added} campaign${added>1?'s':''} loaded from Drive.` : 'Google Drive connected. Campaigns now save to a “DM Toolkit” folder in your Drive.');
+  }catch(e){ driveErr(e); }
+  driveBusy=false;
+  if(driveAgain){ driveAgain=false; driveSyncAll(); }
+}
+function scheduleDrive(){
+  if(!driveOK || !D.connected) return;
+  clearTimeout(driveTimer); driveTimer=setTimeout(driveSaveActive, 2500);
+  setDrive(tokenOK() ? 'saving' : 'pending');
+}
+async function driveSaveActive(){
+  if(!D.connected) return;
+  if(!tokenOK()){ setDrive('pending'); return; }
+  const meta=D.files[S.id];
+  if(!meta) return driveSyncAll();
+  if((S.updatedAt||0) <= (meta.syncedAt||0)){ setDrive('synced'); return; }
+  if(driveBusy){ driveAgain=true; return; }
+  driveBusy=true; setDrive('saving');
+  let full=false;
+  try{
+    const f=await gjson(`${DAPI}/${meta.id}?fields=id,modifiedTime,trashed`);
+    if(f.trashed || f.modifiedTime!==meta.remoteMod) full=true;
+    else { await driveUpload(S); setDrive('synced'); }
+  }catch(e){ if(e.code==='http' && e.status===404){ delete D.files[S.id]; saveD(); full=true; } else driveErr(e); }
+  driveBusy=false;
+  if(full || driveAgain){ driveAgain=false; driveSyncAll(); }
+}
+function driveErr(e){
+  if(e && e.code==='auth') setDrive(pendingDrive()?'pending':'needtoken');
+  else { setDrive('error'); if(!navigator.onLine) toast('You’re offline. Changes are saved on this device and will go to Drive when you reconnect.'); }
+}
+const DRIVE_LBL={needtoken:'Drive · tap to sync', pending:'Drive · tap to save', syncing:'Drive · syncing…', saving:'Drive · saving…', synced:'Drive · synced', error:'Drive · tap to retry'};
+function setDrive(state){
+  driveState=state;
+  const b=$('#drive-pill'); if(!b) return;
+  b.hidden = !driveOK || !D.connected || state==='idle';
+  b.className='drive-pill s-'+state;
+  b.querySelector('.lbl').textContent = DRIVE_LBL[state]||'Drive';
+  b.title = state==='synced' ? 'Everything is saved to Google Drive' : state==='pending' ? 'Changes are waiting to be saved to Google Drive. Tap to sign in.' : state==='needtoken' ? 'Tap to sign in to Google and sync' : '';
+}
+function drivePill(btn){
+  if(['needtoken','pending','error'].includes(driveState)){ tokenOK() ? driveSyncAll() : driveConnect(); return; }
+  showMenu(btn, [
+    {key:'d-sync', label:'Sync now', fn:()=>driveSyncAll()},
+    {key:'d-open', label:'Open the Drive folder', fn:()=>{ if(D.folderId) window.open('https://drive.google.com/drive/folders/'+D.folderId, '_blank', 'noopener'); }},
+    {key:'d-off', label:'Disconnect Google Drive', danger:true, fn:driveDisconnect},
+    {note: driveState==='synced' ? 'Everything is saved to the “DM Toolkit” folder in your Drive.' : 'Saving to Google Drive…'}
+  ]);
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState!=='visible' || !driveOK || !D.connected) return;
+  if(tokenOK()) driveSyncAll(); else setDrive(pendingDrive()?'pending':'needtoken');
+});
+
 /* ================= import ================= */
 const readText = f => f.text ? f.text() : new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsText(f); });
 $('#import-file').addEventListener('change', async e=>{
@@ -1800,7 +2013,8 @@ function moreMenu(btn){
   showMenu(btn, [
     {key:'theme', label, fn:()=>{ theme={auto:'light',light:'dark',dark:'auto'}[theme]; try{localStorage.setItem('dmmt.theme',theme);}catch(e){} applyTheme(theme); }},
     {key:'open', label:'Open a campaign file…', fn:()=>$('#import-file').click()},
-    {note: syncState==='account' ? 'Saving to your Claude account, so campaigns follow you between devices.' : 'Saving on this device. Use campaign files to move campaigns between devices.'}
+    ...(driveOK ? (D.connected ? [{key:'drive-sync', label:'Sync with Google Drive now', fn:()=>tokenOK()?driveSyncAll():driveConnect()},{key:'drive-off', label:'Disconnect Google Drive', fn:driveDisconnect}] : [{key:'drive-on', label:'Connect Google Drive…', fn:driveConnect}]) : []),
+    {note: syncState==='account' ? 'Saving to your Claude account, so campaigns follow you between devices.' : D.connected ? 'Saving on this device and to the “DM Toolkit” folder in your Google Drive.' : 'Saving on this device. Connect Google Drive, or use campaign files, to move campaigns between devices.'}
   ]);
 }
 
@@ -1808,7 +2022,7 @@ function moreMenu(btn){
 function onClick(e){
   const mi=e.target.closest('[data-menu]');
   if(mi){ const it=menu._items.find(x=>x.key===mi.dataset.menu); hideMenu(); if(it&&it.fn) it.fn(); return; }
-  if(!e.target.closest('#menu') && !e.target.closest('[data-act=row-menu],[data-act=more],[data-act=camp-menu]')) hideMenu();
+  if(!e.target.closest('#menu') && !e.target.closest('[data-act=row-menu],[data-act=more],[data-act=camp-menu],[data-act=drive-pill]')) hideMenu();
   const t=e.target.closest('[data-tab]'); if(t){ setTab(t.dataset.tab); return; }
   const el=e.target.closest('[data-act]');
   if(!el){ const tp=e.target.closest('[data-tip]'); if(tp) pinRule(tp.dataset.tip); return; }
@@ -1817,6 +2031,7 @@ function onClick(e){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#notes-text').focus(); break;
     case 'more': moreMenu(el); break;
     case 'camp-menu': campMenu(el); break;
+    case 'drive-pill': drivePill(el); break;
     case 'camp-save': saveCampDlg(); break;
     case 'pick-hit': pinRule(id); results.hidden=true; break;
     case 'pin': e.preventDefault(); pinRule(id); break;
@@ -1896,6 +2111,7 @@ $('#m-cr').innerHTML='<option value="">—</option>'+CR_LIST.map(c=>`<option>${c
 function renderAll(){ renderCampBtn(); $('#notes-text').value=S.notes||''; renderLog(); renderPins(); renderCombat(); renderParty(); renderRules(); renderTravel(); renderSocial(); renderGen(); renderSaved(); }
 renderAll();
 initRemote();
+if(driveOK){ loadGis().then(initGis).catch(()=>{}); if(D.connected) setDrive(pendingDrive()?'pending':'needtoken'); }
 </script>
 </body>
 </html>
