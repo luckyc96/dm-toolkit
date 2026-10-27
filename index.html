@@ -146,6 +146,7 @@ main{padding:.9rem;max-width:1100px}
 .chip .dur{color:var(--muted)}
 .chip .x{border:none;background:none;color:inherit;cursor:pointer;padding:0 .25rem;font-size:.95rem;line-height:1}
 .chip.conc{border-color:var(--brass);color:var(--brass)}
+.chip.bloodied{border-color:var(--blood);color:var(--blood);background:color-mix(in srgb,var(--blood) 10%,transparent);padding:.05rem .55rem;cursor:default}
 .chip.add{border-style:dashed;border-color:var(--line);color:var(--muted);padding:.05rem .55rem}
 .res{display:inline-flex;align-items:center;gap:.25rem;font-size:.8rem;color:var(--muted);margin-left:.15rem}
 .pips{display:inline-flex;gap:3px}
@@ -212,6 +213,7 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 /* campaign tab */
 .camp-tools{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.6rem}
 .camp-tools input{flex:1;min-width:160px;max-width:340px}
+.camp-tools .session-btn{margin-left:auto}
 .preset-row{display:flex;flex-wrap:wrap;gap:.35rem;margin:.6rem 0}
 .empty .preset-row{justify-content:center}
 .csec details.fold > summary{align-items:center}
@@ -251,6 +253,17 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .cal-events li{display:flex;gap:.6rem;align-items:baseline;border-bottom:1px solid var(--line);padding:.3rem 0}
 .cal-events li b{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500;font-size:.88rem}
 .cal-events li span{flex:1}
+/* monster notes, warm-up, doc export, house rules */
+.mnotes{margin-top:.4rem;font-size:.88rem;background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:4px;padding:.35rem .55rem}
+.warm section{margin-bottom:.8rem}
+.warm h3{margin:.4rem 0 .25rem;font-size:1.02rem;color:var(--brass)}
+.warm ul{margin:.2rem 0}
+.warm-ex{font-size:.9rem;background:var(--bg);border-left:3px solid var(--line);padding:.35rem .6rem;border-radius:4px}
+.att-badge{font-size:.75rem;border:1px solid var(--line);border-radius:999px;padding:0 .45rem;color:var(--muted)}
+.att-badge.f{border-color:var(--heal);color:var(--heal)} .att-badge.h{border-color:var(--blood);color:var(--blood)}
+.doc-opts{display:flex;flex-direction:column;gap:.35rem;margin:.6rem 0}
+.hr-tag{font-size:.74rem;border:1px solid var(--brass);color:var(--brass);border-radius:999px;padding:0 .45rem;white-space:nowrap}
+details.rule.house summary .t{color:var(--ink)}
 /* tour */
 .tour{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);width:min(480px,94vw);z-index:58;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--brass);border-radius:10px;box-shadow:var(--shadow);padding:.6rem .9rem .7rem}
 .tour-top{display:flex;justify-content:space-between;align-items:center}
@@ -495,7 +508,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
     <div class="saved-list" id="saved-list"></div>
   </div>
   <div id="n-log" class="npane" hidden>
-    <div class="log-tools"><button class="btn primary" data-act="log-new">New session</button></div>
+    <div class="log-tools"><button class="btn primary" data-act="log-new">Start a session</button></div>
     <div id="log-list"></div>
   </div>
 </aside>
@@ -554,6 +567,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
     <div class="rch-rows" id="m-rch"></div>
     <button class="btn sm" data-act="add-rch-row" style="margin-top:.4rem">Add a recharge ability</button>
   </fieldset>
+  <label style="margin-top:.6rem">Notes <textarea id="m-notes" rows="3" placeholder="Scimitar +4 to hit, 1d6+2 slashing. Nimble Escape: Disengage or Hide as a bonus action."></textarea></label>
   <p class="muted small">Hit dice like <b>7d10+14</b> roll separately for each monster. With an initiative bonus, initiative rolls automatically.</p>
   <label class="row-label" id="m-colors-wrap"><input type="checkbox" id="m-colors"> Give each one a different token color</label>
   <label class="row-label" id="m-save-wrap"><input type="checkbox" id="m-save" checked> Save to my monster list</label>
@@ -649,6 +663,7 @@ const RULES = [
  // Combat
  {id:'initiative',cat:'Combat',t:'Initiative & surprise',s:'Dex check. Surprised creatures roll with disadvantage.',b:ul(['Everyone rolls a Dexterity check for initiative. The DM rolls once for each group of identical monsters, or individually.','<b>Surprise:</b> a creature that’s surprised when combat begins has disadvantage on its initiative roll.','<b>Ties:</b> the DM decides order among monsters, the players among characters, and the DM between a monster and a character.'])},
  {id:'concentration',cat:'Combat',t:'Concentration',s:'Con save when damaged: DC 10 or half the damage, whichever is higher (max 30).',b:ul(['Whenever you take damage, make a Constitution save to keep concentrating. DC is 10 or half the damage taken (rounded down), whichever is higher, up to DC 30.','Concentration also ends if you have the Incapacitated condition, die, or start concentrating on something else.','You can end concentration at any time, no action required.'])},
+ {id:'bloodied',cat:'Combat',t:'Bloodied',s:'At half its HP or fewer. No effect on its own, but some abilities key off it.',b:'<p>A creature is Bloodied while it has half its Hit Points or fewer remaining. Being Bloodied does nothing by itself, but some monster and character abilities trigger or change when a creature is Bloodied.</p><p class="small muted">The combat tracker marks it automatically for anyone with HP tracked.</p>'},
  {id:'cover',cat:'Combat',t:'Cover',s:'Half +2 AC and Dex saves. Three-quarters +5. Total: can’t be targeted directly.',b:ul(['<b>Half cover:</b> +2 bonus to AC and Dexterity saving throws. Something blocks at least half of the target.','<b>Three-quarters cover:</b> +5 bonus to AC and Dexterity saving throws.','<b>Total cover:</b> can’t be targeted directly by an attack or spell.','Only the most protective degree applies; they don’t stack.'])},
  {id:'crits',cat:'Combat',t:'Critical hits',s:'Natural 20 always hits and crits: roll the attack’s damage dice twice.',b:'<p>A natural 20 on an attack roll always hits and is a critical hit. Roll the attack’s damage dice twice, add them together, then add any modifiers. A natural 1 always misses.</p>'},
  {id:'death-saves',cat:'Combat',t:'Death saving throws',s:'At 0 HP, DC 10 each turn. Three successes: Stable. Three failures: dead.',b:ul(['Start your turn at 0 HP: roll a d20 with no modifiers. 10 or higher is a success.','Three successes: you’re Stable. Three failures: you die. They don’t need to be consecutive, and both reset to zero when you regain any HP or become Stable.','Natural 1: two failures. Natural 20: regain 1 HP.','Taking damage at 0 HP is one failure, or two from a critical hit. If that damage equals or exceeds your HP max, you die.','Stabilize someone: the Help action with a DC 10 Wisdom (Medicine) check, or a Healer’s Kit (Utilize action, no check).','A Stable creature stays Unconscious, stops rolling, and regains 1 HP after 1d4 hours. Taking damage makes it start rolling again.'])},
@@ -914,6 +929,7 @@ function campMenu(btn){
     {key:'cp-new', label:'New campaign…', fn:()=>openCampDlg(false)},
     {key:'cp-open', label:'Open a campaign file…', fn:()=>$('#import-file').click()},
     {key:'cp-save', label:'Save this campaign to a file', fn:()=>exportCampaign(S)},
+    {key:'cp-doc', label:'Export as a readable document…', fn:openDocDlg},
     {key:'cp-rename', label:'Rename this campaign…', fn:()=>openCampDlg(true)},
     {key:'cp-close', label:'Close this campaign…', danger:true, fn:closeCampaign},
     {note:'Campaign files open on any device, in any copy of the toolkit.'});
@@ -942,10 +958,10 @@ function saveCampDlg(){
   if($('#cp-lib').checked) c.library=clone(S.library);
   dlgCamp.close(); activate(c, `Started ${c.name}.`, true);
 }
-async function saveFile(filename, text){
+async function saveFile(filename, text, type='application/json'){
   const dl = (window.claude && window.claude.use) ? await claude.use('downloads').catch(()=>null) : null;
   if(dl){ await dl.save({filename, data:text}); return; }
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'application/json'})); a.download=filename;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=filename;
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 const slug = s => (String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')) || 'campaign';
@@ -1119,15 +1135,15 @@ function lookAct(act){
 /* ================= show me around ================= */
 const TOUR=[
  {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
- {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li></ul>`},
- {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Tick “different token color” to tell four goblins apart.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
+ {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li><li>Cards tagged “house rule” on the Campaign tab show up here too, under <b>House rules</b>.</li></ul>`},
+ {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
  {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
  {tab:'social', hi:'[data-tab=social]', title:'Social', body:`<p>For conversations, deals, and lies.</p><ul><li><b>NPC roster:</b> everyone the party has met, with a Friendly, Indifferent, or Hostile switch and what that means for Influence checks.</li><li>Attitudes, the Influence action, and which skill fits which approach.</li><li>Social spells, languages (with who in the party speaks them), hirelings, selling, and haggling.</li></ul>`},
  {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
- {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
  {tab:'gen', hi:'[data-tab=gen]', title:'Generate', body:`<p>For when the players go somewhere you didn’t plan.</p><ul><li>Names by species, full NPCs, taverns, shops with prices, quick loot, and complications.</li><li><b>Save to notes</b> keeps anything you liked. A rolled NPC can go straight into the roster.</li></ul>`},
- {hi:'#notes-btn', notes:true, title:'Notes', body:`<p>The Notes button opens a drawer from the right.</p><ul><li><b>Scratchpad</b> for anything you jot mid-game, plus whatever you saved from the generators.</li><li><b>Session log</b> gives each game night its own dated entry. “Move scratchpad here” files tonight’s scratch notes into the session.</li></ul>`},
- {hi:'#camp-btn', title:'Campaigns', body:`<p>The button beside the title holds your campaigns.</p><ul><li>Switch between campaigns, start a new one, or rename it.</li><li><b>Save this campaign to a file</b> makes a backup or something to share. <b>Open a campaign file</b> loads one, even on a fresh copy of the app.</li><li><b>Close this campaign</b> when it’s finished. Save its file first if you might want it back.</li></ul>`},
+ {hi:'#notes-btn', notes:true, title:'Notes', body:`<p>The Notes button opens a drawer from the right.</p><ul><li><b>Scratchpad</b> for anything you jot mid-game, plus whatever you saved from the generators.</li><li><b>Session log</b> gives each game night its own dated entry. “Move scratchpad here” files tonight’s scratch notes into the session.</li><li><b>Start a session</b> (also at the top right of the Campaign tab) opens a new entry and a quick recap: last session’s notes, active quests, and the NPCs met last time.</li></ul>`},
+ {hi:'#camp-btn', title:'Campaigns', body:`<p>The button beside the title holds your campaigns.</p><ul><li>Switch between campaigns, start a new one, or rename it.</li><li><b>Save this campaign to a file</b> makes a backup or something to share. <b>Open a campaign file</b> loads one, even on a fresh copy of the app.</li><li><b>Export as a readable document</b> makes a tidy page to read, print, or share, with only the parts you choose.</li><li><b>Close this campaign</b> when it’s finished. Save its file first if you might want it back.</li></ul>`},
  {hi:'#more-btn', title:'Settings and syncing', body:`<p>The ⋯ menu holds the rest.</p><ul><li><b>Customize</b> changes light or dark, colors, fonts, and text size, for all campaigns or just one.</li><li><b>Connect Google Drive</b> keeps your campaigns synced between your computer, tablet, and phone. When it’s on, a Drive button in the header shows whether everything is saved; tap it if it asks you to sign in.</li><li><b>Show me around</b> brings this tour back.</li></ul><p>That’s everything. Have a good game.</p>`}
 ];
 let tourI=0, tourOpenedNotes=false;
@@ -1321,6 +1337,7 @@ function nextTurn(){
     if((wrapped && (ci>=20 || ni<20)) || (!wrapped && ci>=20 && ni<20)) addPrompt('lair', `Initiative 20${wrapped?', round '+C().round:''}: lair actions (they lose ties).`);
   }
   C().turnId=next.id;
+  monNotesOpen.delete(next.id); if(cur) monNotesOpen.delete(cur.id);
   startOfTurn(next);
   commit(); renderCombat();
 }
@@ -1410,7 +1427,7 @@ function renderCombat(){
   } else {
     h += `<button class="btn primary" data-act="start" ${o.length?'':'disabled'}>Start combat</button>`;
   }
-  h += `<button class="btn" id="undo-btn" data-act="undo" disabled>Undo<span class="undo-label"></span></button><span class="spacer"></span><button class="btn" data-act="open-mon">Add monsters</button>${pBtn}
+  h += `<button class="btn" id="undo-btn" data-act="undo" disabled>Undo<span class="undo-label"></span></button><span class="spacer"></span><button class="btn" data-act="open-mon">Add monsters</button>${pBtn}<a class="btn" href="https://www.dndbeyond.com/monsters" target="_blank" rel="noopener noreferrer" title="Open D&D Beyond’s monster list in a new tab">D&amp;D Beyond monsters ↗</a>
         <button class="btn" data-act="open-cond-multi" ${o.length?'':'disabled'}>Condition on several</button>
         ${c.active?'<button class="btn quiet" data-act="end">End combat</button>':(o.length?'<button class="btn danger" data-act="clear">Clear tracker</button>':'')}</div>`;
   h += encounterHTML();
@@ -1432,6 +1449,7 @@ function renderCombat(){
   $('#panel-combat').innerHTML = h;
   renderUndo();
 }
+const monNotesOpen=new Set();
 function rowHTML(c){
   const active = C().active && C().turnId===c.id;
   let hp = '<span class="hp muted">HP not tracked</span>';
@@ -1451,6 +1469,7 @@ function rowHTML(c){
   if(c.la && c.la.max) chips.push(`<span class="res">Leg. actions <span class="pips">${Array.from({length:c.la.max},(_,i)=>`<button class="pip ${i>=c.la.left?'used':''}" data-act="la" data-id="${c.id}" data-i="${i}" aria-label="Legendary action ${i+1}"></button>`).join('')}</span></span>`);
   (c.recharge||[]).forEach(r=>chips.push(`<button class="rch ${r.ready?'ready':'spent'}" data-act="rch" data-id="${c.id}" data-r="${r.id}" title="${r.ready?'Click when used':'Click to roll recharge'}">${esc(r.name)} ${r.min===6?'6':r.min+'–6'}</button>`));
   if(c.lair) chips.push('<span class="lair">Lair</span>');
+  if(has(c.maxHp) && num(c.maxHp)>0 && has(c.hp) && num(c.hp)>0 && num(c.hp)<=num(c.maxHp)/2 && !c.defeated) chips.unshift('<span class="chip bloodied" data-tip="bloodied" tabindex="0">Bloodied</span>');
   if(c.type==='pc' && has(c.hp) && num(c.hp)===0){
     const ds=c.ds||{s:0,f:0};
     if(c.dead) chips.push('<span class="lair dead">Dead</span>');
@@ -1462,7 +1481,7 @@ function rowHTML(c){
     <div class="cbt-init"><input type="number" value="${esc(c.init)}" data-field="init" data-id="${c.id}" aria-label="Initiative for ${esc(c.name)}" placeholder="–"></div>
     <div class="cbt-main">
       <div class="cbt-head"><span class="cbt-name">${dot}${esc(c.name)}${c.color?`<span class="tokword">${c.color}</span>`:''}</span>${has(c.ac)?`<span class="ac">AC <b>${esc(c.ac)}</b></span>`:''}${c.cr?`<span class="ac">CR <b>${esc(c.cr)}</b></span>`:''}${hp}</div>
-      <div class="cbt-meta">${chips.join('')}</div>
+      <div class="cbt-meta">${chips.join('')}${c.notes?`<button class="chip add mn-btn" data-act="mnotes" data-id="${c.id}" aria-expanded="${active !== monNotesOpen.has(c.id)}">${(active !== monNotesOpen.has(c.id))?'Hide notes':'Notes'}</button>`:''}</div>${c.notes && (active !== monNotesOpen.has(c.id)) ? `<div class="mnotes">${esc(c.notes).replace(/\n/g,'<br>')}</div>`:''}
     </div>
     <div class="cbt-ctl">
       <input type="number" min="0" class="amt" data-id="${c.id}" aria-label="Amount" placeholder="0">
@@ -1507,6 +1526,7 @@ function rowMenu(btn, c){
     {key:'edit', label:'Edit', fn:()=>openMon(c)},
     {key:'def', label:c.defeated?'Bring back into the fight':'Mark defeated', fn:()=>{ c.defeated=!c.defeated; if(c.defeated && C().turnId===c.id && C().active) nextTurn(); else { commit(); renderCombat(); } }},
   ];
+  if(c.type==='monster') items.push({key:'ddb', label:'Look it up on D&D Beyond', fn:()=>window.open('https://www.dndbeyond.com/monsters?filter-search='+encodeURIComponent(baseName(c.name)), '_blank', 'noopener')});
   if(c.type==='monster') items.push({key:'dup', label:'Duplicate', fn:()=>{ const n=clone(c); delete n.id; delete n.order; n.name=nextName(baseName(c.name)); n.conditions=[]; n.conc=false; n.color=null; n.defeated=false; n.hp=n.maxHp; n.init=has(c.initBonus)&&C().active?d(20)+num(c.initBonus):''; C().list.push(newCombatant(n)); commit(); renderCombat(); }});
   items.push({key:'rm', label:'Remove from combat', danger:true, fn:()=>{
     if(C().turnId===c.id && C().active){ const o=order().filter(x=>!x.defeated && x.id!==c.id); C().list=C().list.filter(x=>x.id!==c.id); if(o.length){ C().turnId=(o.find(x=>num(x.init,-99)<num(c.init,-99))||o[0]).id; } else C().turnId=null; }
@@ -1578,7 +1598,7 @@ function renderLib(){
   $('#lib').innerHTML = S.library.map(m=>`<span class="chip"><span data-act="lib-fill" data-id="${m.id}">${esc(m.name)}${m.cr?` <span class="muted">CR ${esc(m.cr)}</span>`:''}</span><button class="x" data-act="lib-del" data-id="${m.id}" aria-label="Delete ${esc(m.name)} from your list">×</button></span>`).join('');
 }
 function fillMon(m){
-  $('#m-name').value=m.name||''; $('#m-hp').value=m.hpExpr ?? m.maxHp ?? ''; $('#m-ac').value=m.ac??''; $('#m-init').value=m.initBonus??''; $('#m-cr').value=m.cr??'';
+  $('#m-name').value=m.name||''; $('#m-hp').value=m.hpExpr ?? m.maxHp ?? ''; $('#m-ac').value=m.ac??''; $('#m-init').value=m.initBonus??''; $('#m-cr').value=m.cr??''; $('#m-notes').value=m.notes||'';
   $('#m-lr').value=m.lr?.max||''; $('#m-la').value=m.la?.max||''; $('#m-lair').checked=!!m.lair;
   $('#m-rch').innerHTML=(m.recharge||[]).map(r=>rchRow(r.name,r.min)).join('');
 }
@@ -1595,7 +1615,7 @@ function readMon(){
   return {
     name: $('#m-name').value.trim(),
     hpExpr: $('#m-hp').value.trim(),
-    ac: $('#m-ac').value, initBonus: $('#m-init').value, cr: $('#m-cr').value,
+    ac: $('#m-ac').value, initBonus: $('#m-init').value, cr: $('#m-cr').value, notes: $('#m-notes').value.trim(),
     lr: num($('#m-lr').value), la: num($('#m-la').value), lair: $('#m-lair').checked,
     recharge: $$('#m-rch .rch-row').map(r=>({name:r.querySelector('input').value.trim(), min:+r.querySelector('select').value})).filter(r=>r.name)
   };
@@ -1604,7 +1624,7 @@ function saveMon(){
   const m=readMon();
   if(editing){
     const c=editing;
-    c.name=m.name||c.name; c.ac=m.ac; c.initBonus=m.initBonus; c.lair=m.lair; c.cr=m.cr;
+    c.name=m.name||c.name; c.ac=m.ac; c.initBonus=m.initBonus; c.lair=m.lair; c.cr=m.cr; c.notes=m.notes;
     if(m.hpExpr!==String(c.maxHp)){ const v=rollExpr(m.hpExpr); if(has(v)){ const diff=v-num(c.maxHp,v); c.maxHp=v; c.hp=Math.max(0,num(c.hp,v)+diff); } else if(!m.hpExpr){ c.maxHp=''; c.hp=''; } }
     c.lr = m.lr ? {max:m.lr, used:Math.min(c.lr?.used||0,m.lr)} : null;
     c.la = m.la ? {max:m.la, left:Math.min(c.la?.left??m.la,m.la)} : null;
@@ -1619,13 +1639,13 @@ function saveMon(){
     let name = m.name;
     if(count>1 || existing>0) name = existing===0 ? `${m.name} ${i+1}` : nextName(m.name);
     if(existing===1 && i===0){ const solo=C().list.find(c=>c.name===m.name); if(solo) solo.name=m.name+' 1'; name=nextName(m.name); }
-    C().list.push(newCombatant({name, cr:m.cr, color: $('#m-colors').checked ? nextColor(m.name) : null, hp, maxHp:hp, ac:m.ac, initBonus:m.initBonus,
+    C().list.push(newCombatant({name, cr:m.cr, notes:m.notes, color: $('#m-colors').checked ? nextColor(m.name) : null, hp, maxHp:hp, ac:m.ac, initBonus:m.initBonus,
       init: C().active && has(m.initBonus) ? d(20)+num(m.initBonus) : '',
       lr: m.lr?{max:m.lr,used:0}:null, la: m.la?{max:m.la,left:m.la}:null, lair:m.lair,
       recharge: m.recharge.map(r=>({id:uid(), name:r.name, min:r.min, ready:true}))}));
   }
   if($('#m-save').checked){
-    const tpl={id:uid(), name:m.name, cr:m.cr, hpExpr:m.hpExpr, ac:m.ac, initBonus:m.initBonus, lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:m.lair, recharge:m.recharge};
+    const tpl={id:uid(), name:m.name, cr:m.cr, notes:m.notes, hpExpr:m.hpExpr, ac:m.ac, initBonus:m.initBonus, lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:m.lair, recharge:m.recharge};
     const at=S.library.findIndex(x=>x.name.toLowerCase()===m.name.toLowerCase());
     if(at>=0){ tpl.id=S.library[at].id; S.library[at]=tpl; } else S.library.push(tpl);
     S.library.sort((a,b)=>a.name.localeCompare(b.name));
@@ -1749,8 +1769,10 @@ function renderParty(){
 let ruleCat='All';
 function renderRules(){
   let h=`<h2>Conditions</h2><p class="muted small" style="margin-top:-.3rem">Hover for a quick look. Click to pin it above the tabs.</p><div class="cond-grid">${CONDS.map(n=>`<button data-tip="${n.toLowerCase()}" data-act="pin" data-id="${n.toLowerCase()}">${n}</button>`).join('')}</div>`;
-  h+=`<h2 style="margin-top:1.3rem">Rules</h2><div class="rule-cats">${['All',...RULE_CATS.filter(c=>!['Conditions','Travel','Social'].includes(c))].map(c=>`<button data-act="rule-cat" data-id="${c}" aria-pressed="${c===ruleCat}">${c}</button>`).join('')}</div>`;
-  const list=RULES.filter(r=>!['Conditions','Travel','Social'].includes(r.cat) && (ruleCat==='All'||r.cat===ruleCat));
+  const hr=houseRules(); if(ruleCat==='House rules' && !hr.length) ruleCat='All';
+  h+=`<h2 style="margin-top:1.3rem">Rules</h2><div class="rule-cats">${['All',...(hr.length?['House rules']:[]),...RULE_CATS.filter(c=>!['Conditions','Travel','Social'].includes(c))].map(c=>`<button data-act="rule-cat" data-id="${c}" aria-pressed="${c===ruleCat}">${c}</button>`).join('')}</div>`;
+  if(ruleCat==='All'||ruleCat==='House rules') h+=hr.map(({s,it})=>`<details class="rule house"><summary><span class="t">${esc(it.title||'Untitled')}</span><span class="s">${esc(firstLine(it.text))}</span><span class="hr-tag">house rule</span><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button></summary><div class="b">${cardBody(s,it)}<p class="small muted">From ${esc(S.name)}’s ${esc(s.title)} section. Edit it on the Campaign tab.</p></div></details>`).join('');
+  const list = ruleCat==='House rules' ? [] : RULES.filter(r=>!['Conditions','Travel','Social'].includes(r.cat) && (ruleCat==='All'||r.cat===ruleCat));
   h+=list.map(r=>`<details class="rule"><summary><span class="t">${esc(r.t)}</span><span class="s">${esc(r.s)}</span><button class="btn sm quiet" data-act="pin" data-id="${r.id}">Pin</button></summary><div class="b">${ruleCat==='All'?`<div class="cat">${esc(r.cat)}</div>`:''}${r.b}</div></details>`).join('');
   h+=SRD_NOTE;
   $('#panel-rules').innerHTML=h;
@@ -1847,12 +1869,12 @@ function saveNpc(){
   const name=$('#n-name').value.trim(); if(!name){ toast('Give the NPC a name.'); return; }
   const n=editingNpc||{id:uid(), created:Date.now()};
   Object.assign(n,{name, role:$('#n-role').value.trim(), where:$('#n-where').value.trim(), notes:$('#n-notes').value.trim(), attitude:npcAtt});
-  if(!editingNpc) S.npcs.unshift(n);
+  if(!editingNpc){ n.session=curSessionN(); S.npcs.unshift(n); }
   dlgNpc.close(); commit(); renderNpcList();
 }
 function npcFromGen(r){
   const f=Object.fromEntries(r.fields);
-  S.npcs.unshift({id:uid(), created:Date.now(), name:r.title, role:[f.Species||f.Ancestry,(f.Role||'').toLowerCase()].filter(Boolean).join(' '), where:'', attitude:f.Attitude||'Indifferent', notes:['Look: '+f.Look,'Manner: '+f.Manner,'Wants: '+f.Wants,'Secret: '+f.Secret].join('\n')});
+  S.npcs.unshift({id:uid(), created:Date.now(), session:curSessionN(), name:r.title, role:[f.Species||f.Ancestry,(f.Role||'').toLowerCase()].filter(Boolean).join(' '), where:'', attitude:f.Attitude||'Indifferent', notes:['Look: '+f.Look,'Manner: '+f.Manner,'Wants: '+f.Wants,'Secret: '+f.Secret].join('\n')});
   commit(); renderNpcList(); toast(`${r.title} added to the NPC roster.`);
 }
 
@@ -1901,6 +1923,10 @@ function cardBody(s,it){
   return h+`<p>${nl2br(it.text)}</p>`;
 }
 function npcBody(n){ return `<p><b>${esc(n.attitude||'Indifferent')}</b>${n.role?' · '+esc(n.role):''}${n.where?' · met at '+esc(n.where):''}</p>${n.notes?`<p>${nl2br(n.notes)}</p>`:''}`; }
+function houseRules(){
+  const out=[]; (S.sections||[]).forEach(s=>{ if(s.type==='npcs'||s.type==='calendar') return; (s.items||[]).forEach(it=>{ if(itemTags(s,it).some(t=>t.replace(/s$/,'')==='house rule'||t==='houserule')) out.push({s,it}); }); });
+  return out;
+}
 function getPin(id){
   if(RULE[id]) return RULE[id];
   if(typeof id!=='string') return null;
@@ -1967,7 +1993,7 @@ function renderCampaign(){
   const panel=$('#panel-campaign'); if(!panel) return;
   const focusQ = document.activeElement && document.activeElement.id==='camp-q';
   const secs=S.sections||[];
-  let h=`<div class="camp-tools"><input type="search" id="camp-q" placeholder="Find in this campaign" value="${esc(campQ)}" aria-label="Find in this campaign"><button class="btn primary" data-act="cx-addsec">Add a section</button></div>`;
+  let h=`<div class="camp-tools"><input type="search" id="camp-q" placeholder="Find in this campaign" value="${esc(campQ)}" aria-label="Find in this campaign"><button class="btn" data-act="cx-addsec">Add a section</button><button class="btn primary session-btn" data-act="cx-session" title="Opens a new session log entry with a recap of last time">Start a new session</button></div>`;
   if(campTag) h+=`<div class="tag-filter">Showing cards tagged ${tagChip(campTag)} <button class="btn sm quiet" data-act="cx-tag" data-v="">Show everything</button></div>`;
   if(!secs.length){
     h+=`<div class="empty" style="max-width:640px"><p>This campaign’s tab is empty.</p><p class="small">Add only the sections this campaign needs. Each section collapses, and every card in it is tagged automatically.</p><div class="preset-row">${SEC_PRESETS.map(([t,k],i)=>`<button class="btn sm" data-act="cx-preset" data-i="${i}">${t}</button>`).join('')}<button class="btn sm quiet" data-act="cx-addsec">Something else…</button></div></div>`;
@@ -2037,7 +2063,7 @@ function saveSec(){
     if(type==='calendar') s.cal={day:1,label:'',events:[]};
     S.sections.push(s);
   }
-  dlgSec.close(); commit(); renderCampaign();
+  dlgSec.close(); commit(); renderCampaign(); renderRules();
 }
 function addPresetSection(i){
   const [t,k]=SEC_PRESETS[i];
@@ -2080,7 +2106,7 @@ function saveCard(){
   if(s.type==='quests'){ it.giver=$('#cd-giver').value.trim(); it.reward=$('#cd-reward').value.trim(); it.status=$('#cd-status').value; }
   if(!cardItem) s.items.push(it);
   delete tableRolls[it.id];
-  dlgCard.close(); commit(); renderCampaign(); renderPins();
+  dlgCard.close(); commit(); renderCampaign(); renderRules(); renderPins();
 }
 
 function campAct(act, el, e){
@@ -2088,12 +2114,13 @@ function campAct(act, el, e){
   const it = s && el.dataset.id ? (s.items||[]).find(x=>x.id===el.dataset.id) : null;
   switch(act){
     case 'cx-addsec': openSecDlg(); break;
+    case 'cx-session': startSession(); break;
     case 'cx-preset': addPresetSection(+el.dataset.i); break;
     case 'cx-secsave': saveSec(); break;
     case 'cx-add': if(!s) break; if(s.type==='npcs') openNpc(); else openCard(s); break;
     case 'cx-edit': if(s && it) openCard(s,it); break;
     case 'cx-cardsave': saveCard(); break;
-    case 'cx-carddel': { const sec=cardSec, item=cardItem; if(!sec||!item) break; dlgCard.close(); confirmBox(`Delete ${item.title||'this card'}?`, 'It will be removed from this campaign.', [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ sec.items=sec.items.filter(x=>x.id!==item.id); commit(); renderCampaign(); renderPins(); }}]); break; }
+    case 'cx-carddel': { const sec=cardSec, item=cardItem; if(!sec||!item) break; dlgCard.close(); confirmBox(`Delete ${item.title||'this card'}?`, 'It will be removed from this campaign.', [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ sec.items=sec.items.filter(x=>x.id!==item.id); commit(); renderCampaign(); renderRules(); renderPins(); }}]); break; }
     case 'cx-tag': campTag = el.dataset.v===campTag ? '' : el.dataset.v; renderCampaign(); break;
     case 'cx-more': expanded.has(el.dataset.id)?expanded.delete(el.dataset.id):expanded.add(el.dataset.id); renderCampaign(); break;
     case 'cx-qstat': if(it){ it.status=el.dataset.v; commit(); renderCampaign(); } break;
@@ -2109,7 +2136,7 @@ function campAct(act, el, e){
       if(i<S.sections.length-1) items.push({key:'s-down', label:'Move down', fn:()=>{ S.sections.splice(i,1); S.sections.splice(i+1,0,s); commit(); renderCampaign(); }});
       items.push({key:'s-del', label:'Delete section…', danger:true, fn:()=>{
         const body = s.type==='npcs' ? 'This removes the NPC section from this tab. Your NPCs stay in the Social tab’s roster.' : s.type==='calendar' ? 'The day counter and its notes will be deleted.' : `Its ${(s.items||[]).length} item${(s.items||[]).length===1?'':'s'} will be deleted too.`;
-        confirmBox(`Delete ${s.title}?`, body, [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ S.sections=S.sections.filter(x=>x!==s); commit(); renderCampaign(); renderPins(); }}]);
+        confirmBox(`Delete ${s.title}?`, body, [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ S.sections=S.sections.filter(x=>x!==s); commit(); renderCampaign(); renderRules(); renderPins(); }}]);
       }});
       showMenu(el, items); break;
     }
@@ -2272,6 +2299,103 @@ document.addEventListener('input', e=>{
   if(e.target.classList.contains('log-title')) s.title=e.target.value; else s.text=e.target.value;
   clearTimeout(logTimer); logTimer=setTimeout(commit, 600);
 });
+
+
+/* ================= start a session ================= */
+const curSessionN = () => S.sessions.reduce((m,s)=>Math.max(m,s.n),0);
+const dlgWarm=document.createElement('dialog'); dlgWarm.id='dlg-warm'; dlgWarm.style.width='min(640px,94vw)';
+document.body.appendChild(dlgWarm);
+function startSession(){
+  const prev=[...S.sessions].sort((a,b)=>b.n-a.n)[0]||null;
+  const n=curSessionN()+1; const s={id:uid(), n, date:today(), title:'', text:''};
+  S.sessions.push(s); commit(); renderLog();
+  const quests=[]; (S.sections||[]).filter(x=>x.type==='quests').forEach(sec=>(sec.items||[]).filter(it=>(it.status||'Active')==='Active').forEach(it=>quests.push(it)));
+  const hasQuests=(S.sections||[]).some(x=>x.type==='quests');
+  let npcs = prev ? S.npcs.filter(x=>x.session===prev.n) : [];
+  const npcHead = npcs.length ? `NPCs met in Session ${prev.n}` : 'Recently met NPCs';
+  if(!npcs.length) npcs=[...S.npcs].sort((a,b)=>(b.created||0)-(a.created||0)).slice(0,5);
+  const cal=(S.sections||[]).find(x=>x.type==='calendar');
+  const excerpt = prev && prev.text ? prev.text.split('\n').filter(x=>x.trim()).slice(0,8) : [];
+  const att = a => `<span class="att-badge ${ATT_CLS[a]||'i'}">${esc(a||'Indifferent')}</span>`;
+  let h=`<h2>Session ${n}</h2><p class="muted small" style="margin-top:-.4rem">${esc(s.date)} · ${esc(S.name)}</p><div class="warm">`;
+  h+=`<section><h3>Last time</h3>${prev ? `<p><b>Session ${prev.n}</b>${prev.title?' · '+esc(prev.title):''} <span class="muted small">${esc(prev.date)}</span></p>${excerpt.length?`<div class="warm-ex">${excerpt.map(esc).join('<br>')}${prev.text.split('\n').filter(x=>x.trim()).length>8?'<br>…':''}</div>`:'<p class="muted small">No notes were written for that session.</p>'}` : '<p class="muted small">This is the first session in the log.</p>'}</section>`;
+  if(hasQuests) h+=`<section><h3>Active quests</h3>${quests.length?`<ul>${quests.map(q=>`<li><b>${esc(q.title)}</b>${q.giver?` <span class="muted">from ${esc(q.giver)}</span>`:''}${q.reward?` <span class="muted">· ${esc(q.reward)}</span>`:''}</li>`).join('')}</ul>`:'<p class="muted small">No active quests.</p>'}</section>`;
+  if(S.npcs.length) h+=`<section><h3>${npcHead}</h3><ul>${npcs.map(x=>`<li><b>${esc(x.name)}</b>${x.role?` <span class="muted">${esc(x.role)}</span>`:''} ${att(x.attitude)}</li>`).join('')}</ul></section>`;
+  const where=[];
+  if(cal) where.push(`<li>Day ${cal.cal.day}${cal.cal.label?' · '+esc(cal.cal.label):''}</li>`);
+  if(S.party.length) where.push(`<li>Party: ${S.party.map(p=>esc(p.name)).join(', ')}</li>`);
+  if(where.length) h+=`<section><h3>Where things stand</h3><ul>${where.join('')}</ul></section>`;
+  h+=`</div><div class="dlg-actions"><button class="btn" data-act="warm-log">Open the session log</button><button class="btn primary" data-act="warm-close">Let’s play</button></div>`;
+  dlgWarm.innerHTML=h; dlgWarm.showModal();
+}
+function warmAct(act){
+  dlgWarm.close();
+  if(act==='warm-log'){ $('#notes').classList.add('open'); $$('.ntabs button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id==='log')); $('#n-scratch').hidden=true; $('#n-log').hidden=false; renderLog(); setTimeout(()=>$('#log-list .log-title')?.focus(), 50); }
+}
+
+/* ================= readable campaign document ================= */
+const dlgDoc=document.createElement('dialog'); dlgDoc.id='dlg-doc'; dlgDoc.style.width='min(520px,94vw)';
+document.body.appendChild(dlgDoc);
+function openDocDlg(){
+  const secs=(S.sections||[]).filter(s=>s.type!=='npcs');
+  dlgDoc.innerHTML=`<h2>Export as a readable document</h2><p class="muted small" style="margin-top:-.3rem">A tidy page you can read, print, or save as a PDF from your browser. Choose what goes in. Leave out anything your players shouldn’t see.</p>
+  <div class="doc-opts"><label class="row-label"><input type="checkbox" data-doc="party" ${S.party.length?'checked':'disabled'}> Party</label>
+  <label class="row-label"><input type="checkbox" data-doc="npcs" ${S.npcs.length?'checked':'disabled'}> NPC roster</label>
+  <label class="row-label" style="padding-left:1.5rem"><input type="checkbox" data-doc="npcnotes" ${S.npcs.length?'checked':'disabled'}> Include NPC notes</label>
+  ${secs.map(s=>`<label class="row-label"><input type="checkbox" data-doc="sec:${s.id}" checked> ${esc(s.title)}</label>`).join('')}
+  <label class="row-label"><input type="checkbox" data-doc="log" ${S.sessions.length?'checked':'disabled'}> Session log</label></div>
+  <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="doc-make">Download document</button></div>`;
+  dlgDoc.showModal();
+}
+async function makeDoc(){
+  const on = k => { const i=dlgDoc.querySelector(`[data-doc="${k}"]`); return i && i.checked && !i.disabled; };
+  const look=lookFor(), pal=PALETTES.find(x=>x.id===look.palette)||PALETTES[0], accent=look.accent||pal.light.accent;
+  const hf=HEAD_FONTS.find(f=>f[0]===look.head)||HEAD_FONTS[0], bf=BODY_FONTS.find(f=>f[0]===look.body)||BODY_FONTS[0];
+  const P = t => `<p>${esc(t||'').replace(/\n/g,'<br>')}</p>`;
+  const parts=[], toc=[];
+  const add=(id,title,html)=>{ toc.push(`<a href="#${id}">${esc(title)}</a>`); parts.push(`<section id="${id}"><h2>${esc(title)}</h2>${html}</section>`); };
+  if(on('party')) add('party','Party', `<table><thead><tr><th>Character</th><th>AC</th><th>HP</th><th>Passive Perception</th><th>Insight</th><th>Investigation</th><th>Languages</th></tr></thead><tbody>${S.party.map(p=>`<tr><td><b>${esc(p.name)}</b><br><span class="sub">${esc([[p.species,p.cls].filter(Boolean).join(' '), p.level&&'level '+p.level, p.player&&'played by '+p.player].filter(Boolean).join(', '))}</span></td><td>${esc(p.ac||'')}</td><td>${esc(p.maxHp||'')}</td><td>${esc(p.pp||'')}</td><td>${esc(p.ins||'')}</td><td>${esc(p.inv||'')}</td><td>${esc(p.langs||'')}</td></tr>`).join('')}</tbody></table>`);
+  (S.sections||[]).forEach(s=>{
+    if(s.type==='npcs' || !on('sec:'+s.id)) return;
+    let body='';
+    if(s.type==='calendar'){ const c=s.cal||{day:1,events:[]}; body=`<p class="lead">Day ${c.day}${c.label?' · '+esc(c.label):''}</p>${c.events.length?`<ul>${[...c.events].sort((a,b)=>a.day-b.day).map(ev=>`<li><b>Day ${ev.day}:</b> ${esc(ev.text)}</li>`).join('')}</ul>`:''}`; }
+    else if(s.type==='tables') body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3><ol>${String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`).join('');
+    else body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3>${itemTags(s,it).length?`<p class="tags">${itemTags(s,it).map(esc).join(' · ')}</p>`:''}${s.type==='quests'?`<p class="meta"><b>${esc(it.status||'Active')}</b>${it.giver?' · given by '+esc(it.giver):''}${it.reward?' · reward: '+esc(it.reward):''}</p>`:''}${it.text?P(it.text):''}</div>`).join('');
+    add('s-'+s.id, s.title, body || '<p class="sub">Nothing here yet.</p>');
+  });
+  if(on('npcs')) add('npcs','NPCs', ATT.map(a=>{ const L=S.npcs.filter(n=>(n.attitude||'Indifferent')===a); return L.length?`<h3 class="grp">${a}</h3>`+L.map(n=>`<div class="card"><h3>${esc(n.name)}</h3><p class="meta">${esc([n.role, n.where&&'met at '+n.where].filter(Boolean).join(' · '))}</p>${on('npcnotes')&&n.notes?P(n.notes):''}</div>`).join(''):''; }).join(''));
+  if(on('log')) add('log','Session log', [...S.sessions].sort((a,b)=>a.n-b.n).map(s=>`<div class="card"><h3>Session ${s.n}${s.title?': '+esc(s.title):''}</h3><p class="meta">${esc(s.date)}</p>${s.text?P(s.text):''}</div>`).join(''));
+  if(!parts.length){ toast('Pick at least one part to include.'); return; }
+  const fonts=[hf[1],bf[1]].map(f=>'family='+f).join('&');
+  const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(S.name)}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts}&display=swap">
+<style>
+:root{--accent:${accent};--ink:#1f1d1a;--muted:#6b665e;--line:#d9d4ca}
+*{box-sizing:border-box}
+body{margin:0;background:#fbfaf7;color:var(--ink);font-family:${bf[2]};line-height:1.55}
+main{max-width:780px;margin:0 auto;padding:2.5rem 1.4rem 4rem}
+h1,h2,h3{font-family:${hf[2]};line-height:1.2}
+h1{font-size:2.3rem;margin:0}
+header .meta{color:var(--muted);margin:.3rem 0 1.2rem}
+nav{display:flex;flex-wrap:wrap;gap:.3rem 1rem;padding:.6rem 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:1.5rem}
+nav a{color:var(--accent);text-decoration:none;font-weight:600}
+h2{font-size:1.6rem;margin:2.2rem 0 .8rem;padding-bottom:.25rem;border-bottom:3px solid var(--accent)}
+h3{font-size:1.15rem;margin:0 0 .25rem}
+h3.grp{margin:1.2rem 0 .5rem;color:var(--accent);font-size:1rem;text-transform:none}
+.card{border-left:3px solid var(--line);padding:.2rem 0 .2rem .9rem;margin:0 0 1.1rem;break-inside:avoid}
+.card p{margin:.25rem 0}
+.tags,.meta,.sub{color:var(--muted);font-size:.9rem}
+.lead{font-size:1.2rem;font-family:${hf[2]}}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:.4rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:.82rem}
+.foot{margin-top:3rem;color:var(--muted);font-size:.82rem}
+@media print{body{background:#fff}main{padding:0;max-width:none}nav{display:none}h2{break-after:avoid}section{break-inside:auto}}
+</style></head><body><main><header><h1>${esc(S.name)}</h1><p class="meta">${esc([S.kind, 'Exported '+new Date().toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'})].filter(Boolean).join(' · '))}</p></header>
+${toc.length>1?`<nav>${toc.join('')}</nav>`:''}${parts.join('')}<p class="foot">Made with the DM Master Toolkit.</p></main></body></html>`;
+  dlgDoc.close();
+  try{ await saveFile(`${slug(S.name)}.html`, html, 'text/html'); toast('Document saved. Open it in any browser to read or print.'); }catch(e){ toast('Document not saved.'); }
+}
 
 /* ================= confirm box ================= */
 const dlgCf=$('#dlg-confirm');
@@ -2515,6 +2639,8 @@ function onClick(e){
   if(act.startsWith('cx-')){ campAct(act, el, e); return; }
   if(act.startsWith('lk-')){ lookAct(act); return; }
   if(act.startsWith('tour-')){ tourAct(act, el); return; }
+  if(act==='warm-log'||act==='warm-close'){ warmAct(act); return; }
+  if(act==='doc-make'){ makeDoc(); return; }
   switch(act){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#notes-text').focus(); break;
     case 'more': moreMenu(el); break;
@@ -2542,6 +2668,7 @@ function onClick(e){
     case 'lib-fill': { const m=S.library.find(x=>x.id===id); if(m){ fillMon(m); $('#m-count').focus(); } break; }
     case 'lib-del': S.library=S.library.filter(x=>x.id!==id); commit(); renderLib(); break;
     case 'row-menu': if(c) rowMenu(el,c); break;
+    case 'mnotes': monNotesOpen.has(id)?monNotesOpen.delete(id):monNotesOpen.add(id); renderCombat(); break;
     case 'enc-toggle': encCollapsed=!encCollapsed; renderCombat(); break;
     case 'ds': { const k=el.dataset.k, i=+el.dataset.i; c.ds=c.ds||{s:0,f:0}; c.ds[k] = i<c.ds[k] ? i : i+1; checkDeath(c); commit(); renderCombat(); break; }
     case 'tok-color': if(c) showPalette(el,c); break;
@@ -2576,7 +2703,7 @@ function onClick(e){
     case 'gen-save': { const r=[genResult,...genHistory].find(x=>x&&x.id===id); if(r) saveResult(r); break; }
     case 'save-name': { const n=genResult.names[+el.dataset.i]; S.saved.unshift({id:uid(), title:n.name, text:n.name+'\n'+n.anc+' name', at:Date.now()}); commit(); renderSaved(); toast('Saved to notes.'); break; }
     case 'ntab': $$('.ntabs button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===id)); $('#n-scratch').hidden=id!=='scratch'; $('#n-log').hidden=id!=='log'; if(id==='log') renderLog(); break;
-    case 'log-new': { const n=S.sessions.reduce((m,s)=>Math.max(m,s.n),0)+1; S.sessions.push({id:uid(), n, date:today(), title:'', text:''}); commit(); renderLog(); $('#log-list .log-title')?.focus(); break; }
+    case 'log-new': startSession(); break;
     case 'log-move': { const s=S.sessions.find(x=>x.id===id); const t=(S.notes||'').trim(); if(!s) break; if(!t){ toast('The scratchpad is empty.'); break; } s.text=(s.text?s.text.replace(/\s+$/,'')+'\n\n':'')+t; S.notes=''; $('#notes-text').value=''; commit(); renderLog(); toast('Scratchpad moved into Session '+s.n+'.'); break; }
     case 'log-del': { const s=S.sessions.find(x=>x.id===id); if(!s) break; confirmBox(`Delete Session ${s.n}?`, 'Its notes will be removed. This can’t be undone.', [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ S.sessions=S.sessions.filter(x=>x.id!==id); commit(); renderLog(); }}]); break; }
     case 'saved-del': S.saved=S.saved.filter(x=>x.id!==id); commit(); renderSaved(); break;
