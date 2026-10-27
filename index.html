@@ -12,6 +12,7 @@
   color-scheme: light;
   --bg:#E9ECE4; --surface:#F6F7F2; --surface-2:#DEE3D6; --line:#C2CAB9; --ink:#1E2921; --muted:#56635A;
   --brass:#8A6A1F; --on-brass:#FFF8E6; --blood:#A8322D; --heal:#2B7A4B; --arcane:#3B58A3; --shadow:0 6px 24px rgba(20,30,22,.18);
+  --font-head:"Alegreya",Georgia,"Times New Roman",serif; --font-body:"Alegreya Sans","Gill Sans","Trebuchet MS",system-ui,sans-serif;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
@@ -30,9 +31,9 @@
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:"Alegreya Sans","Gill Sans","Trebuchet MS",system-ui,sans-serif;font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:1rem;line-height:1.45;-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
-h1,h2,h3,.serif{font-family:"Alegreya",Georgia,"Times New Roman",serif;font-weight:700;line-height:1.2}
+h1,h2,h3,.serif{font-family:var(--font-head);font-weight:700;line-height:1.2}
 h2{font-size:1.35rem;margin:0 0 .6rem}
 h3{font-size:1.1rem;margin:1.4rem 0 .5rem}
 p{margin:.35rem 0}
@@ -67,8 +68,8 @@ label > input,label > select{color:var(--ink)}
 /* header */
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem .35rem}
-.brand{font-family:"Alegreya",Georgia,serif;font-weight:700;font-size:1.15rem;white-space:nowrap}
-.brand small{font-family:"Alegreya Sans",sans-serif;font-weight:500;color:var(--muted);font-size:.8rem;margin-left:.35rem}
+.brand{font-family:var(--font-head);font-weight:700;font-size:1.15rem;white-space:nowrap}
+.brand small{font-family:var(--font-body);font-weight:500;color:var(--muted);font-size:.8rem;margin-left:.35rem}
 .search{position:relative;flex:1;min-width:120px;max-width:520px;margin-left:auto}
 .search input{width:100%;padding:.4rem .7rem .4rem 2rem;border-radius:999px;background:var(--surface)}
 .search svg{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--muted)}
@@ -102,8 +103,8 @@ main{padding:.9rem;max-width:1100px}
 
 /* combat */
 .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-bottom:.7rem}
-.round{font-family:"Alegreya",Georgia,serif;font-weight:700;font-size:1.25rem;margin-right:.4rem;font-variant-numeric:tabular-nums}
-.round span{font-family:"Alegreya Sans",sans-serif;font-weight:500;font-size:.85rem;color:var(--muted);margin-right:.25rem}
+.round{font-family:var(--font-head);font-weight:700;font-size:1.25rem;margin-right:.4rem;font-variant-numeric:tabular-nums}
+.round span{font-family:var(--font-body);font-weight:500;font-size:.85rem;color:var(--muted);margin-right:.25rem}
 .spacer{flex:1}
 .prompts{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.7rem}
 .prompt{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--arcane);border-radius:6px;padding:.4rem .6rem;font-size:.92rem}
@@ -122,11 +123,11 @@ main{padding:.9rem;max-width:1100px}
 .cbt.defeated .cbt-name{text-decoration:line-through}
 .cbt-init input{width:3rem;text-align:center;font-weight:700;font-size:1.05rem;padding:.25rem .2rem}
 .cbt-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.25rem .7rem}
-.cbt-name{font-family:"Alegreya",Georgia,serif;font-weight:700;font-size:1.08rem;display:inline-flex;align-items:center;gap:.4rem}
+.cbt-name{font-family:var(--font-head);font-weight:700;font-size:1.08rem;display:inline-flex;align-items:center;gap:.4rem}
 .cdot{width:16px;height:16px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--ink) 35%,transparent);padding:0;cursor:pointer;flex:none;display:inline-block;vertical-align:middle}
 .cdot.none{background:transparent;border:1.5px dashed var(--muted)}
 .cdot:hover{transform:scale(1.15)}
-.tokword{font-family:"Alegreya Sans",sans-serif;font-weight:500;font-size:.8rem;color:var(--muted)}
+.tokword{font-family:var(--font-body);font-weight:500;font-size:.8rem;color:var(--muted)}
 .cbt.tok{border-left:5px solid var(--tok)}
 #menu .sw-grid{display:grid;grid-template-columns:repeat(6,26px);gap:7px;padding:.2rem .6rem .45rem}
 #menu .sw{width:26px;height:26px;padding:0;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--ink) 30%,transparent);display:block}
@@ -206,8 +207,76 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.6rem;max-width:900px}
 .skill{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.5rem .75rem}
 .skill h3{margin:.1rem 0}
-.skill .ab{font-family:"Alegreya Sans",sans-serif;font-weight:500;font-size:.8rem;color:var(--muted);margin-left:.2rem}
+.skill .ab{font-family:var(--font-body);font-weight:500;font-size:.8rem;color:var(--muted);margin-left:.2rem}
 .skill .def{font-style:italic;margin:.1rem 0 .3rem}
+/* campaign tab */
+.camp-tools{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-bottom:.6rem}
+.camp-tools input{flex:1;min-width:160px;max-width:340px}
+.preset-row{display:flex;flex-wrap:wrap;gap:.35rem;margin:.6rem 0}
+.empty .preset-row{justify-content:center}
+.csec details.fold > summary{align-items:center}
+.sec-actions{margin-left:auto;display:inline-flex;gap:.3rem;align-items:center}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.6rem;max-width:1000px;margin-top:.3rem}
+.ccard{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:.5rem .75rem .6rem}
+.ccard .ob-head h3{flex:1;margin:.1rem 0;font-size:1.05rem}
+.ccard.st-done,.ccard.st-failed{opacity:.6}
+.tags{display:flex;flex-wrap:wrap;gap:.25rem;align-items:center;margin:.15rem 0 .35rem}
+.tag{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:0 .5rem;font-size:.78rem;cursor:pointer;color:var(--muted)}
+.tag:hover{border-color:var(--brass);color:var(--ink)}
+.tag.on{background:var(--brass);border-color:var(--brass);color:var(--on-brass)}
+.tag-filter{display:flex;align-items:center;gap:.4rem;margin-bottom:.6rem;font-size:.9rem}
+.ctext{font-size:.92rem}
+.ctext.clamp{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.linkish{background:none;border:none;color:var(--brass);cursor:pointer;padding:0;font-size:.85rem;margin-top:.2rem}
+.qseg{margin:.1rem 0 .4rem;flex-wrap:wrap}
+.qseg button.q-done[aria-pressed=true]{background:color-mix(in srgb,var(--heal) 20%,var(--surface));color:var(--heal)}
+.qseg button.q-failed[aria-pressed=true]{background:color-mix(in srgb,var(--blood) 18%,var(--surface));color:var(--blood)}
+.qseg button.q-active[aria-pressed=true]{background:color-mix(in srgb,var(--brass) 22%,var(--surface));color:var(--ink)}
+.qmeta{font-size:.86rem;color:var(--muted);margin-bottom:.3rem}
+.roll-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:.2rem 0}
+.roll-res{font-family:var(--font-head);font-size:1.05rem}
+.roll-res b{color:var(--brass);margin-right:.2rem}
+.tbl-entries summary{cursor:pointer;margin-top:.3rem}
+.tbl-entries ol{font-size:.88rem;margin:.3rem 0;padding-left:1.4rem}
+.camp-npcs{max-height:none}
+.cal{max-width:640px}
+.cal-day{display:flex;align-items:center;gap:.6rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem}
+.cal-main{flex:1;min-width:0}
+.cal-n{font-family:var(--font-head);font-weight:700;font-size:1.5rem;line-height:1.1;color:var(--brass)}
+.cal-label{width:100%;border-color:transparent;background:transparent;padding:.1rem 0}
+.cal-label:hover,.cal-label:focus{border-color:var(--line);background:var(--bg);padding:.1rem .3rem}
+.cal-add{display:flex;gap:.4rem;margin:.5rem 0}
+.cal-add input{flex:1}
+.cal-events{list-style:none;padding:0;margin:0}
+.cal-events li{display:flex;gap:.6rem;align-items:baseline;border-bottom:1px solid var(--line);padding:.3rem 0}
+.cal-events li b{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:500;font-size:.88rem}
+.cal-events li span{flex:1}
+/* tour */
+.tour{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);width:min(480px,94vw);z-index:58;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--brass);border-radius:10px;box-shadow:var(--shadow);padding:.6rem .9rem .7rem}
+.tour-top{display:flex;justify-content:space-between;align-items:center}
+.tour-n{font-size:.8rem;color:var(--muted)}
+.tour h2{margin:.1rem 0 .3rem;font-size:1.25rem}
+.tour-b{max-height:min(44vh,320px);overflow:auto;font-size:.93rem}
+.tour-b ul{padding-left:1.1rem}
+.tour-b kbd{border:1px solid var(--line);border-radius:3px;padding:0 .3rem;font-size:.85em;background:var(--bg)}
+.tour-nav{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.5rem}
+.tour-dots{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+.tdot{width:8px;height:8px;border-radius:50%;border:none;padding:0;background:var(--line);cursor:pointer}
+.tdot.on{background:var(--brass);width:18px;border-radius:4px}
+.tour-hi{outline:3px solid var(--brass) !important;outline-offset:3px;border-radius:6px;animation:tourpulse 1.6s ease-in-out infinite}
+@keyframes tourpulse{50%{outline-color:transparent}}
+/* customize */
+.look-row{display:flex;flex-wrap:wrap;gap:.4rem 1.2rem;align-items:center}
+.pal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.5rem}
+.pal{display:flex;flex-direction:column;gap:.35rem;align-items:flex-start;border:2px solid;border-radius:8px;padding:.45rem .55rem;cursor:pointer;text-align:left}
+.pal[aria-pressed=true]{box-shadow:0 0 0 2px var(--brass)}
+.pal-sw{display:flex;gap:4px}
+.pal-sw i{width:18px;height:18px;border-radius:50%;border:1px solid transparent;display:block}
+.pal-n{font-size:.86rem;font-weight:700}
+.font-preview{margin-top:.6rem;border:1px dashed var(--line);border-radius:6px;padding:.5rem .7rem}
+.fp-h{font-family:var(--font-head);font-weight:700;font-size:1.3rem}
+.fp-b{font-family:var(--font-body)}
+#lk-accent{width:2.4rem;height:1.8rem;padding:0;border-radius:4px;cursor:pointer}
 /* drive pill */
 .drive-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.2rem .7rem;cursor:pointer;font-size:.85rem;white-space:nowrap}
 .drive-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
@@ -238,7 +307,7 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .enc-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:.3rem .7rem}
 .enc-top .btn{margin-left:auto}
 .enc-label{font-size:.8rem;color:var(--muted);text-transform:none}
-.enc-rate{font-family:"Alegreya",Georgia,serif;font-size:1.15rem}
+.enc-rate{font-family:var(--font-head);font-size:1.15rem}
 .enc-rate.lo{color:var(--heal)} .enc-rate.mo{color:var(--brass)} .enc-rate.hi,.enc-rate.bh{color:var(--blood)}
 .enc-bar{position:relative;display:flex;height:10px;border-radius:5px;overflow:visible;margin:.55rem 0 .2rem;background:var(--surface-2)}
 .enc-bar .z{display:block;height:100%}
@@ -259,7 +328,7 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .log-entry.current{border-color:var(--brass)}
 .log-head{display:flex;flex-wrap:wrap;gap:.2rem .5rem;align-items:baseline;cursor:pointer}
 .log-entry.current .log-head{cursor:default}
-.log-n{font-family:"Alegreya",Georgia,serif;font-weight:700}
+.log-n{font-family:var(--font-head);font-weight:700}
 .log-t{font-size:.85rem;flex-basis:100%}
 .log-entry .log-title{width:100%;margin:.35rem 0}
 .log-entry textarea{width:100%;background:var(--surface)}
@@ -286,7 +355,7 @@ details.fold > summary:hover h2{color:var(--brass)}
 .npc{display:flex;flex-wrap:wrap;gap:.5rem 1rem;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:6px;padding:.45rem .7rem}
 .npc.f{border-left-color:var(--heal)} .npc.h{border-left-color:var(--blood)}
 .npc-main{flex:1 1 240px;min-width:0}
-.npc-name{font-family:"Alegreya",Georgia,serif;font-weight:700;font-size:1.05rem}
+.npc-name{font-family:var(--font-head);font-weight:700;font-size:1.05rem}
 .npc-sub{font-size:.86rem;color:var(--muted)}
 .npc-notes{font-size:.88rem;white-space:pre-line;margin-top:.2rem}
 .npc-side{display:flex;flex-direction:column;align-items:flex-end;gap:.2rem}
@@ -301,14 +370,14 @@ table.lang tr.known td:first-child{font-weight:700}
 .best-stat{padding:.55rem .85rem;border-left:1px solid var(--line)}
 .best-stat:first-child{border-left:none}
 .best-stat .bl{font-size:.82rem;color:var(--muted)}
-.best-stat .bv{font-family:"Alegreya",Georgia,serif;font-weight:700;font-size:1.75rem;line-height:1.1;color:var(--brass);font-variant-numeric:tabular-nums}
+.best-stat .bv{font-family:var(--font-head);font-weight:700;font-size:1.75rem;line-height:1.1;color:var(--brass);font-variant-numeric:tabular-nums}
 .best-stat .bw{font-size:.92rem}
 @media (max-width:760px){.best-banner{grid-template-columns:repeat(3,1fr)}.best-stat.langs{grid-column:1 / -1;border-left:none;border-top:1px solid var(--line)}}
 table.party{width:100%;border-collapse:collapse;font-size:.93rem;font-variant-numeric:tabular-nums}
 table.party th{font-weight:500;color:var(--muted);text-align:left;font-size:.82rem;padding:.3rem .45rem;border-bottom:1px solid var(--line);white-space:nowrap}
 table.party td{padding:.4rem .45rem;border-bottom:1px solid var(--line);vertical-align:top}
 table.party td.n{text-align:center}
-table.party .pname{font-family:"Alegreya",Georgia,serif;font-weight:700;font-size:1.02rem}
+table.party .pname{font-family:var(--font-head);font-weight:700;font-size:1.02rem}
 table.party .sub{font-size:.82rem;color:var(--muted)}
 td.best{color:var(--brass);font-weight:700}
 td.hit{background:color-mix(in srgb,var(--heal) 16%,transparent);font-weight:700}
@@ -327,7 +396,7 @@ tr.detail td{background:var(--surface);font-size:.88rem}
 .result dd{margin:0}
 .result ul{padding-left:1rem}
 .result-actions{display:flex;gap:.4rem;margin-top:.7rem;flex-wrap:wrap}
-.names-list{columns:2;column-gap:2rem;font-family:"Alegreya",Georgia,serif;font-size:1.08rem;padding:0;list-style:none;margin:0}
+.names-list{columns:2;column-gap:2rem;font-family:var(--font-head);font-size:1.08rem;padding:0;list-style:none;margin:0}
 .names-list li{display:flex;justify-content:space-between;gap:.4rem;break-inside:avoid;padding:.12rem 0}
 .history{margin-top:1rem;max-width:62ch}
 .history summary{cursor:pointer;color:var(--muted);font-size:.9rem}
@@ -340,7 +409,7 @@ tr.detail td{background:var(--surface);font-size:.88rem}
 .saved-list{flex:1 1 40%;overflow:auto;margin-top:.6rem}
 .saved-item{border-bottom:1px solid var(--line);padding:.4rem 0;font-size:.88rem}
 .saved-item header{margin:0}
-.saved-item b{font-family:"Alegreya",Georgia,serif;font-size:.98rem}
+.saved-item b{font-family:var(--font-head);font-size:.98rem}
 
 /* dialogs */
 dialog{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:1rem 1.1rem;width:min(560px,94vw);box-shadow:var(--shadow);max-height:90vh}
@@ -401,6 +470,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
     <button class="tab" role="tab" data-tab="travel" aria-selected="false">Travel</button>
     <button class="tab" role="tab" data-tab="social" aria-selected="false">Social</button>
     <button class="tab" role="tab" data-tab="party" aria-selected="false">Party<span class="count" id="party-count">0</span></button>
+    <button class="tab" role="tab" data-tab="campaign" aria-selected="false">Campaign</button>
     <button class="tab" role="tab" data-tab="gen" aria-selected="false">Generate</button>
   </nav>
 </header>
@@ -413,6 +483,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
   <section class="panel" id="panel-travel" hidden></section>
   <section class="panel" id="panel-social" hidden></section>
   <section class="panel" id="panel-party" hidden></section>
+  <section class="panel" id="panel-campaign" hidden></section>
   <section class="panel" id="panel-gen" hidden></section>
 </main>
 
@@ -429,6 +500,12 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
   </div>
 </aside>
 
+<div id="tour" class="tour" role="dialog" aria-modal="false" aria-labelledby="tour-t" hidden>
+  <div class="tour-top"><span class="tour-n" id="tour-n"></span><button class="icon-btn" data-act="tour-close" aria-label="Close the tour" style="font-size:1.3rem">×</button></div>
+  <h2 id="tour-t"></h2>
+  <div class="tour-b" id="tour-b"></div>
+  <div class="tour-nav"><button class="btn" data-act="tour-prev" id="tour-prev">Back</button><div class="tour-dots" id="tour-dots"></div><button class="btn primary" data-act="tour-next" id="tour-next">Next</button></div>
+</div>
 <div id="tip" hidden></div>
 <div id="menu" hidden></div>
 <div id="toast" role="status"></div>
@@ -489,6 +566,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
   <div class="grid2">
     <label>Character name <input id="p-name"></label>
     <label>Player <input id="p-player"></label>
+    <label>Species <input id="p-species" placeholder="Elf"></label>
     <label>Class <input id="p-cls" placeholder="Rogue"></label>
     <label>Level <input type="number" id="p-level" min="1" max="20"></label>
     <label>AC <input type="number" id="p-ac"></label>
@@ -692,13 +770,13 @@ const strip = h => h.replace(/<[^>]+>/g,' ');
 
 /* ================= state & persistence ================= */
 const LEGACY_KEY='dmmt.state.v1', G_KEY='dmmt.global.v2', CK=id=>'dmmt.camp.'+id;
-const DEFAULT = { v:2, id:'', name:'My campaign', kind:'', createdAt:0, updatedAt:0, party:[], library:[], notes:'', saved:[], npcs:[], sessions:[], combat:{active:false, round:0, turnId:null, list:[], prompts:[], seq:0} };
+const DEFAULT = { v:2, id:'', name:'My campaign', kind:'', look:null, createdAt:0, updatedAt:0, party:[], library:[], notes:'', saved:[], npcs:[], sessions:[], sections:[], combat:{active:false, round:0, turnId:null, list:[], prompts:[], seq:0} };
 const clone = o => JSON.parse(JSON.stringify(o));
 function normalize(o){
   const s = clone(DEFAULT); if(!o || typeof o!=='object') return s;
   for(const k of Object.keys(DEFAULT)) if(o[k]!==undefined && k!=='combat') s[k]=o[k];
   s.combat = Object.assign(clone(DEFAULT.combat), o.combat||{});
-  ['party','library','saved','npcs','sessions'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+  ['party','library','saved','npcs','sessions','sections'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(!Array.isArray(s.combat.list)) s.combat.list=[];
   if(!Array.isArray(s.combat.prompts)) s.combat.prompts=[];
   return s;
@@ -816,7 +894,7 @@ async function initRemote(){
 }
 
 /* ================= campaigns ================= */
-function resetSession(){ undoStack=[]; genResult=null; genHistory=[]; npcQ=''; npcF='All'; openPC=null; partyDC=''; encCollapsed=false; }
+function resetSession(){ campQ=''; campTag=''; tableRolls={}; expanded=new Set(); undoStack=[]; genResult=null; genHistory=[]; npcQ=''; npcF='All'; openPC=null; partyDC=''; encCollapsed=false; }
 function renderCampBtn(){ const b=$('#camp-btn'); if(b){ b.querySelector('.camp-name').textContent=S.name; b.title='Campaign: '+S.name; } }
 function activate(c, msg, touch){
   S=normalize(c); if(touch) S.updatedAt=Date.now();
@@ -915,6 +993,172 @@ function applyTheme(t){ if(t==='light'||t==='dark') document.documentElement.dat
 let theme = 'auto'; try{ theme = localStorage.getItem('dmmt.theme')||'auto'; }catch(e){}
 applyTheme(theme);
 
+
+/* ================= customize: colors, fonts, size ================= */
+const BASE_DARK={blood:'#E06A5F', heal:'#72C28E', arcane:'#93AAE6'}, BASE_LIGHT={blood:'#A8322D', heal:'#2B7A4B', arcane:'#3B58A3'};
+const PALETTES=[
+ {id:'felt', name:'Felt & Brass', light:{bg:'#E9ECE4',surface:'#F6F7F2',surface2:'#DEE3D6',line:'#C2CAB9',ink:'#1E2921',muted:'#56635A',accent:'#8A6A1F'}, dark:{bg:'#142019',surface:'#1B2920',surface2:'#243529',line:'#34493B',ink:'#E7E3D4',muted:'#9DA99B',accent:'#CDA54B'}},
+ {id:'amethyst', name:'Amethyst & Silver', light:{bg:'#ECE9F1',surface:'#F8F6FB',surface2:'#E0DAE9',line:'#C7BED6',ink:'#221A2E',muted:'#5E5470',accent:'#6B3FB8',arcane:'#1F7A80'}, dark:{bg:'#1A1524',surface:'#221B30',surface2:'#2C233E',line:'#3E3256',ink:'#ECE7F4',muted:'#A89EBB',accent:'#B99CF2',arcane:'#6CC5CC'}},
+ {id:'ember', name:'Ember & Iron', light:{bg:'#EEECE9',surface:'#F9F8F6',surface2:'#E2DFDA',line:'#C9C4BC',ink:'#222120',muted:'#5F5B56',accent:'#A8521C'}, dark:{bg:'#17171A',surface:'#202024',surface2:'#2A2A2F',line:'#3A3A41',ink:'#ECE7E1',muted:'#A39E98',accent:'#E58E4E'}},
+ {id:'tide', name:'Tidewater', light:{bg:'#E7EEF2',surface:'#F5F9FB',surface2:'#D9E4EA',line:'#BCCBD5',ink:'#13222D',muted:'#4F6170',accent:'#0F7A6C',arcane:'#5B45B8'}, dark:{bg:'#0F1A24',surface:'#15232F',surface2:'#1C2D3B',line:'#2A4052',ink:'#E3ECF2',muted:'#93A6B5',accent:'#4FC1B0',arcane:'#A796EE'}},
+ {id:'parchment', name:'Parchment & Ink', light:{bg:'#EFE7D8',surface:'#F9F4EA',surface2:'#E4D9C3',line:'#CDBE9F',ink:'#2A2118',muted:'#6B5D4A',accent:'#2F4A7A',arcane:'#6A3D8C'}, dark:{bg:'#1E1A15',surface:'#27221B',surface2:'#312A21',line:'#45392C',ink:'#EDE4D3',muted:'#A89A84',accent:'#9DB4E0',arcane:'#C1A0E0'}},
+ {id:'frost', name:'Frost & Steel', light:{bg:'#EAF0F5',surface:'#F7FAFC',surface2:'#DCE5ED',line:'#C0CEDA',ink:'#172330',muted:'#526273',accent:'#2D6FA8',arcane:'#6F4FB8'}, dark:{bg:'#141A21',surface:'#1B232C',surface2:'#232D38',line:'#33414F',ink:'#E6EDF3',muted:'#9AA8B5',accent:'#9CC9F0',arcane:'#B5A0EE'}},
+ {id:'mono', name:'Midnight & Moon', light:{bg:'#F1F1F2',surface:'#FFFFFF',surface2:'#E5E5E8',line:'#CACACE',ink:'#111113',muted:'#55555C',accent:'#2B2B30'}, dark:{bg:'#0E0E10',surface:'#18181B',surface2:'#222226',line:'#34343A',ink:'#F2F2F2',muted:'#A6A6AE',accent:'#E8E3C8'}}
+];
+const HEAD_FONTS=[
+ ['Alegreya','Alegreya:wght@500;700','"Alegreya",Georgia,serif','Bookish, the default'],
+ ['Cinzel','Cinzel:wght@500;700','"Cinzel","Trajan Pro",Georgia,serif','Carved-stone capitals'],
+ ['IM Fell English','IM+Fell+English','"IM Fell English",Georgia,serif','Old printed page'],
+ ['Cormorant Garamond','Cormorant+Garamond:wght@500;700','"Cormorant Garamond",Garamond,Georgia,serif','Elegant, high contrast'],
+ ['Uncial Antiqua','Uncial+Antiqua','"Uncial Antiqua",Georgia,serif','Celtic manuscript'],
+ ['MedievalSharp','MedievalSharp','"MedievalSharp",Georgia,serif','Hand-lettered fantasy'],
+ ['Spectral','Spectral:wght@500;700','"Spectral",Georgia,serif','Calm, modern serif'],
+ ['Libre Baskerville','Libre+Baskerville:wght@400;700','"Libre Baskerville",Baskerville,Georgia,serif','Classic book type'],
+ ['Alegreya Sans','Alegreya+Sans:wght@500;700','"Alegreya Sans","Gill Sans",system-ui,sans-serif','Clean, no serifs']
+];
+const BODY_FONTS=[
+ ['Alegreya Sans','Alegreya+Sans:wght@400;500;700','"Alegreya Sans","Gill Sans","Trebuchet MS",system-ui,sans-serif','Warm, the default'],
+ ['Atkinson Hyperlegible','Atkinson+Hyperlegible:wght@400;700','"Atkinson Hyperlegible",system-ui,sans-serif','Built for easy reading'],
+ ['Source Sans 3','Source+Sans+3:wght@400;500;700','"Source Sans 3","Segoe UI",system-ui,sans-serif','Neutral and clear'],
+ ['Lato','Lato:wght@400;700','"Lato","Segoe UI",system-ui,sans-serif','Friendly, rounded'],
+ ['Nunito Sans','Nunito+Sans:wght@400;600;700','"Nunito Sans",system-ui,sans-serif','Soft and open'],
+ ['Open Sans','Open+Sans:wght@400;500;700','"Open Sans","Segoe UI",system-ui,sans-serif','Plain workhorse'],
+ ['Lora','Lora:wght@400;500;700','"Lora",Georgia,serif','A serif for body text'],
+ ['Alegreya','Alegreya:wght@400;500;700','"Alegreya",Georgia,serif','Bookish serif throughout']
+];
+const SIZES={small:'93.75%', normal:'100%', large:'112.5%'};
+const DEFAULT_LOOK={palette:'felt', accent:null, head:'Alegreya', body:'Alegreya Sans', size:'normal'};
+const lookFor = () => Object.assign({}, DEFAULT_LOOK, (G && G.look) || {}, (S && S.look) || {});
+const loadedFonts=new Set(['Alegreya','Alegreya Sans']);
+function loadFont(list, name){
+  const f=list.find(x=>x[0]===name); if(!f || loadedFonts.has(name+'|'+list.length)) return f;
+  loadedFonts.add(name+'|'+list.length);
+  const l=document.createElement('link'); l.rel='stylesheet'; l.href=`https://fonts.googleapis.com/css2?family=${f[1]}&display=swap`; document.head.appendChild(l);
+  return f;
+}
+const lum = hex => { const n=parseInt(hex.slice(1),16), c=[n>>16&255,n>>8&255,n&255].map(v=>{v/=255; return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);}); return .2126*c[0]+.7152*c[1]+.0722*c[2]; };
+const onColor = hex => lum(hex) > .42 ? '#14110A' : '#FFFFFF';
+function varsFor(t, base, accent){
+  const a = accent || t.accent;
+  const v = Object.assign({}, base, t, {accent:a});
+  return `--bg:${v.bg};--surface:${v.surface};--surface-2:${v.surface2};--line:${v.line};--ink:${v.ink};--muted:${v.muted};--brass:${v.accent};--on-brass:${onColor(v.accent)};--blood:${v.blood};--heal:${v.heal};--arcane:${v.arcane};`;
+}
+function applyLook(look){
+  look = look || lookFor();
+  const pal = PALETTES.find(x=>x.id===look.palette) || PALETTES[0];
+  let el=$('#look-vars'); if(!el){ el=document.createElement('style'); el.id='look-vars'; document.head.appendChild(el); }
+  const L=varsFor(pal.light, BASE_LIGHT, look.accent), Dk=varsFor(pal.dark, BASE_DARK, look.accent);
+  el.textContent = `:root{${L}}\n@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${Dk}}}\n:root[data-theme="dark"]{${Dk}}`;
+  const hf=loadFont(HEAD_FONTS, look.head)||HEAD_FONTS[0], bf=loadFont(BODY_FONTS, look.body)||BODY_FONTS[0];
+  document.documentElement.style.setProperty('--font-head', hf[2]);
+  document.documentElement.style.setProperty('--font-body', bf[2]);
+  document.documentElement.style.fontSize = SIZES[look.size] || '100%';
+  const meta=document.querySelector('meta[name=theme-color]'); if(meta) meta.remove();
+}
+const isDark = () => theme==='dark' || (theme==='auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+
+const dlgLook=document.createElement('dialog'); dlgLook.id='dlg-look'; dlgLook.style.width='min(680px,94vw)';
+dlgLook.innerHTML=`<h2>Customize</h2>
+<fieldset><legend>Light or dark</legend><div class="look-row">${[['auto','Match my device'],['light','Light'],['dark','Dark']].map(([v,l])=>`<label class="row-label"><input type="radio" name="lk-mode" value="${v}"> ${l}</label>`).join('')}</div><p class="muted small" style="margin:.2rem 0 0">This one is per device, so your phone can stay dark while your desk is light.</p></fieldset>
+<fieldset><legend>Colors</legend><div class="pal-grid" id="lk-pals"></div>
+<div class="look-row" style="margin-top:.6rem"><label class="row-label">Accent color <input type="color" id="lk-accent"></label><button class="btn sm quiet" data-act="lk-accent-reset" id="lk-accent-reset">Use the palette’s accent</button></div></fieldset>
+<fieldset><legend>Fonts</legend><div class="grid2"><label>Headings <select id="lk-head">${HEAD_FONTS.map(f=>`<option value="${f[0]}">${f[0]} · ${f[3]}</option>`).join('')}</select></label><label>Body text <select id="lk-body">${BODY_FONTS.map(f=>`<option value="${f[0]}">${f[0]} · ${f[3]}</option>`).join('')}</select></label><label>Text size <select id="lk-size"><option value="small">Smaller</option><option value="normal">Normal</option><option value="large">Larger</option></select></label></div>
+<div class="font-preview"><div class="fp-h">The Goblin Ambush</div><div class="fp-b">Four goblins burst from the brush. Roll initiative, and mark the green one first.</div></div></fieldset>
+<fieldset><legend>Use this look for</legend><div class="look-row"><label class="row-label"><input type="radio" name="lk-scope" value="all"> All campaigns</label><label class="row-label"><input type="radio" name="lk-scope" value="camp"> Only <b id="lk-camp-name"></b></label></div><p class="muted small" style="margin:.2rem 0 0">A campaign’s own look travels with it, including in its campaign file and through Drive.</p></fieldset>
+<div class="dlg-actions"><button class="btn quiet" data-act="lk-default" style="margin-right:auto">Back to the default look</button><button class="btn" data-act="lk-cancel">Cancel</button><button class="btn primary" data-act="lk-save">Save</button></div>`;
+document.body.appendChild(dlgLook);
+let lkDraft=null, lkMode='auto', lkSaved=false;
+function renderPals(){
+  const mode = (lkMode==='dark' || (lkMode==='auto' && matchMedia('(prefers-color-scheme: dark)').matches)) ? 'dark' : 'light';
+  $('#lk-pals').innerHTML = PALETTES.map(p=>{ const t=Object.assign({}, mode==='dark'?BASE_DARK:BASE_LIGHT, p[mode]);
+    return `<button type="button" class="pal" data-pal="${p.id}" aria-pressed="${lkDraft.palette===p.id}" style="background:${t.bg};color:${t.ink};border-color:${lkDraft.palette===p.id?t.accent:t.line}">
+      <span class="pal-sw"><i style="background:${t.surface};border-color:${t.line}"></i><i style="background:${t.accent}"></i><i style="background:${t.blood}"></i><i style="background:${t.heal}"></i></span><span class="pal-n">${p.name}</span></button>`; }).join('');
+}
+function syncLookForm(){
+  $$('input[name=lk-mode]').forEach(r=>r.checked = r.value===lkMode);
+  const pal=PALETTES.find(x=>x.id===lkDraft.palette)||PALETTES[0];
+  $('#lk-accent').value = lkDraft.accent || (isDarkFor(lkMode) ? pal.dark.accent : pal.light.accent);
+  $('#lk-accent-reset').hidden = !lkDraft.accent;
+  $('#lk-head').value=lkDraft.head; $('#lk-body').value=lkDraft.body; $('#lk-size').value=lkDraft.size;
+  renderPals();
+}
+const isDarkFor = m => m==='dark' || (m==='auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+function previewLook(){ applyTheme(lkMode); applyLook(lkDraft); syncLookForm(); }
+function openLook(){
+  lkDraft = lookFor(); lkMode = theme; lkSaved=false;
+  $('#lk-camp-name').textContent = S.name;
+  $$('input[name=lk-scope]').forEach(r=>r.checked = r.value===(S.look?'camp':'all'));
+  syncLookForm(); dlgLook.showModal();
+}
+dlgLook.addEventListener('close', ()=>{ if(!lkSaved){ applyTheme(theme); applyLook(); } });
+dlgLook.addEventListener('click', e=>{ const b=e.target.closest('[data-pal]'); if(b){ lkDraft.palette=b.dataset.pal; lkDraft.accent=null; previewLook(); } });
+dlgLook.addEventListener('change', e=>{
+  const t=e.target;
+  if(t.name==='lk-mode'){ lkMode=t.value; previewLook(); }
+  else if(t.id==='lk-head'){ lkDraft.head=t.value; previewLook(); }
+  else if(t.id==='lk-body'){ lkDraft.body=t.value; previewLook(); }
+  else if(t.id==='lk-size'){ lkDraft.size=t.value; previewLook(); }
+});
+$('#lk-accent').addEventListener('input', e=>{ lkDraft.accent=e.target.value; applyLook(lkDraft); $('#lk-accent-reset').hidden=false; renderPals(); });
+function lookAct(act){
+  if(act==='lk-cancel'){ dlgLook.close(); return; }
+  if(act==='lk-accent-reset'){ lkDraft.accent=null; previewLook(); return; }
+  if(act==='lk-default'){ lkDraft=Object.assign({}, DEFAULT_LOOK); previewLook(); return; }
+  if(act==='lk-save'){
+    const scope=($('input[name=lk-scope]:checked')||{}).value||'all';
+    theme=lkMode; try{ localStorage.setItem('dmmt.theme', theme); }catch(e){}
+    const look=Object.assign({}, lkDraft);
+    if(scope==='camp'){ S.look=look; }
+    else { G.look=look; delete S.look; }
+    lkSaved=true; dlgLook.close(); commit(); applyTheme(theme); applyLook();
+    toast(scope==='camp' ? `Saved for ${S.name}.` : 'Saved for all campaigns.');
+  }
+}
+
+
+/* ================= show me around ================= */
+const TOUR=[
+ {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
+ {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li></ul>`},
+ {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Tick “different token color” to tell four goblins apart.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
+ {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
+ {tab:'social', hi:'[data-tab=social]', title:'Social', body:`<p>For conversations, deals, and lies.</p><ul><li><b>NPC roster:</b> everyone the party has met, with a Friendly, Indifferent, or Hostile switch and what that means for Influence checks.</li><li>Attitudes, the Influence action, and which skill fits which approach.</li><li>Social spells, languages (with who in the party speaks them), hirelings, selling, and haggling.</li></ul>`},
+ {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'gen', hi:'[data-tab=gen]', title:'Generate', body:`<p>For when the players go somewhere you didn’t plan.</p><ul><li>Names by species, full NPCs, taverns, shops with prices, quick loot, and complications.</li><li><b>Save to notes</b> keeps anything you liked. A rolled NPC can go straight into the roster.</li></ul>`},
+ {hi:'#notes-btn', notes:true, title:'Notes', body:`<p>The Notes button opens a drawer from the right.</p><ul><li><b>Scratchpad</b> for anything you jot mid-game, plus whatever you saved from the generators.</li><li><b>Session log</b> gives each game night its own dated entry. “Move scratchpad here” files tonight’s scratch notes into the session.</li></ul>`},
+ {hi:'#camp-btn', title:'Campaigns', body:`<p>The button beside the title holds your campaigns.</p><ul><li>Switch between campaigns, start a new one, or rename it.</li><li><b>Save this campaign to a file</b> makes a backup or something to share. <b>Open a campaign file</b> loads one, even on a fresh copy of the app.</li><li><b>Close this campaign</b> when it’s finished. Save its file first if you might want it back.</li></ul>`},
+ {hi:'#more-btn', title:'Settings and syncing', body:`<p>The ⋯ menu holds the rest.</p><ul><li><b>Customize</b> changes light or dark, colors, fonts, and text size, for all campaigns or just one.</li><li><b>Connect Google Drive</b> keeps your campaigns synced between your computer, tablet, and phone. When it’s on, a Drive button in the header shows whether everything is saved; tap it if it asks you to sign in.</li><li><b>Show me around</b> brings this tour back.</li></ul><p>That’s everything. Have a good game.</p>`}
+];
+let tourI=0, tourOpenedNotes=false;
+function tourHi(sel){ $$('.tour-hi').forEach(x=>x.classList.remove('tour-hi')); if(sel){ const el=$(sel); if(el){ el.classList.add('tour-hi'); el.scrollIntoView && el.scrollIntoView({block:'nearest',inline:'nearest'}); } } }
+function showTour(i){
+  tourI=Math.max(0,Math.min(TOUR.length-1,i)); const s=TOUR[tourI];
+  if(s.tab) setTab(s.tab);
+  if(s.notes){ if(!$('#notes').classList.contains('open')){ $('#notes').classList.add('open'); tourOpenedNotes=true; } }
+  else if(tourOpenedNotes){ $('#notes').classList.remove('open'); tourOpenedNotes=false; }
+  $('#tour-n').textContent=`${tourI+1} of ${TOUR.length}`;
+  $('#tour-t').textContent=s.title; $('#tour-b').innerHTML=s.body; $('#tour-b').scrollTop=0;
+  $('#tour-prev').disabled = tourI===0;
+  $('#tour-next').textContent = tourI===TOUR.length-1 ? 'Done' : 'Next';
+  $('#tour-dots').innerHTML = TOUR.map((_,j)=>`<button class="tdot ${j===tourI?'on':''}" data-act="tour-go" data-i="${j}" aria-label="Step ${j+1}"></button>`).join('');
+  tourHi(s.hi);
+}
+function openTour(){ hideMenu(); $('#tour').hidden=false; showTour(0); $('#tour-next').focus(); try{ localStorage.setItem('dmmt.toured','1'); }catch(e){} }
+function closeTour(){ $('#tour').hidden=true; tourHi(null); if(tourOpenedNotes){ $('#notes').classList.remove('open'); tourOpenedNotes=false; } }
+function tourAct(act, el){
+  if(act==='tour-next'){ if(tourI===TOUR.length-1) closeTour(); else showTour(tourI+1); }
+  else if(act==='tour-prev') showTour(tourI-1);
+  else if(act==='tour-go') showTour(+el.dataset.i);
+  else if(act==='tour-close') closeTour();
+}
+document.addEventListener('keydown', e=>{
+  if($('#tour').hidden || e.target.closest('input,textarea,select')) return;
+  if(e.key==='ArrowRight'){ e.preventDefault(); tourAct('tour-next'); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); if(tourI>0) showTour(tourI-1); }
+  else if(e.key==='Escape') closeTour();
+});
+
 /* ================= tabs ================= */
 let tab='combat';
 function setTab(t){
@@ -925,7 +1169,7 @@ function setTab(t){
 
 /* ================= pins & tooltip ================= */
 function pinRule(id){
-  if(!RULE[id]) return;
+  if(!getPin(id)) return;
   if(!G.pins.includes(id)){ G.pins.push(id); if(G.pins.length>6) G.pins.shift(); commit(); }
   renderPins();
   const el = $('#pins [data-pin="'+id+'"]');
@@ -934,8 +1178,8 @@ function pinRule(id){
 }
 function renderPins(){
   const box=$('#pins');
-  box.hidden = !G.pins.length;
-  box.innerHTML = G.pins.filter(id=>RULE[id]).map(id=>{ const r=RULE[id];
+  box.hidden = !G.pins.some(id=>getPin(id));
+  box.innerHTML = G.pins.filter(id=>getPin(id)).map(id=>{ const r=getPin(id);
     return `<article class="pin" data-pin="${id}"><header><h3>${esc(r.t)}</h3><button class="icon-btn" data-act="unpin" data-id="${id}" aria-label="Unpin ${esc(r.t)}">×</button></header>${r.b}</article>`; }).join('') +
     (G.pins.length>1 ? '<button class="btn sm quiet" data-act="unpin-all" style="align-self:start">Clear all</button>' : '');
 }
@@ -962,7 +1206,7 @@ function doSearch(){
   const term=q.value.trim().toLowerCase();
   if(!term){ results.hidden=true; hits=[]; return; }
   const words=term.split(/\s+/);
-  hits = RULES.map(r=>{
+  hits = RULES.concat(campSearchItems()).map(r=>{
     const t=r.t.toLowerCase(), all=(r.t+' '+r.s+' '+strip(r.b)+' '+r.cat).toLowerCase();
     if(!words.every(w=>all.includes(w))) return null;
     let score = t.startsWith(term)?0 : t.includes(term)?1 : r.s.toLowerCase().includes(term)?2 : 3;
@@ -1454,7 +1698,7 @@ function undoLabel(e){
 /* ================= party ================= */
 let partyDC='', openPC=null;
 const dlgPC=$('#dlg-pc'); let editingPC=null;
-const PF=['name','player','cls','level','ac','hp','pp','ins','inv','dc','dv','langs','notes'];
+const PF=['name','player','species','cls','level','ac','hp','pp','ins','inv','dc','dv','langs','notes'];
 const PKEY={hp:'maxHp'};
 function openPCDlg(p){
   editingPC=p||null;
@@ -1488,7 +1732,7 @@ function renderParty(){
   const cell = (p,k) => { const v=p[k]; if(!has(v)) return '<td class="n muted">–</td>'; let cls=''; if(has(partyDC)) cls = num(v)>=num(partyDC)?'hit':''; else if(num(v)===best(k) && P.length>1) cls='best'; return `<td class="n ${cls}">${esc(v)}</td>`; };
   h+=`<div class="scroll-x"><table class="party"><thead><tr><th>Character</th><th>AC</th><th>HP</th><th>Perception</th><th>Insight</th><th>Investigation</th><th class="opt">Darkvision</th><th class="opt">Spell DC</th><th></th></tr></thead><tbody>`;
   P.forEach(p=>{
-    h+=`<tr><td><button class="icon-btn" data-act="pc-expand" data-id="${p.id}" aria-expanded="${openPC===p.id}" style="float:left;margin-right:.2rem">${openPC===p.id?'▾':'▸'}</button><div class="pname">${esc(p.name)}</div><div class="sub">${esc([p.cls, p.level&&'level '+p.level, p.player&&'played by '+p.player].filter(Boolean).join(', '))}</div></td>
+    h+=`<tr><td><button class="icon-btn" data-act="pc-expand" data-id="${p.id}" aria-expanded="${openPC===p.id}" style="float:left;margin-right:.2rem">${openPC===p.id?'▾':'▸'}</button><div class="pname">${esc(p.name)}</div><div class="sub">${esc([[p.species,p.cls].filter(Boolean).join(' '), p.level&&'level '+p.level, p.player&&'played by '+p.player].filter(Boolean).join(', '))}</div></td>
       <td class="n">${has(p.ac)?esc(p.ac):'–'}</td><td class="n">${has(p.maxHp)?esc(p.maxHp):'–'}</td>${cell(p,'pp')}${cell(p,'ins')}${cell(p,'inv')}
       <td class="n opt">${has(p.dv)&&+p.dv?esc(p.dv)+' ft':'–'}</td><td class="n opt">${has(p.dc)?esc(p.dc):'–'}</td>
       <td><button class="icon-btn" data-act="pc-edit" data-id="${p.id}">Edit</button></td></tr>`;
@@ -1581,6 +1825,7 @@ function renderNpcList(){
   $$('#npc-filter button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===npcF));
   box.innerHTML = !S.npcs.length ? '<div class="empty"><p>No NPCs yet.</p><p class="small">Add the people the party meets, or send one over from the NPC generator. Flip their attitude here as things change.</p></div>'
     : list.length ? list.map(npcRow).join('') : '<p class="muted">No NPCs match.</p>';
+  renderCampaign();
 }
 const dlgNpc=document.createElement('dialog'); dlgNpc.id='dlg-npc';
 dlgNpc.innerHTML=`<h2 id="npc-title">Add an NPC</h2><div class="grid2"><label>Name <input id="n-name"></label><label>Who they are <input id="n-role" placeholder="Blacksmith, cult informant"></label><label>Where the party met them <input id="n-where" placeholder="Aldenmere market"></label></div>
@@ -1607,7 +1852,7 @@ function saveNpc(){
 }
 function npcFromGen(r){
   const f=Object.fromEntries(r.fields);
-  S.npcs.unshift({id:uid(), created:Date.now(), name:r.title, role:[f.Ancestry,(f.Role||'').toLowerCase()].filter(Boolean).join(' '), where:'', attitude:f.Attitude||'Indifferent', notes:['Look: '+f.Look,'Manner: '+f.Manner,'Wants: '+f.Wants,'Secret: '+f.Secret].join('\n')});
+  S.npcs.unshift({id:uid(), created:Date.now(), name:r.title, role:[f.Species||f.Ancestry,(f.Role||'').toLowerCase()].filter(Boolean).join(' '), where:'', attitude:f.Attitude||'Indifferent', notes:['Look: '+f.Look,'Manner: '+f.Manner,'Wants: '+f.Wants,'Secret: '+f.Secret].join('\n')});
   commit(); renderNpcList(); toast(`${r.title} added to the NPC roster.`);
 }
 
@@ -1634,6 +1879,241 @@ function renderSocial(){
   h+=SRD_NOTE.replace(' Audible distance follows this table’s own rule.',' Haggling is house guidance.');
   $('#panel-social').innerHTML=h;
   renderNpcList();
+}
+
+
+/* ================= campaign tab ================= */
+const SEC_KINDS={cards:'Cards', npcs:'NPCs (shared with the Social tab)', quests:'Quests', tables:'Random tables', calendar:'Calendar'};
+const SEC_PRESETS=[['Gods','cards'],['Factions','cards'],['House rules','cards'],['Places','cards'],['Lore','cards'],['Items','cards'],['NPCs','npcs'],['Quests','quests'],['Random tables','tables'],['Calendar','calendar']];
+const singular = t => { const s=String(t||'').trim().toLowerCase(); if(!s) return ''; if(/ies$/.test(s)) return s.replace(/ies$/,'y'); if(/(ss|us|is)$/.test(s)) return s; if(/s$/.test(s)) return s.slice(0,-1); return s; };
+const QSTAT=['Active','On hold','Done','Failed'];
+let campQ='', campTag='', tableRolls={}, expanded=new Set();
+let campOpen = lsGet('dmmt.campopen') || {};
+const nl2br = s => esc(s||'').replace(/\n/g,'<br>');
+const firstLine = s => String(s||'').split('\n').find(x=>x.trim()) || '';
+const secOf = id => (S.sections||[]).find(s=>s.id===id);
+const parseTags = s => String(s||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+const itemTags = (s,it) => [...new Set([s.tag, ...(it.tags||[])].filter(Boolean))];
+function cardBody(s,it){
+  if(s.type==='tables') return `<ul>${String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+  let h='';
+  if(s.type==='quests') h+=`<p><b>${esc(it.status||'Active')}</b>${it.giver?` · from ${esc(it.giver)}`:''}${it.reward?` · reward: ${esc(it.reward)}`:''}</p>`;
+  return h+`<p>${nl2br(it.text)}</p>`;
+}
+function npcBody(n){ return `<p><b>${esc(n.attitude||'Indifferent')}</b>${n.role?' · '+esc(n.role):''}${n.where?' · met at '+esc(n.where):''}</p>${n.notes?`<p>${nl2br(n.notes)}</p>`:''}`; }
+function getPin(id){
+  if(RULE[id]) return RULE[id];
+  if(typeof id!=='string') return null;
+  if(id.startsWith('c:')){ const cid=id.slice(2); for(const s of S.sections||[]){ const it=(s.items||[]).find(x=>x.id===cid); if(it) return {id, t:it.title||'Untitled', cat:s.title, s:s.type==='tables'?`${String(it.entries||'').split('\n').filter(x=>x.trim()).length} entries`:firstLine(it.text), b:cardBody(s,it)}; } }
+  if(id.startsWith('n:')){ const n=S.npcs.find(x=>x.id===id.slice(2)); if(n) return {id, t:n.name, cat:'NPC', s:[n.role,n.attitude].filter(Boolean).join(' · '), b:npcBody(n)}; }
+  return null;
+}
+function campSearchItems(){
+  const out=[];
+  (S.sections||[]).forEach(s=>(s.items||[]).forEach(it=>{ const p=getPin('c:'+it.id); if(p){ p.s = p.s + (itemTags(s,it).length?' · '+itemTags(s,it).join(', '):''); out.push(p); } }));
+  S.npcs.forEach(n=>out.push(getPin('n:'+n.id)));
+  return out;
+}
+function itemMatches(s,it){
+  if(campTag && !itemTags(s,it).includes(campTag)) return false;
+  const q=campQ.trim().toLowerCase(); if(!q) return true;
+  return [it.title,it.text,it.entries,it.giver,it.reward,it.status,...itemTags(s,it)].join(' ').toLowerCase().includes(q);
+}
+function npcMatches(n){
+  if(campTag && campTag!=='npc') return false;
+  const q=campQ.trim().toLowerCase(); if(!q) return true;
+  return [n.name,n.role,n.where,n.notes,n.attitude,'npc'].join(' ').toLowerCase().includes(q);
+}
+const tagChip = t => `<button class="tag ${campTag===t?'on':''}" data-act="cx-tag" data-v="${esc(t)}">${esc(t)}</button>`;
+function cardHTML(s,it){
+  const tags=itemTags(s,it).map(tagChip).join('');
+  const long = String(it.text||'').length>320 || String(it.text||'').split('\n').length>6;
+  const open = expanded.has(it.id);
+  let body='';
+  if(s.type==='quests'){
+    body+=`<div class="seg qseg" role="group" aria-label="Quest status">${QSTAT.map(q=>`<button class="q-${slug(q)}" data-act="cx-qstat" data-sec="${s.id}" data-id="${it.id}" data-v="${q}" aria-pressed="${(it.status||'Active')===q}">${q}</button>`).join('')}</div>`;
+    if(it.giver||it.reward) body+=`<div class="qmeta">${it.giver?`Given by <b>${esc(it.giver)}</b>`:''}${it.giver&&it.reward?' · ':''}${it.reward?`Reward: <b>${esc(it.reward)}</b>`:''}</div>`;
+  }
+  if(it.text) body+=`<div class="ctext ${long&&!open?'clamp':''}">${nl2br(it.text)}</div>${long?`<button class="linkish" data-act="cx-more" data-id="${it.id}">${open?'Show less':'Show more'}</button>`:''}`;
+  const st = s.type==='quests' ? ' st-'+slug(it.status||'Active') : '';
+  return `<div class="ccard${st}"><div class="ob-head"><h3>${esc(it.title||'Untitled')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>${tags?`<div class="tags">${tags}</div>`:''}${body}</div>`;
+}
+function tableHTML(s,it){
+  const entries=String(it.entries||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const r=tableRolls[it.id];
+  return `<div class="ccard"><div class="ob-head"><h3>${esc(it.title||'Untitled table')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>
+    <div class="tags">${itemTags(s,it).map(tagChip).join('')}<span class="muted small">${entries.length} entr${entries.length===1?'y':'ies'} · d${entries.length||'?'}</span></div>
+    <div class="roll-row"><button class="btn primary sm" data-act="cx-roll" data-id="${it.id}" data-sec="${s.id}" ${entries.length?'':'disabled'}>Roll</button>${r?`<span class="roll-res"><b>${r.n}</b> ${esc(r.text)}</span><button class="btn sm quiet" data-act="cx-rollsave" data-id="${it.id}" data-sec="${s.id}">Save to notes</button>`:''}</div>
+    <details class="tbl-entries"><summary class="small muted">Show entries</summary><ol>${entries.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></details></div>`;
+}
+function calendarHTML(s){
+  const c=s.cal||(s.cal={day:1,label:'',events:[]});
+  const evs=[...c.events].sort((a,b)=>b.day-a.day);
+  return `<div class="cal"><div class="cal-day"><button class="btn sm" data-act="cx-day" data-sec="${s.id}" data-v="-1" aria-label="Previous day">−</button>
+    <div class="cal-main"><div class="cal-n">Day ${c.day}</div><input class="cal-label" data-sec="${s.id}" value="${esc(c.label||'')}" placeholder="In-world date (e.g. 3rd of Harvestmoon)" aria-label="In-world date"></div>
+    <button class="btn sm primary" data-act="cx-day" data-sec="${s.id}" data-v="1">Next day</button></div>
+    <div class="cal-add"><input id="cal-ev-${s.id}" placeholder="Note something on day ${c.day}" aria-label="Event for day ${c.day}"><button class="btn sm" data-act="cx-evadd" data-sec="${s.id}">Add</button></div>
+    ${evs.length?`<ul class="cal-events">${evs.map(ev=>`<li><b>Day ${ev.day}</b><span>${esc(ev.text)}</span><button class="icon-btn" data-act="cx-evdel" data-sec="${s.id}" data-id="${ev.id}" aria-label="Delete">×</button></li>`).join('')}</ul>`:''}</div>`;
+}
+function secHint(s){
+  if(s.type==='npcs') return `${S.npcs.length} NPC${S.npcs.length===1?'':'s'} · tag: npc`;
+  if(s.type==='calendar') return `Day ${(s.cal||{}).day||1}${s.cal&&s.cal.label?' · '+s.cal.label:''}`;
+  const n=(s.items||[]).length;
+  if(s.type==='quests'){ const a=(s.items||[]).filter(x=>(x.status||'Active')==='Active').length; return `${a} active of ${n}`; }
+  if(s.type==='tables') return `${n} table${n===1?'':'s'}`;
+  return `${n} card${n===1?'':'s'}${s.tag?' · tag: '+s.tag:''}`;
+}
+function renderCampaign(){
+  const panel=$('#panel-campaign'); if(!panel) return;
+  const focusQ = document.activeElement && document.activeElement.id==='camp-q';
+  const secs=S.sections||[];
+  let h=`<div class="camp-tools"><input type="search" id="camp-q" placeholder="Find in this campaign" value="${esc(campQ)}" aria-label="Find in this campaign"><button class="btn primary" data-act="cx-addsec">Add a section</button></div>`;
+  if(campTag) h+=`<div class="tag-filter">Showing cards tagged ${tagChip(campTag)} <button class="btn sm quiet" data-act="cx-tag" data-v="">Show everything</button></div>`;
+  if(!secs.length){
+    h+=`<div class="empty" style="max-width:640px"><p>This campaign’s tab is empty.</p><p class="small">Add only the sections this campaign needs. Each section collapses, and every card in it is tagged automatically.</p><div class="preset-row">${SEC_PRESETS.map(([t,k],i)=>`<button class="btn sm" data-act="cx-preset" data-i="${i}">${t}</button>`).join('')}<button class="btn sm quiet" data-act="cx-addsec">Something else…</button></div></div>`;
+    panel.innerHTML=h; return;
+  }
+  if(secs.length>1) h+=`<nav class="jump">${secs.map(s=>`<button data-act="jump" data-id="cs-${s.id}">${esc(s.title)}</button>`).join('')}</nav>`;
+  const filtering = !!(campQ.trim()||campTag);
+  secs.forEach((s,i)=>{
+    let inner='', shown=0;
+    if(s.type==='npcs'){ const L=S.npcs.filter(npcMatches); shown=L.length; inner = L.length ? `<div class="npc-list camp-npcs">${L.map(npcRow).join('')}</div>` : (S.npcs.length?'':'<p class="muted small">No NPCs yet. Anyone added here also appears in the Social tab’s roster.</p>'); }
+    else if(s.type==='calendar'){ inner=calendarHTML(s); shown=filtering?0:1; }
+    else { const L=(s.items||[]).filter(it=>itemMatches(s,it)); shown=L.length; inner = L.length ? `<div class="card-grid">${L.map(it=>s.type==='tables'?tableHTML(s,it):cardHTML(s,it)).join('')}</div>` : ((s.items||[]).length?'':'<p class="muted small">Nothing here yet.</p>'); }
+    if(filtering && !shown) return;
+    const addLbl = s.type==='npcs'?'Add NPC':s.type==='tables'?'Add table':s.type==='quests'?'Add quest':s.type==='calendar'?'':'Add card';
+    const open = filtering || campOpen[s.id]!==false;
+    h+=`<section class="tsec csec" id="cs-${s.id}"><details class="fold" data-csec="${s.id}" ${open?'open':''}><summary><h2>${esc(s.title)}</h2><span class="fold-hint">${esc(secHint(s))}</span><span class="sec-actions">${addLbl?`<button class="btn sm" data-act="cx-add" data-sec="${s.id}">${addLbl}</button>`:''}<button class="icon-btn" data-act="cx-secmenu" data-sec="${s.id}" aria-label="Section options for ${esc(s.title)}" style="font-size:1.2rem">⋯</button></span></summary>${inner}</details></section>`;
+  });
+  if(filtering && !h.includes('class="tsec csec"')) h+='<p class="muted">Nothing in this campaign matches.</p>';
+  panel.innerHTML=h;
+  if(focusQ){ const q=$('#camp-q'); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
+}
+document.addEventListener('toggle', e=>{ const d=e.target; if(d.matches && d.matches('details[data-csec]') && !(campQ.trim()||campTag)){ campOpen[d.dataset.csec]=d.open; lsSet('dmmt.campopen', campOpen); } }, true);
+document.addEventListener('input', e=>{ if(e.target.id==='camp-q'){ campQ=e.target.value; renderCampaign(); } });
+document.addEventListener('change', e=>{ if(e.target.classList.contains('cal-label')){ const s=secOf(e.target.dataset.sec); if(s){ s.cal.label=e.target.value; commit(); } } });
+document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.id && e.target.id.startsWith('cal-ev-')){ const b=e.target.parentElement.querySelector('[data-act=cx-evadd]'); if(b) b.click(); } });
+
+/* section dialog */
+const dlgSec=document.createElement('dialog'); dlgSec.id='dlg-sec';
+dlgSec.innerHTML=`<h2 id="sec-h">Add a section</h2><div class="preset-row" id="sec-presets"></div>
+<div class="grid2"><label>Name <input id="sec-title" placeholder="Gods"></label><label id="sec-type-wrap">Kind <select id="sec-type">${Object.entries(SEC_KINDS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label id="sec-tag-wrap">Tag for its cards <input id="sec-tag" placeholder="god"></label></div>
+<p class="muted small" id="sec-help"></p>
+<div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="cx-secsave" id="sec-save">Add section</button></div>`;
+document.body.appendChild(dlgSec);
+let secEditing=null, tagTouched=false;
+const SEC_HELP={cards:'Free-form cards with a title and notes, like gods, factions, places, or house rules.', npcs:'Your NPC roster. Anyone added here shows up in the Social tab too, and the other way around.', quests:'Cards with a status (active, on hold, done, failed), who gave the quest, and the reward.', tables:'Your own lists to roll on, one entry per line.', calendar:'A day counter for the in-world calendar, with notes on what happened when.'};
+function secDlgVis(){
+  const t=$('#sec-type').value;
+  $('#sec-tag-wrap').hidden = t==='npcs'||t==='calendar';
+  $('#sec-help').textContent = SEC_HELP[t];
+}
+$('#sec-type').addEventListener('change', secDlgVis);
+$('#sec-title').addEventListener('input', ()=>{ if(!tagTouched) $('#sec-tag').value=singular($('#sec-title').value); });
+$('#sec-tag').addEventListener('input', ()=>{ tagTouched=true; });
+function openSecDlg(s, preset){
+  secEditing=s||null; tagTouched=!!s;
+  const hasNpc=S.sections.some(x=>x.type==='npcs'), hasCal=S.sections.some(x=>x.type==='calendar');
+  $('#sec-h').textContent = s ? 'Edit section' : 'Add a section';
+  $('#sec-save').textContent = s ? 'Save' : 'Add section';
+  $('#sec-type-wrap').hidden = !!s;
+  $$('#sec-type option').forEach(o=>o.disabled = !s && ((o.value==='npcs'&&hasNpc)||(o.value==='calendar'&&hasCal)));
+  $('#sec-presets').hidden = !!s;
+  $('#sec-presets').innerHTML = SEC_PRESETS.filter(([t,k])=>!(k==='npcs'&&hasNpc)&&!(k==='calendar'&&hasCal)).map(([t,k])=>`<button type="button" class="btn sm" data-preset="${esc(t)}|${k}">${t}</button>`).join('');
+  $('#sec-title').value = s ? s.title : (preset ? preset[0] : '');
+  $('#sec-type').value = s ? s.type : (preset ? preset[1] : 'cards');
+  $('#sec-tag').value = s ? (s.tag||'') : singular($('#sec-title').value);
+  secDlgVis(); dlgSec.showModal(); $('#sec-title').focus();
+}
+$('#sec-presets').addEventListener('click', e=>{ const b=e.target.closest('[data-preset]'); if(!b) return; const [t,k]=b.dataset.preset.split('|'); $('#sec-title').value=t; $('#sec-type').value=k; tagTouched=false; $('#sec-tag').value=singular(t); secDlgVis(); });
+function saveSec(){
+  const title=$('#sec-title').value.trim(); if(!title){ toast('Give the section a name.'); return; }
+  const tag=$('#sec-tag').value.trim().toLowerCase();
+  if(secEditing){ secEditing.title=title; if(secEditing.type!=='npcs'&&secEditing.type!=='calendar') secEditing.tag=tag; }
+  else {
+    const type=$('#sec-type').value;
+    if((type==='npcs'&&S.sections.some(x=>x.type==='npcs'))||(type==='calendar'&&S.sections.some(x=>x.type==='calendar'))){ toast('This campaign already has one of those.'); return; }
+    const s={id:uid(), type, title, tag: type==='npcs'?'npc': type==='calendar'?'':tag, items:[]};
+    if(type==='calendar') s.cal={day:1,label:'',events:[]};
+    S.sections.push(s);
+  }
+  dlgSec.close(); commit(); renderCampaign();
+}
+function addPresetSection(i){
+  const [t,k]=SEC_PRESETS[i];
+  if((k==='npcs'&&S.sections.some(x=>x.type==='npcs'))||(k==='calendar'&&S.sections.some(x=>x.type==='calendar'))) return;
+  const s={id:uid(), type:k, title:t, tag:k==='npcs'?'npc':k==='calendar'?'':singular(t), items:[]};
+  if(k==='calendar') s.cal={day:1,label:'',events:[]};
+  S.sections.push(s); commit(); renderCampaign();
+}
+
+/* card & table dialog */
+const dlgCard=document.createElement('dialog'); dlgCard.id='dlg-card';
+dlgCard.innerHTML=`<h2 id="cd-h">Add a card</h2><label>Title <input id="cd-title"></label>
+<div class="grid2" id="cd-quest" style="margin-top:.6rem"><label>Given by <input id="cd-giver" list="cd-npcs"></label><label>Reward <input id="cd-reward"></label><label>Status <select id="cd-status">${QSTAT.map(q=>`<option>${q}</option>`).join('')}</select></label></div><datalist id="cd-npcs"></datalist>
+<label style="margin-top:.6rem" id="cd-text-wrap"><span id="cd-text-lbl">Details</span> <textarea id="cd-text" rows="8"></textarea></label>
+<label style="margin-top:.6rem" id="cd-tags-wrap">More tags <input id="cd-tags" placeholder="separate with commas"></label>
+<p class="muted small" id="cd-note"></p>
+<div class="dlg-actions"><button class="btn quiet dmg" data-act="cx-carddel" id="cd-del" style="margin-right:auto">Delete</button><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="cx-cardsave">Save</button></div>`;
+document.body.appendChild(dlgCard);
+let cardSec=null, cardItem=null;
+function openCard(s, it){
+  cardSec=s; cardItem=it||null;
+  const tbl=s.type==='tables', q=s.type==='quests';
+  $('#cd-h').textContent = (it?'Edit ':'Add ')+(tbl?'a random table':q?'a quest':'a card')+' · '+s.title;
+  $('#cd-title').value=it?.title||''; $('#cd-text').value = tbl ? (it?.entries||'') : (it?.text||'');
+  $('#cd-text-lbl').textContent = tbl ? 'Entries, one per line' : 'Details';
+  $('#cd-text').placeholder = tbl ? 'A broken cart blocks the road\nA merchant with a limp asks for an escort\n…' : '';
+  $('#cd-quest').hidden=!q; $('#cd-giver').value=it?.giver||''; $('#cd-reward').value=it?.reward||''; $('#cd-status').value=it?.status||'Active';
+  $('#cd-npcs').innerHTML=S.npcs.map(n=>`<option value="${esc(n.name)}">`).join('');
+  $('#cd-tags').value=(it?.tags||[]).join(', ');
+  $('#cd-note').textContent = s.tag ? `Tagged “${s.tag}” automatically.` : '';
+  $('#cd-del').hidden=!it;
+  dlgCard.showModal(); $('#cd-title').focus();
+}
+function saveCard(){
+  const s=cardSec; if(!s) return;
+  const title=$('#cd-title').value.trim(); if(!title){ toast('Give it a title.'); return; }
+  const it=cardItem||{id:uid()};
+  it.title=title; it.tags=parseTags($('#cd-tags').value).filter(t=>t!==s.tag);
+  if(s.type==='tables') it.entries=$('#cd-text').value; else it.text=$('#cd-text').value;
+  if(s.type==='quests'){ it.giver=$('#cd-giver').value.trim(); it.reward=$('#cd-reward').value.trim(); it.status=$('#cd-status').value; }
+  if(!cardItem) s.items.push(it);
+  delete tableRolls[it.id];
+  dlgCard.close(); commit(); renderCampaign(); renderPins();
+}
+
+function campAct(act, el, e){
+  const s = el.dataset.sec ? secOf(el.dataset.sec) : null;
+  const it = s && el.dataset.id ? (s.items||[]).find(x=>x.id===el.dataset.id) : null;
+  switch(act){
+    case 'cx-addsec': openSecDlg(); break;
+    case 'cx-preset': addPresetSection(+el.dataset.i); break;
+    case 'cx-secsave': saveSec(); break;
+    case 'cx-add': if(!s) break; if(s.type==='npcs') openNpc(); else openCard(s); break;
+    case 'cx-edit': if(s && it) openCard(s,it); break;
+    case 'cx-cardsave': saveCard(); break;
+    case 'cx-carddel': { const sec=cardSec, item=cardItem; if(!sec||!item) break; dlgCard.close(); confirmBox(`Delete ${item.title||'this card'}?`, 'It will be removed from this campaign.', [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ sec.items=sec.items.filter(x=>x.id!==item.id); commit(); renderCampaign(); renderPins(); }}]); break; }
+    case 'cx-tag': campTag = el.dataset.v===campTag ? '' : el.dataset.v; renderCampaign(); break;
+    case 'cx-more': expanded.has(el.dataset.id)?expanded.delete(el.dataset.id):expanded.add(el.dataset.id); renderCampaign(); break;
+    case 'cx-qstat': if(it){ it.status=el.dataset.v; commit(); renderCampaign(); } break;
+    case 'cx-roll': { if(!it) break; const en=String(it.entries||'').split('\n').map(x=>x.trim()).filter(Boolean); if(!en.length) break; const i=rand(en.length); tableRolls[it.id]={n:i+1, text:en[i]}; renderCampaign(); break; }
+    case 'cx-rollsave': { const r=tableRolls[el.dataset.id]; if(it&&r){ S.saved.unshift({id:uid(), title:it.title, text:it.title+'\n'+r.text, at:Date.now()}); commit(); renderSaved(); toast('Saved to notes.'); } break; }
+    case 'cx-day': if(s){ s.cal.day=Math.max(1, s.cal.day+(+el.dataset.v)); commit(); renderCampaign(); } break;
+    case 'cx-evadd': { if(!s) break; const inp=$('#cal-ev-'+s.id); const t=inp&&inp.value.trim(); if(!t) break; s.cal.events.push({id:uid(), day:s.cal.day, text:t}); commit(); renderCampaign(); $('#cal-ev-'+s.id)?.focus(); break; }
+    case 'cx-evdel': if(s){ s.cal.events=s.cal.events.filter(x=>x.id!==el.dataset.id); commit(); renderCampaign(); } break;
+    case 'cx-secmenu': {
+      if(!s) break; const i=S.sections.indexOf(s);
+      const items=[{key:'s-edit', label:'Rename…', fn:()=>openSecDlg(s)}];
+      if(i>0) items.push({key:'s-up', label:'Move up', fn:()=>{ S.sections.splice(i,1); S.sections.splice(i-1,0,s); commit(); renderCampaign(); }});
+      if(i<S.sections.length-1) items.push({key:'s-down', label:'Move down', fn:()=>{ S.sections.splice(i,1); S.sections.splice(i+1,0,s); commit(); renderCampaign(); }});
+      items.push({key:'s-del', label:'Delete section…', danger:true, fn:()=>{
+        const body = s.type==='npcs' ? 'This removes the NPC section from this tab. Your NPCs stay in the Social tab’s roster.' : s.type==='calendar' ? 'The day counter and its notes will be deleted.' : `Its ${(s.items||[]).length} item${(s.items||[]).length===1?'':'s'} will be deleted too.`;
+        confirmBox(`Delete ${s.title}?`, body, [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ S.sections=S.sections.filter(x=>x!==s); commit(); renderCampaign(); renderPins(); }}]);
+      }});
+      showMenu(el, items); break;
+    }
+  }
 }
 
 /* ================= generators ================= */
@@ -1667,7 +2147,7 @@ const NPC = {
 function genNPC(anc){
   const n=genName(anc);
   const att=pick(['Indifferent','Indifferent','Friendly','Hostile']);
-  return {title:n.name, kind:'NPC', fields:[['Ancestry',n.anc],['Role',cap(pick(NPC.job))],['Look',cap(pick(NPC.look))],['Manner',cap(pick(NPC.way))],['Wants',cap(pick(NPC.want))],['Secret',cap(pick(NPC.secret))],['Attitude',att]]};
+  return {title:n.name, kind:'NPC', fields:[['Species',n.anc],['Role',cap(pick(NPC.job))],['Look',cap(pick(NPC.look))],['Manner',cap(pick(NPC.way))],['Wants',cap(pick(NPC.want))],['Secret',cap(pick(NPC.secret))],['Attitude',att]]};
 }
 const TAV = { adj:['Gilded','Drowsy','Crooked','Laughing','Rusty','Silver','Wandering','Sleeping','Salty','Hollow','Copper','Lucky','Brazen','Weeping','Thirsty','Velvet','Broken','Merry','Drunken','Wicked','Moonlit','Three-Legged'], noun:['Stag','Lantern','Flagon','Wyvern','Anchor','Goat','Kettle','Crown','Barrel','Hound','Mermaid','Oak','Raven','Griffon','Boot','Candle','Toad','Badger','Sword','Mule','Owl','Wagon'],
   dish:['eel pie that’s better than it sounds','a spicy lentil stew','roast goose, if you order before noon','honey-glazed root vegetables','blood sausage and pickled onions','mushroom soup of uncertain origin','a cheese the owner swears is from the Feywild','griddle cakes with bacon'],
@@ -1742,7 +2222,7 @@ function resultText(r){
 }
 function resultHTML(r){
   if(!r) return '';
-  if(r.names) return `<div class="result"><h3>${esc(r.title)}</h3><ul class="names-list">${r.names.map((n,i)=>`<li><span>${esc(n.name)}${genOpts.anc==='Any'?` <span class="muted small" style="font-family:'Alegreya Sans',sans-serif">${esc(n.anc)}</span>`:''}</span><button class="icon-btn small" data-act="save-name" data-i="${i}">Save</button></li>`).join('')}</ul><div class="result-actions"><button class="btn primary" data-act="gen-run">Roll again</button><a class="btn" href="https://www.fantasynamegenerators.com/" target="_blank" rel="noopener noreferrer">More at Fantasy Name Generators ↗</a></div></div>`;
+  if(r.names) return `<div class="result"><h3>${esc(r.title)}</h3><ul class="names-list">${r.names.map((n,i)=>`<li><span>${esc(n.name)}${genOpts.anc==='Any'?` <span class="muted small" style="font-family:var(--font-body)">${esc(n.anc)}</span>`:''}</span><button class="icon-btn small" data-act="save-name" data-i="${i}">Save</button></li>`).join('')}</ul><div class="result-actions"><button class="btn primary" data-act="gen-run">Roll again</button><a class="btn" href="https://www.fantasynamegenerators.com/" target="_blank" rel="noopener noreferrer">More at Fantasy Name Generators ↗</a></div></div>`;
   let h=`<div class="result"><div class="muted small">${esc(r.kind)}</div><h3>${esc(r.title)}</h3>`;
   if(r.text) h=`<div class="result"><div class="muted small">${esc(r.kind)}</div><p class="serif" style="font-size:1.25rem;font-weight:500;margin:.2rem 0">${esc(r.text)}</p>`;
   if(r.fields) h+='<dl>'+r.fields.map(f=>`<dt>${esc(f[0])}</dt><dd>${esc(f[1])}</dd>`).join('')+'</dl>';
@@ -1753,7 +2233,7 @@ function resultHTML(r){
 }
 function renderGen(){
   let h=`<div class="gen-pick">${GENS.map(([k,l])=>`<button data-act="gen-type" data-id="${k}" aria-pressed="${k===genType}">${l}</button>`).join('')}</div><div class="gen-opts">`;
-  if(genType==='names'||genType==='npc') h+=`<label>Ancestry <select data-opt="anc">${['Any',...Object.keys(NAMES)].map(a=>`<option ${a===genOpts.anc?'selected':''}>${a}</option>`).join('')}</select></label>`;
+  if(genType==='names'||genType==='npc') h+=`<label>Species <select data-opt="anc">${['Any',...Object.keys(NAMES)].map(a=>`<option ${a===genOpts.anc?'selected':''}>${a}</option>`).join('')}</select></label>`;
   if(genType==='shop') h+=`<label>Shop <select data-opt="shop">${['Any',...Object.keys(SHOPS)].map(a=>`<option ${a===genOpts.shop?'selected':''}>${a}</option>`).join('')}</select></label>`;
   if(genType==='loot') h+=`<label>Challenge rating <select data-opt="band">${['0–4','5–10','11–16','17+'].map(a=>`<option ${a===genOpts.band?'selected':''}>${a}</option>`).join('')}</select></label>`;
   h+='</div>';
@@ -1996,6 +2476,10 @@ function drivePill(btn){
     {note: driveState==='synced' ? 'Everything is saved to the “DM Toolkit” folder in your Drive.' : 'Saving to Google Drive…'}
   ]);
 }
+let lastAutoSync=0;
+function autoSync(){ if(!driveOK || !D.connected || !tokenOK() || driveBusy || Date.now()-lastAutoSync<8000) return; lastAutoSync=Date.now(); driveSyncAll(); }
+window.addEventListener('focus', autoSync);
+setInterval(()=>{ if(document.visibilityState==='visible') autoSync(); }, 60000);
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState!=='visible' || !driveOK || !D.connected) return;
   if(tokenOK()) driveSyncAll(); else setDrive(pendingDrive()?'pending':'needtoken');
@@ -2009,9 +2493,9 @@ $('#import-file').addEventListener('change', async e=>{
   importCampaignObject(o, f.name);
 });
 function moreMenu(btn){
-  const label = {auto:'Theme: match my system', light:'Theme: light', dark:'Theme: dark'}[theme];
   showMenu(btn, [
-    {key:'theme', label, fn:()=>{ theme={auto:'light',light:'dark',dark:'auto'}[theme]; try{localStorage.setItem('dmmt.theme',theme);}catch(e){} applyTheme(theme); }},
+    {key:'look', label:'Customize…', fn:openLook},
+    {key:'tour', label:'Show me around', fn:openTour},
     {key:'open', label:'Open a campaign file…', fn:()=>$('#import-file').click()},
     ...(driveOK ? (D.connected ? [{key:'drive-sync', label:'Sync with Google Drive now', fn:()=>tokenOK()?driveSyncAll():driveConnect()},{key:'drive-off', label:'Disconnect Google Drive', fn:driveDisconnect}] : [{key:'drive-on', label:'Connect Google Drive…', fn:driveConnect}]) : []),
     {note: syncState==='account' ? 'Saving to your Claude account, so campaigns follow you between devices.' : D.connected ? 'Saving on this device and to the “DM Toolkit” folder in your Google Drive.' : 'Saving on this device. Connect Google Drive, or use campaign files, to move campaigns between devices.'}
@@ -2022,11 +2506,15 @@ function moreMenu(btn){
 function onClick(e){
   const mi=e.target.closest('[data-menu]');
   if(mi){ const it=menu._items.find(x=>x.key===mi.dataset.menu); hideMenu(); if(it&&it.fn) it.fn(); return; }
-  if(!e.target.closest('#menu') && !e.target.closest('[data-act=row-menu],[data-act=more],[data-act=camp-menu],[data-act=drive-pill]')) hideMenu();
+  if(!e.target.closest('#menu') && !e.target.closest('[data-act=row-menu],[data-act=more],[data-act=camp-menu],[data-act=drive-pill],[data-act=cx-secmenu]')) hideMenu();
   const t=e.target.closest('[data-tab]'); if(t){ setTab(t.dataset.tab); return; }
   const el=e.target.closest('[data-act]');
   if(!el){ const tp=e.target.closest('[data-tip]'); if(tp) pinRule(tp.dataset.tip); return; }
   const act=el.dataset.act, id=el.dataset.id, c=id?byId(id):null;
+  if(el.closest('summary') && el.tagName==='BUTTON') e.preventDefault();
+  if(act.startsWith('cx-')){ campAct(act, el, e); return; }
+  if(act.startsWith('lk-')){ lookAct(act); return; }
+  if(act.startsWith('tour-')){ tourAct(act, el); return; }
   switch(act){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#notes-text').focus(); break;
     case 'more': moreMenu(el); break;
@@ -2108,9 +2596,10 @@ document.addEventListener('keydown', e=>{
 
 /* ================= boot ================= */
 $('#m-cr').innerHTML='<option value="">—</option>'+CR_LIST.map(c=>`<option>${c}</option>`).join('');
-function renderAll(){ renderCampBtn(); $('#notes-text').value=S.notes||''; renderLog(); renderPins(); renderCombat(); renderParty(); renderRules(); renderTravel(); renderSocial(); renderGen(); renderSaved(); }
+function renderAll(){ applyLook(); renderCampBtn(); $('#notes-text').value=S.notes||''; renderLog(); renderPins(); renderCombat(); renderParty(); renderRules(); renderTravel(); renderSocial(); renderCampaign(); renderGen(); renderSaved(); }
 renderAll();
 initRemote();
+try{ if(!localStorage.getItem('dmmt.toured') && G.campaigns.length===1 && !(S.updatedAt>0)) setTimeout(openTour, 600); }catch(e){}
 if(driveOK){ loadGis().then(initGis).catch(()=>{}); if(D.connected) setDrive(pendingDrive()?'pending':'needtoken'); }
 </script>
 </body>
