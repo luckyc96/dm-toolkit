@@ -265,6 +265,10 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .hr-tag{font-size:.74rem;border:1px solid var(--brass);color:var(--brass);border-radius:999px;padding:0 .45rem;white-space:nowrap}
 details.rule.house summary .t{color:var(--ink)}
 /* tour */
+.to-top{position:fixed;right:calc(env(safe-area-inset-right,0px) + 1rem);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);z-index:40;width:2.75rem;height:2.75rem;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;padding:0;transition:opacity .2s,transform .2s}
+.to-top svg{width:1.3rem;height:1.3rem}
+.to-top:hover{background:var(--brass);color:var(--on-brass)}
+.to-top[hidden]{display:none}
 .tour{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);width:min(480px,94vw);z-index:58;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--brass);border-radius:10px;box-shadow:var(--shadow);padding:.6rem .9rem .7rem}
 .tour-top{display:flex;justify-content:space-between;align-items:center}
 .tour-n{font-size:.8rem;color:var(--muted)}
@@ -519,6 +523,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
   <div class="tour-b" id="tour-b"></div>
   <div class="tour-nav"><button class="btn" data-act="tour-prev" id="tour-prev">Back</button><div class="tour-dots" id="tour-dots"></div><button class="btn primary" data-act="tour-next" id="tour-next">Next</button></div>
 </div>
+<button id="to-top" class="to-top" aria-label="Back to the top" title="Back to the top" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
 <div id="tip" hidden></div>
 <div id="menu" hidden></div>
 <div id="toast" role="status"></div>
@@ -2722,6 +2727,10 @@ document.addEventListener('keydown', e=>{
 });
 
 /* ================= boot ================= */
+const toTop=$('#to-top');
+const updateToTop=()=>{ toTop.hidden = window.scrollY < 500; };
+window.addEventListener('scroll', updateToTop, {passive:true});
+toTop.addEventListener('click', ()=>{ window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); const t=$('.tab[aria-selected=true]'); if(t) t.focus({preventScroll:true}); });
 $('#m-cr').innerHTML='<option value="">—</option>'+CR_LIST.map(c=>`<option>${c}</option>`).join('');
 function renderAll(){ applyLook(); renderCampBtn(); $('#notes-text').value=S.notes||''; renderLog(); renderPins(); renderCombat(); renderParty(); renderRules(); renderTravel(); renderSocial(); renderCampaign(); renderGen(); renderSaved(); }
 renderAll();
