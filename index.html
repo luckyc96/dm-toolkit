@@ -482,12 +482,12 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
     <button class="icon-btn" id="more-btn" data-act="more" aria-label="More options" style="font-size:1.3rem">⋯</button>
   </div>
   <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" data-tab="rules" aria-selected="false">Rules</button>
-    <button class="tab" role="tab" data-tab="combat" aria-selected="true">Combat</button>
+    <button class="tab" role="tab" data-tab="campaign" aria-selected="true">Campaign</button>
+    <button class="tab" role="tab" data-tab="party" aria-selected="false">Party<span class="count" id="party-count">0</span></button>
+    <button class="tab" role="tab" data-tab="combat" aria-selected="false">Combat</button>
     <button class="tab" role="tab" data-tab="travel" aria-selected="false">Travel</button>
     <button class="tab" role="tab" data-tab="social" aria-selected="false">Social</button>
-    <button class="tab" role="tab" data-tab="party" aria-selected="false">Party<span class="count" id="party-count">0</span></button>
-    <button class="tab" role="tab" data-tab="campaign" aria-selected="false">Campaign</button>
+    <button class="tab" role="tab" data-tab="rules" aria-selected="false">Rules</button>
     <button class="tab" role="tab" data-tab="gen" aria-selected="false">Generate</button>
   </nav>
 </header>
@@ -495,12 +495,12 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
 <div id="pins" class="pins" hidden></div>
 
 <main>
-  <section class="panel" id="panel-combat"></section>
+  <section class="panel" id="panel-combat" hidden></section>
   <section class="panel" id="panel-rules" hidden></section>
   <section class="panel" id="panel-travel" hidden></section>
   <section class="panel" id="panel-social" hidden></section>
   <section class="panel" id="panel-party" hidden></section>
-  <section class="panel" id="panel-campaign" hidden></section>
+  <section class="panel" id="panel-campaign"></section>
   <section class="panel" id="panel-gen" hidden></section>
 </main>
 
@@ -1140,12 +1140,12 @@ function lookAct(act){
 /* ================= show me around ================= */
 const TOUR=[
  {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
- {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li><li>Cards tagged “house rule” on the Campaign tab show up here too, under <b>House rules</b>.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
  {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
  {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
  {tab:'social', hi:'[data-tab=social]', title:'Social', body:`<p>For conversations, deals, and lies.</p><ul><li><b>NPC roster:</b> everyone the party has met, with a Friendly, Indifferent, or Hostile switch and what that means for Influence checks.</li><li>Attitudes, the Influence action, and which skill fits which approach.</li><li>Social spells, languages (with who in the party speaks them), hirelings, selling, and haggling.</li></ul>`},
- {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
- {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li><li>Cards tagged “house rule” on the Campaign tab show up here too, under <b>House rules</b>.</li></ul>`},
  {tab:'gen', hi:'[data-tab=gen]', title:'Generate', body:`<p>For when the players go somewhere you didn’t plan.</p><ul><li>Names by species, full NPCs, taverns, shops with prices, quick loot, and complications.</li><li><b>Save to notes</b> keeps anything you liked. A rolled NPC can go straight into the roster.</li></ul>`},
  {hi:'#notes-btn', notes:true, title:'Notes', body:`<p>The Notes button opens a drawer from the right.</p><ul><li><b>Scratchpad</b> for anything you jot mid-game, plus whatever you saved from the generators.</li><li><b>Session log</b> gives each game night its own dated entry. “Move scratchpad here” files tonight’s scratch notes into the session.</li><li><b>Start a session</b> (also at the top right of the Campaign tab) opens a new entry and a quick recap: last session’s notes, active quests, and the NPCs met last time.</li></ul>`},
  {hi:'#camp-btn', title:'Campaigns', body:`<p>The button beside the title holds your campaigns.</p><ul><li>Switch between campaigns, start a new one, or rename it.</li><li><b>Save this campaign to a file</b> makes a backup or something to share. <b>Open a campaign file</b> loads one, even on a fresh copy of the app.</li><li><b>Export as a readable document</b> makes a tidy page to read, print, or share, with only the parts you choose.</li><li><b>Close this campaign</b> when it’s finished. Save its file first if you might want it back.</li></ul>`},
@@ -1181,7 +1181,7 @@ document.addEventListener('keydown', e=>{
 });
 
 /* ================= tabs ================= */
-let tab='combat';
+let tab='campaign';
 function setTab(t){
   tab=t;
   $$('.tab').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===t));
