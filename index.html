@@ -279,6 +279,34 @@ details.rule.house summary .t{color:var(--ink)}
 table.sb-ab{border-collapse:collapse;margin:.35rem 0;font-variant-numeric:tabular-nums}
 table.sb-ab th,table.sb-ab td{padding:.1rem .45rem;text-align:center;font-size:.82rem}
 table.sb-ab th{color:var(--muted);font-weight:700}
+/* rich text + journal */
+.rte{border:1px solid var(--line);border-radius:6px;background:var(--surface);display:flex;flex-direction:column;min-height:0}
+.rte:focus-within{border-color:var(--brass)}
+.rte-bar{display:flex;gap:2px;padding:3px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.rte-bar button{width:2rem;height:1.8rem;border:1px solid transparent;background:none;border-radius:4px;cursor:pointer;color:var(--ink);display:grid;place-items:center;font-size:.95rem;padding:0}
+.rte-bar button svg{width:1.05rem;height:1.05rem;fill:currentColor}
+.rte-bar button:hover{background:var(--surface-2)}
+.rte-bar button[aria-pressed=true]{background:var(--surface-2);border-color:var(--line);color:var(--brass)}
+.rte-body{padding:.45rem .6rem;min-height:5rem;outline:none;line-height:1.5;overflow-wrap:anywhere;flex:1;overflow:auto}
+.rte.tall .rte-body{min-height:12rem}
+.rte.grow{flex:1 1 50%}
+.rte-body:empty::before{content:attr(data-placeholder);color:var(--muted);pointer-events:none}
+.rte-body ul,.rte-body ol{margin:.2rem 0;padding-left:1.4rem}
+#n-scratch .rte{min-height:160px}
+.log-entry .rte{background:var(--surface)}
+.jr-tools{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.2rem 0 .6rem}
+.jr-jump{display:inline-flex;flex-wrap:wrap;gap:.25rem}
+.jr-entry{max-width:820px;margin:0 0 .7rem;border-left:3px solid var(--brass);padding:.1rem 0 .3rem .8rem;scroll-margin-top:calc(env(safe-area-inset-top,0px) + 110px)}
+.jr-head{display:flex;flex-wrap:wrap;gap:.2rem .6rem;align-items:baseline;cursor:pointer;padding:.2rem 0}
+.jr-head .log-n{font-size:1.15rem}
+.jr-t{font-family:var(--font-head);font-style:italic}
+.jr-entry .log-title{width:100%;max-width:520px;margin:.2rem 0 .4rem;border-color:transparent;background:transparent;padding:.15rem 0;font-weight:700}
+.jr-entry .log-title:hover,.jr-entry .log-title:focus{border-color:var(--line);background:var(--bg);padding:.15rem .35rem}
+.jr-entry .rte{border-color:transparent;background:transparent}
+.jr-entry .rte .rte-bar{opacity:.0;transition:opacity .15s}
+.jr-entry .rte:hover .rte-bar,.jr-entry .rte:focus-within .rte-bar{opacity:1}
+.jr-entry .rte:focus-within{border-color:var(--line);background:var(--surface)}
+@media (hover:none){.jr-entry .rte .rte-bar{opacity:1}}
 /* tour */
 .to-top{position:fixed;right:calc(env(safe-area-inset-right,0px) + 1rem);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);z-index:40;width:2.75rem;height:2.75rem;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;padding:0;transition:opacity .2s,transform .2s}
 .to-top svg{width:1.3rem;height:1.3rem}
@@ -523,7 +551,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
   <header><h2 style="margin:0">Notes</h2><button class="icon-btn" data-act="toggle-notes" aria-label="Close notes" style="font-size:1.3rem">×</button></header>
   <div class="seg ntabs" role="tablist"><button data-act="ntab" data-id="scratch" aria-pressed="true">Scratchpad</button><button data-act="ntab" data-id="log" aria-pressed="false">Session log</button></div>
   <div id="n-scratch" class="npane">
-    <textarea id="notes-text" placeholder="Names you made up, promises the party made, the price they haggled the blacksmith down to…"></textarea>
+    <div id="scratch-rte"></div>
     <div class="saved-list" id="saved-list"></div>
   </div>
   <div id="n-log" class="npane" hidden>
@@ -806,7 +834,7 @@ const strip = h => h.replace(/<[^>]+>/g,' ');
 
 /* ================= state & persistence ================= */
 const LEGACY_KEY='dmmt.state.v1', G_KEY='dmmt.global.v2', CK=id=>'dmmt.camp.'+id;
-const DEFAULT = { v:2, id:'', name:'My campaign', kind:'', look:null, createdAt:0, updatedAt:0, party:[], library:[], notes:'', saved:[], npcs:[], sessions:[], sections:[], combat:{active:false, round:0, turnId:null, list:[], prompts:[], seq:0} };
+const DEFAULT = { v:2, id:'', name:'My campaign', kind:'', look:null, notesHtml:'', createdAt:0, updatedAt:0, party:[], library:[], notes:'', saved:[], npcs:[], sessions:[], sections:[], combat:{active:false, round:0, turnId:null, list:[], prompts:[], seq:0} };
 const clone = o => JSON.parse(JSON.stringify(o));
 function normalize(o){
   const s = clone(DEFAULT); if(!o || typeof o!=='object') return s;
@@ -1156,14 +1184,14 @@ function lookAct(act){
 /* ================= show me around ================= */
 const TOUR=[
  {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
- {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
  {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
  {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Search 330 monsters from the free rules to fill everything in, stat block included. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
  {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
  {tab:'social', hi:'[data-tab=social]', title:'Social', body:`<p>For conversations, deals, and lies.</p><ul><li><b>NPC roster:</b> everyone the party has met, with a Friendly, Indifferent, or Hostile switch and what that means for Influence checks.</li><li>Attitudes, the Influence action, and which skill fits which approach.</li><li>Social spells, languages (with who in the party speaks them), hirelings, selling, and haggling.</li></ul>`},
  {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li><li>Cards tagged “house rule” on the Campaign tab show up here too, under <b>House rules</b>.</li></ul>`},
  {tab:'gen', hi:'[data-tab=gen]', title:'Generate', body:`<p>For when the players go somewhere you didn’t plan.</p><ul><li>Names by species, full NPCs, taverns, shops with prices, quick loot, and complications.</li><li><b>Save to notes</b> keeps anything you liked. A rolled NPC can go straight into the roster.</li></ul>`},
- {hi:'#notes-btn', notes:true, title:'Notes', body:`<p>The Notes button opens a drawer from the right.</p><ul><li><b>Scratchpad</b> for anything you jot mid-game, plus whatever you saved from the generators.</li><li><b>Session log</b> gives each game night its own dated entry. “Move scratchpad here” files tonight’s scratch notes into the session.</li><li><b>Start a session</b> (also at the top right of the Campaign tab) opens a new entry and a quick recap: last session’s notes, active quests, and the NPCs met last time.</li></ul>`},
+ {hi:'#notes-btn', notes:true, title:'Notes', body:`<p>The Notes button opens a drawer from the right.</p><ul><li><b>Scratchpad</b> for anything you jot mid-game, plus whatever you saved from the generators.</li><li><b>Session log</b> gives each game night its own dated entry. “Move scratchpad here” files tonight’s scratch notes into the session.</li><li>Notes have a small toolbar for <b>bold</b>, <i>italic</i>, <u>underline</u>, and lists. Typing “- ” at the start of a line starts a bulleted list.</li><li><b>Start a session</b> (also at the top right of the Campaign tab) opens a new entry and a quick recap: last session’s notes, active quests, and the NPCs met last time.</li></ul>`},
  {hi:'#camp-btn', title:'Campaigns', body:`<p>The button beside the title holds your campaigns.</p><ul><li>Switch between campaigns, start a new one, or rename it.</li><li><b>Save this campaign to a file</b> makes a backup or something to share. <b>Open a campaign file</b> loads one, even on a fresh copy of the app.</li><li><b>Export as a readable document</b> makes a tidy page to read, print, or share, with only the parts you choose.</li><li><b>Close this campaign</b> when it’s finished. Save its file first if you might want it back.</li></ul>`},
  {hi:'#more-btn', title:'Settings and syncing', body:`<p>The ⋯ menu holds the rest.</p><ul><li><b>Customize</b> changes light or dark, colors, fonts, and text size, for all campaigns or just one.</li><li><b>Connect Google Drive</b> keeps your campaigns synced between your computer, tablet, and phone. When it’s on, a Drive button in the header shows whether everything is saved; tap it if it asks you to sign in.</li><li><b>Show me around</b> brings this tour back.</li></ul><p>That’s everything. Have a good game.</p>`}
 ];
@@ -1190,7 +1218,7 @@ function tourAct(act, el){
   else if(act==='tour-close') closeTour();
 }
 document.addEventListener('keydown', e=>{
-  if($('#tour').hidden || e.target.closest('input,textarea,select')) return;
+  if($('#tour').hidden || e.target.closest('input,textarea,select,[contenteditable]')) return;
   if(e.key==='ArrowRight'){ e.preventDefault(); tourAct('tour-next'); }
   else if(e.key==='ArrowLeft'){ e.preventDefault(); if(tourI>0) showTour(tourI-1); }
   else if(e.key==='Escape') closeTour();
@@ -1264,9 +1292,9 @@ q.addEventListener('keydown', e=>{
 });
 document.addEventListener('click', e=>{ if(!e.target.closest('.search')) results.hidden=true; });
 document.addEventListener('keydown', e=>{
-  if(e.key==='/' && !e.target.closest('input,textarea,select')){ e.preventDefault(); q.focus(); q.select(); }
+  if(e.key==='/' && !e.target.closest('input,textarea,select,[contenteditable]')){ e.preventDefault(); q.focus(); q.select(); }
   if(e.key==='Escape'){ hideMenu(); hideTip(); }
-  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key.toLowerCase()==='z' && !e.target.closest('input,textarea,select') && tab==='combat'){ e.preventDefault(); doUndo(); }
+  if((e.ctrlKey||e.metaKey) && !e.shiftKey && e.key.toLowerCase()==='z' && !e.target.closest('input,textarea,select,[contenteditable]') && tab==='combat'){ e.preventDefault(); doUndo(); }
 });
 
 /* ================= combat ================= */
@@ -1984,8 +2012,8 @@ function renderSocial(){
 
 
 /* ================= campaign tab ================= */
-const SEC_KINDS={cards:'Cards', npcs:'NPCs (shared with the Social tab)', quests:'Quests', tables:'Random tables', calendar:'Calendar'};
-const SEC_PRESETS=[['Gods','cards'],['Factions','cards'],['House rules','cards'],['Places','cards'],['Lore','cards'],['Items','cards'],['NPCs','npcs'],['Quests','quests'],['Random tables','tables'],['Calendar','calendar']];
+const SEC_KINDS={cards:'Cards', npcs:'NPCs (shared with the Social tab)', journal:'Journal (your session log, as one story)', quests:'Quests', tables:'Random tables', calendar:'Calendar'};
+const SEC_PRESETS=[['Journal','journal'],['Gods','cards'],['Factions','cards'],['House rules','cards'],['Places','cards'],['Lore','cards'],['Items','cards'],['NPCs','npcs'],['Quests','quests'],['Random tables','tables'],['Calendar','calendar']];
 const singular = t => { const s=String(t||'').trim().toLowerCase(); if(!s) return ''; if(/ies$/.test(s)) return s.replace(/ies$/,'y'); if(/(ss|us|is)$/.test(s)) return s; if(/s$/.test(s)) return s.slice(0,-1); return s; };
 const QSTAT=['Active','On hold','Done','Failed'];
 let campQ='', campTag='', tableRolls={}, expanded=new Set();
@@ -2064,6 +2092,7 @@ function calendarHTML(s){
 function secHint(s){
   if(s.type==='npcs') return `${S.npcs.length} NPC${S.npcs.length===1?'':'s'} · tag: npc`;
   if(s.type==='calendar') return `Day ${(s.cal||{}).day||1}${s.cal&&s.cal.label?' · '+s.cal.label:''}`;
+  if(s.type==='journal') return `${S.sessions.length} session${S.sessions.length===1?'':'s'}`;
   const n=(s.items||[]).length;
   if(s.type==='quests'){ const a=(s.items||[]).filter(x=>(x.status||'Active')==='Active').length; return `${a} active of ${n}`; }
   if(s.type==='tables') return `${n} table${n===1?'':'s'}`;
@@ -2072,6 +2101,7 @@ function secHint(s){
 function renderCampaign(){
   const panel=$('#panel-campaign'); if(!panel) return;
   const focusQ = document.activeElement && document.activeElement.id==='camp-q';
+  const keepRte = rteFocusKey();
   const secs=S.sections||[];
   let h=`<div class="camp-tools"><input type="search" id="camp-q" placeholder="Find in this campaign" value="${esc(campQ)}" aria-label="Find in this campaign"><button class="btn" data-act="cx-addsec">Add a section</button><button class="btn primary session-btn" data-act="cx-session" title="Opens a new session log entry with a recap of last time">Start a new session</button></div>`;
   if(campTag) h+=`<div class="tag-filter">Showing cards tagged ${tagChip(campTag)} <button class="btn sm quiet" data-act="cx-tag" data-v="">Show everything</button></div>`;
@@ -2085,20 +2115,40 @@ function renderCampaign(){
     let inner='', shown=0;
     if(s.type==='npcs'){ const L=S.npcs.filter(npcMatches); shown=L.length; inner = L.length ? `<div class="npc-list camp-npcs">${L.map(npcRow).join('')}</div>` : (S.npcs.length?'':'<p class="muted small">No NPCs yet. Anyone added here also appears in the Social tab’s roster.</p>'); }
     else if(s.type==='calendar'){ inner=calendarHTML(s); shown=filtering?0:1; }
+    else if(s.type==='journal'){ const r=journalHTML(); inner=r.html; shown=r.shown; }
     else { const L=(s.items||[]).filter(it=>itemMatches(s,it)); shown=L.length; inner = L.length ? `<div class="card-grid">${L.map(it=>s.type==='tables'?tableHTML(s,it):cardHTML(s,it)).join('')}</div>` : ((s.items||[]).length?'':'<p class="muted small">Nothing here yet.</p>'); }
     if(filtering && !shown) return;
-    const addLbl = s.type==='npcs'?'Add NPC':s.type==='tables'?'Add table':s.type==='quests'?'Add quest':s.type==='calendar'?'':'Add card';
+    const addLbl = s.type==='npcs'?'Add NPC':s.type==='tables'?'Add table':s.type==='quests'?'Add quest':(s.type==='calendar'||s.type==='journal')?'':'Add card';
     const open = filtering || campOpen[s.id]!==false;
     h+=`<section class="tsec csec" id="cs-${s.id}"><details class="fold" data-csec="${s.id}" ${open?'open':''}><summary><h2>${esc(s.title)}</h2><span class="fold-hint">${esc(secHint(s))}</span><span class="sec-actions">${addLbl?`<button class="btn sm" data-act="cx-add" data-sec="${s.id}">${addLbl}</button>`:''}<button class="icon-btn" data-act="cx-secmenu" data-sec="${s.id}" aria-label="Section options for ${esc(s.title)}" style="font-size:1.2rem">⋯</button></span></summary>${inner}</details></section>`;
   });
   if(filtering && !h.includes('class="tsec csec"')) h+='<p class="muted">Nothing in this campaign matches.</p>';
   panel.innerHTML=h;
   if(focusQ){ const q=$('#camp-q'); q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
+  else if(keepRte) rteRefocus(keepRte);
 }
 document.addEventListener('toggle', e=>{ const d=e.target; if(d.matches && d.matches('details[data-csec]') && !(campQ.trim()||campTag)){ campOpen[d.dataset.csec]=d.open; lsSet('dmmt.campopen', campOpen); } }, true);
 document.addEventListener('input', e=>{ if(e.target.id==='camp-q'){ campQ=e.target.value; renderCampaign(); } });
 document.addEventListener('change', e=>{ if(e.target.classList.contains('cal-label')){ const s=secOf(e.target.dataset.sec); if(s){ s.cal.label=e.target.value; commit(); } } });
 document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.id && e.target.id.startsWith('cal-ev-')){ const b=e.target.parentElement.querySelector('[data-act=cx-evadd]'); if(b) b.click(); } });
+
+
+let jrOrder = lsGet('dmmt.jrorder') || 'oldest';
+function journalHTML(){
+  if(!S.sessions.length) return {html:'<p class="muted small">No sessions yet. Use “Start a new session” at the top of this tab, or the Notes drawer’s session log. Everything you write there appears here as one story.</p>', shown:0};
+  if(campTag) return {html:'', shown:0};
+  const q=campQ.trim().toLowerCase();
+  let L=[...S.sessions].sort((a,b)=> jrOrder==='oldest' ? a.n-b.n : b.n-a.n);
+  if(q) L=L.filter(s=>[s.title, s.text||htmlToText(sessHtml(s)), 'session '+s.n, s.date].join(' ').toLowerCase().includes(q));
+  if(!L.length) return {html:'', shown:0};
+  let h=`<div class="jr-tools"><div class="seg" role="group" aria-label="Reading order"><button data-act="cx-jrorder" data-v="oldest" aria-pressed="${jrOrder==='oldest'}">Oldest first</button><button data-act="cx-jrorder" data-v="newest" aria-pressed="${jrOrder==='newest'}">Newest first</button></div>${L.length>2?`<span class="jr-jump">${L.map(s=>`<button class="tag" data-act="jump" data-id="jr-${s.id}">${s.n}</button>`).join('')}</span>`:''}</div>`;
+  h+=L.map(s=>{ const open = q || campOpen['jr:'+s.id]!==false;
+    return `<details class="jr-entry" id="jr-${s.id}" data-jr="${s.id}" ${open?'open':''}><summary class="jr-head"><span class="log-n">Session ${s.n}</span><span class="muted small">${esc(s.date)}</span>${s.title?`<span class="jr-t">${esc(s.title)}</span>`:''}</summary>
+      <input class="log-title" data-log="${s.id}" value="${esc(s.title||'')}" placeholder="Title this session" aria-label="Session ${s.n} title">
+      ${rteHTML('jr:'+s.id, sessHtml(s), 'Nothing written for this session yet.', '')}</details>`; }).join('');
+  return {html:h, shown:L.length};
+}
+document.addEventListener('toggle', e=>{ const d=e.target; if(d.matches && d.matches('details[data-jr]') && !campQ.trim()){ campOpen['jr:'+d.dataset.jr]=d.open; lsSet('dmmt.campopen', campOpen); } }, true);
 
 /* section dialog */
 const dlgSec=document.createElement('dialog'); dlgSec.id='dlg-sec';
@@ -2108,10 +2158,10 @@ dlgSec.innerHTML=`<h2 id="sec-h">Add a section</h2><div class="preset-row" id="s
 <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="cx-secsave" id="sec-save">Add section</button></div>`;
 document.body.appendChild(dlgSec);
 let secEditing=null, tagTouched=false;
-const SEC_HELP={cards:'Free-form cards with a title and notes, like gods, factions, places, or house rules.', npcs:'Your NPC roster. Anyone added here shows up in the Social tab too, and the other way around.', quests:'Cards with a status (active, on hold, done, failed), who gave the quest, and the reward.', tables:'Your own lists to roll on, one entry per line.', calendar:'A day counter for the in-world calendar, with notes on what happened when.'};
+const SEC_HELP={cards:'Free-form cards with a title and notes, like gods, factions, places, or house rules.', npcs:'Your NPC roster. Anyone added here shows up in the Social tab too, and the other way around.', quests:'Cards with a status (active, on hold, done, failed), who gave the quest, and the reward.', tables:'Your own lists to roll on, one entry per line.', calendar:'A day counter for the in-world calendar, with notes on what happened when.', journal:'Every session from your session log, shown as one continuous story you can read and edit. It updates as you write, and sessions written before you add it show up too.'};
 function secDlgVis(){
   const t=$('#sec-type').value;
-  $('#sec-tag-wrap').hidden = t==='npcs'||t==='calendar';
+  $('#sec-tag-wrap').hidden = t==='npcs'||t==='calendar'||t==='journal';
   $('#sec-help').textContent = SEC_HELP[t];
 }
 $('#sec-type').addEventListener('change', secDlgVis);
@@ -2119,13 +2169,13 @@ $('#sec-title').addEventListener('input', ()=>{ if(!tagTouched) $('#sec-tag').va
 $('#sec-tag').addEventListener('input', ()=>{ tagTouched=true; });
 function openSecDlg(s, preset){
   secEditing=s||null; tagTouched=!!s;
-  const hasNpc=S.sections.some(x=>x.type==='npcs'), hasCal=S.sections.some(x=>x.type==='calendar');
+  const hasNpc=S.sections.some(x=>x.type==='npcs'), hasCal=S.sections.some(x=>x.type==='calendar'), hasJr=S.sections.some(x=>x.type==='journal');
   $('#sec-h').textContent = s ? 'Edit section' : 'Add a section';
   $('#sec-save').textContent = s ? 'Save' : 'Add section';
   $('#sec-type-wrap').hidden = !!s;
-  $$('#sec-type option').forEach(o=>o.disabled = !s && ((o.value==='npcs'&&hasNpc)||(o.value==='calendar'&&hasCal)));
+  $$('#sec-type option').forEach(o=>o.disabled = !s && ((o.value==='npcs'&&hasNpc)||(o.value==='calendar'&&hasCal)||(o.value==='journal'&&hasJr)));
   $('#sec-presets').hidden = !!s;
-  $('#sec-presets').innerHTML = SEC_PRESETS.filter(([t,k])=>!(k==='npcs'&&hasNpc)&&!(k==='calendar'&&hasCal)).map(([t,k])=>`<button type="button" class="btn sm" data-preset="${esc(t)}|${k}">${t}</button>`).join('');
+  $('#sec-presets').innerHTML = SEC_PRESETS.filter(([t,k])=>!(k==='npcs'&&hasNpc)&&!(k==='calendar'&&hasCal)&&!(k==='journal'&&hasJr)).map(([t,k])=>`<button type="button" class="btn sm" data-preset="${esc(t)}|${k}">${t}</button>`).join('');
   $('#sec-title').value = s ? s.title : (preset ? preset[0] : '');
   $('#sec-type').value = s ? s.type : (preset ? preset[1] : 'cards');
   $('#sec-tag').value = s ? (s.tag||'') : singular($('#sec-title').value);
@@ -2135,11 +2185,11 @@ $('#sec-presets').addEventListener('click', e=>{ const b=e.target.closest('[data
 function saveSec(){
   const title=$('#sec-title').value.trim(); if(!title){ toast('Give the section a name.'); return; }
   const tag=$('#sec-tag').value.trim().toLowerCase();
-  if(secEditing){ secEditing.title=title; if(secEditing.type!=='npcs'&&secEditing.type!=='calendar') secEditing.tag=tag; }
+  if(secEditing){ secEditing.title=title; if(!['npcs','calendar','journal'].includes(secEditing.type)) secEditing.tag=tag; }
   else {
     const type=$('#sec-type').value;
-    if((type==='npcs'&&S.sections.some(x=>x.type==='npcs'))||(type==='calendar'&&S.sections.some(x=>x.type==='calendar'))){ toast('This campaign already has one of those.'); return; }
-    const s={id:uid(), type, title, tag: type==='npcs'?'npc': type==='calendar'?'':tag, items:[]};
+    if(['npcs','calendar','journal'].includes(type) && S.sections.some(x=>x.type===type)){ toast('This campaign already has one of those.'); return; }
+    const s={id:uid(), type, title, tag: type==='npcs'?'npc': (type==='calendar'||type==='journal')?'':tag, items:[]};
     if(type==='calendar') s.cal={day:1,label:'',events:[]};
     S.sections.push(s);
   }
@@ -2147,8 +2197,8 @@ function saveSec(){
 }
 function addPresetSection(i){
   const [t,k]=SEC_PRESETS[i];
-  if((k==='npcs'&&S.sections.some(x=>x.type==='npcs'))||(k==='calendar'&&S.sections.some(x=>x.type==='calendar'))) return;
-  const s={id:uid(), type:k, title:t, tag:k==='npcs'?'npc':k==='calendar'?'':singular(t), items:[]};
+  if(['npcs','calendar','journal'].includes(k) && S.sections.some(x=>x.type===k)) return;
+  const s={id:uid(), type:k, title:t, tag:k==='npcs'?'npc':(k==='calendar'||k==='journal')?'':singular(t), items:[]};
   if(k==='calendar') s.cal={day:1,label:'',events:[]};
   S.sections.push(s); commit(); renderCampaign();
 }
@@ -2194,6 +2244,7 @@ function campAct(act, el, e){
   const it = s && el.dataset.id ? (s.items||[]).find(x=>x.id===el.dataset.id) : null;
   switch(act){
     case 'cx-addsec': openSecDlg(); break;
+    case 'cx-jrorder': jrOrder=el.dataset.v; lsSet('dmmt.jrorder', jrOrder); renderCampaign(); break;
     case 'cx-session': startSession(); break;
     case 'cx-preset': addPresetSection(+el.dataset.i); break;
     case 'cx-secsave': saveSec(); break;
@@ -2215,7 +2266,7 @@ function campAct(act, el, e){
       if(i>0) items.push({key:'s-up', label:'Move up', fn:()=>{ S.sections.splice(i,1); S.sections.splice(i-1,0,s); commit(); renderCampaign(); }});
       if(i<S.sections.length-1) items.push({key:'s-down', label:'Move down', fn:()=>{ S.sections.splice(i,1); S.sections.splice(i+1,0,s); commit(); renderCampaign(); }});
       items.push({key:'s-del', label:'Delete section…', danger:true, fn:()=>{
-        const body = s.type==='npcs' ? 'This removes the NPC section from this tab. Your NPCs stay in the Social tab’s roster.' : s.type==='calendar' ? 'The day counter and its notes will be deleted.' : `Its ${(s.items||[]).length} item${(s.items||[]).length===1?'':'s'} will be deleted too.`;
+        const body = s.type==='npcs' ? 'This removes the NPC section from this tab. Your NPCs stay in the Social tab’s roster.' : s.type==='journal' ? 'This removes the Journal from this tab. Your session notes stay in the Notes drawer’s session log.' : s.type==='calendar' ? 'The day counter and its notes will be deleted.' : `Its ${(s.items||[]).length} item${(s.items||[]).length===1?'':'s'} will be deleted too.`;
         confirmBox(`Delete ${s.title}?`, body, [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ S.sections=S.sections.filter(x=>x!==s); commit(); renderCampaign(); renderRules(); renderPins(); }}]);
       }});
       showMenu(el, items); break;
@@ -2356,27 +2407,144 @@ function renderSaved(){
   $('#saved-list').innerHTML = S.saved.length ? '<h3 style="margin-top:0">Saved from generators</h3>'+S.saved.map(s=>`<div class="saved-item"><header style="display:flex;justify-content:space-between;gap:.4rem"><b>${esc(s.title)}</b><button class="icon-btn" data-act="saved-del" data-id="${s.id}" aria-label="Delete">×</button></header><div style="white-space:pre-line">${esc(s.text.split('\n').slice(1).join('\n')||s.text)}</div></div>`).join('') : '<p class="muted small">Anything you save from Generate shows up here.</p>';
 }
 let notesTimer=null;
-$('#notes-text').addEventListener('input', e=>{ S.notes=e.target.value; clearTimeout(notesTimer); notesTimer=setTimeout(commit, 600); });
 
+
+
+
+/* ================= rich text notes (bold, italic, underline, lists) ================= */
+const RTE_OK=new Set(['B','STRONG','I','EM','U','UL','OL','LI','BR','P','DIV']);
+const RTE_DROP=/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|TEMPLATE|SVG|IMG|VIDEO|AUDIO|NOSCRIPT|META|LINK|TITLE|HEAD|BUTTON|INPUT|SELECT|TEXTAREA|FORM)$/i;
+function cleanHtml(html){
+  const t=document.createElement('template'); t.innerHTML=String(html||'');
+  const walk=node=>{ [...node.childNodes].forEach(ch=>{
+    if(ch.nodeType===3) return;
+    if(ch.nodeType!==1){ ch.remove(); return; }
+    if(RTE_DROP.test(ch.tagName)){ ch.remove(); return; }
+    walk(ch);
+    const tag=ch.tagName.toUpperCase(), style=(ch.getAttribute('style')||'').toLowerCase();
+    const plainBold = (tag==='B'||tag==='STRONG') && /font-weight:\s*(normal|400)/.test(style);
+    if(!RTE_OK.has(tag) || plainBold){
+      const frag=document.createDocumentFragment(); while(ch.firstChild) frag.appendChild(ch.firstChild);
+      if(/^(H[1-6]|BLOCKQUOTE|TR|SECTION|ARTICLE|HEADER|FOOTER|PRE|TABLE)$/.test(tag)){ const d=document.createElement('div'); d.appendChild(frag); ch.replaceWith(d); }
+      else {
+        let w=frag;
+        if(/font-weight:\s*(bold|[6-9]00)/.test(style)){ const b=document.createElement('b'); b.appendChild(w); w=b; }
+        if(/font-style:\s*italic/.test(style)){ const i=document.createElement('i'); i.appendChild(w); w=i; }
+        if(/text-decoration[^;]*underline/.test(style)){ const u=document.createElement('u'); u.appendChild(w); w=u; }
+        ch.replaceWith(w);
+      }
+      return;
+    }
+    [...ch.attributes].forEach(a=>ch.removeAttribute(a.name));
+  }); };
+  walk(t.content);
+  const out=t.innerHTML.trim();
+  return /^(<br>|<div><br><\/div>|<p><br><\/p>)?$/.test(out) ? '' : out;
+}
+const textToHtml = t => esc(t||'').replace(/\n/g,'<br>');
+function htmlToText(html){
+  const t=document.createElement('template'); t.innerHTML=String(html||''); let out='';
+  const walk=n=>{ n.childNodes.forEach(ch=>{
+    if(ch.nodeType===3){ out+=ch.textContent; return; }
+    if(ch.nodeType!==1) return;
+    const tag=ch.tagName;
+    if(tag==='BR'){ out+='\n'; return; }
+    if(tag==='LI'){ if(out && !out.endsWith('\n')) out+='\n'; out+='• '; walk(ch); out+='\n'; return; }
+    const block=/^(DIV|P|UL|OL)$/.test(tag);
+    if(block && out && !out.endsWith('\n')) out+='\n';
+    walk(ch);
+    if(block && out && !out.endsWith('\n')) out+='\n';
+  }); };
+  walk(t.content);
+  return out.replace(/\n{3,}/g,'\n\n').trim();
+}
+const sessHtml = s => cleanHtml(s.html!=null ? s.html : textToHtml(s.text||''));
+const RTE_BTNS=[['bold','<b>B</b>','Bold (Ctrl+B)'],['italic','<i>I</i>','Italic (Ctrl+I)'],['underline','<u>U</u>','Underline (Ctrl+U)'],['insertUnorderedList','<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="5" r="1.6"/><circle cx="4" cy="10" r="1.6"/><circle cx="4" cy="15" r="1.6"/><path d="M8 5h9M8 10h9M8 15h9" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>','Bulleted list'],['insertOrderedList','<svg viewBox="0 0 20 20" aria-hidden="true"><text x="1" y="7.5" font-size="6.5" font-weight="700">1</text><text x="1" y="12.8" font-size="6.5" font-weight="700">2</text><text x="1" y="18" font-size="6.5" font-weight="700">3</text><path d="M8 5h9M8 10h9M8 15h9" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>','Numbered list']];
+function rteHTML(key, html, placeholder, size){
+  return `<div class="rte ${size||''}"><div class="rte-bar" role="toolbar" aria-label="Formatting">${RTE_BTNS.map(([c,ic,l])=>`<button type="button" data-cmd="${c}" aria-label="${l}" title="${l}" aria-pressed="false">${ic}</button>`).join('')}</div><div class="rte-body" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" data-rte-key="${esc(key)}" data-placeholder="${esc(placeholder||'')}">${cleanHtml(html)}</div></div>`;
+}
+function renderScratch(){ const box=$('#scratch-rte'); if(!box) return; const keep=rteFocusKey(); box.innerHTML=rteHTML('scratch', S.notesHtml || textToHtml(S.notes||''), 'Names you made up, promises the party made, the price they haggled the blacksmith down to…', 'grow'); rteRefocus(keep); }
+const rteFocusKey = () => { const a=document.activeElement; return a && a.classList && a.classList.contains('rte-body') ? a.dataset.rteKey : null; };
+function rteRefocus(key){
+  if(!key) return; const el=[...document.querySelectorAll('.rte-body')].find(x=>x.dataset.rteKey===key); if(!el) return;
+  el.focus(); const r=document.createRange(); r.selectNodeContents(el); r.collapse(false); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+const rteTimers={};
+function rteSave(el){
+  const key=el.dataset.rteKey; const html=cleanHtml(el.innerHTML), text=htmlToText(html);
+  if(key==='scratch'){ if(S.notesHtml===html) return; S.notesHtml=html; S.notes=text; commit(); return; }
+  const id=key.split(':')[1]; const s=S.sessions.find(x=>x.id===id); if(!s) return;
+  if(s.html===html) return;
+  s.html=html; s.text=text; commit();
+  $$(`.rte-body[data-rte-key$=":${id}"]`).forEach(o=>{ if(o!==el && o!==document.activeElement) o.innerHTML=html; });
+}
+document.addEventListener('input', e=>{ const el=e.target.closest && e.target.closest('.rte-body'); if(!el) return; const k=el.dataset.rteKey; clearTimeout(rteTimers[k]); rteTimers[k]=setTimeout(()=>rteSave(el), 500); });
+document.addEventListener('focusout', e=>{ const el=e.target.closest && e.target.closest('.rte-body'); if(!el) return; clearTimeout(rteTimers[el.dataset.rteKey]); rteSave(el); });
+const keepSel = e=>{ if(e.target.closest('.rte-bar button')) e.preventDefault(); };
+document.addEventListener('mousedown', keepSel); document.addEventListener('pointerdown', keepSel);
+document.addEventListener('click', e=>{
+  const b=e.target.closest('.rte-bar button'); if(!b) return;
+  const body=b.closest('.rte').querySelector('.rte-body');
+  if(!body.contains(document.activeElement) && document.activeElement!==body){ body.focus(); }
+  try{ document.execCommand('styleWithCSS', false, false); }catch(err){}
+  document.execCommand(b.dataset.cmd, false, null);
+  rteState(); body.dispatchEvent(new Event('input', {bubbles:true}));
+}, true);
+document.addEventListener('paste', e=>{
+  const el=e.target.closest && e.target.closest('.rte-body'); if(!el) return;
+  const cd=e.clipboardData; if(!cd) return;
+  e.preventDefault();
+  const html=cd.getData('text/html'), text=cd.getData('text/plain');
+  const clean = html ? cleanHtml(html) : textToHtml(text);
+  document.execCommand('insertHTML', false, clean);
+});
+function rteState(){
+  const a=document.activeElement; const bar = a && a.classList && a.classList.contains('rte-body') ? a.closest('.rte').querySelector('.rte-bar') : null;
+  $$('.rte-bar button[aria-pressed=true]').forEach(x=>{ if(!bar || !bar.contains(x)) x.setAttribute('aria-pressed','false'); });
+  if(!bar) return;
+  bar.querySelectorAll('button').forEach(x=>{ let on=false; try{ on=document.queryCommandState(x.dataset.cmd); }catch(err){} x.setAttribute('aria-pressed', on?'true':'false'); });
+}
+document.addEventListener('selectionchange', rteState);
+document.addEventListener('keydown', e=>{
+  const el=e.target.closest && e.target.closest('.rte-body'); if(!el) return;
+  if((e.ctrlKey||e.metaKey) && !e.altKey && ['b','i','u'].includes(e.key.toLowerCase())){ e.preventDefault(); e.stopPropagation(); document.execCommand({b:'bold',i:'italic',u:'underline'}[e.key.toLowerCase()]); rteState(); el.dispatchEvent(new Event('input',{bubbles:true})); }
+  if(e.key===' ' && !e.ctrlKey && !e.metaKey){
+    const sel=getSelection(); if(!sel.rangeCount) return; const r=sel.getRangeAt(0); if(!r.collapsed) return;
+    const n=r.startContainer; if(n.nodeType!==3) return;
+    const before=n.textContent.slice(0, r.startOffset);
+    const lineStart = !n.previousSibling || n.previousSibling.nodeName==='BR';
+    if(lineStart && (before==='-'||before==='*'||before==='1.')){
+      e.preventDefault();
+      n.textContent=n.textContent.slice(r.startOffset);
+      const rr=document.createRange(); rr.setStart(n,0); rr.collapse(true); sel.removeAllRanges(); sel.addRange(rr);
+      document.execCommand(before==='1.'?'insertOrderedList':'insertUnorderedList');
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+  }
+}, true);
 
 /* ================= session log ================= */
 const today = () => new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
 function logEntry(s, first){
   const body = `<input class="log-title" data-log="${s.id}" value="${esc(s.title||'')}" placeholder="What happened, in a few words" aria-label="Session title">
-    <textarea class="log-text" data-log="${s.id}" rows="${first?10:6}" placeholder="Recap, loose threads, loot handed out, who owes whom…">${esc(s.text||'')}</textarea>
+    ${rteHTML('log:'+s.id, sessHtml(s), 'Recap, loose threads, loot handed out, who owes whom…', first?'tall':'')}
     <div class="log-actions">${first?`<button class="btn sm" data-act="log-move" data-id="${s.id}" title="Appends the scratchpad to this session and clears the scratchpad">Move scratchpad here</button>`:''}<button class="btn sm quiet dmg" data-act="log-del" data-id="${s.id}">Delete</button></div>`;
   const head = `<span class="log-n">Session ${s.n}</span><span class="muted small">${esc(s.date)}</span>${s.title?`<span class="log-t">${esc(s.title)}</span>`:''}`;
   return first ? `<div class="log-entry current"><div class="log-head">${head}</div>${body}</div>` : `<details class="log-entry"><summary class="log-head">${head}</summary>${body}</details>`;
 }
 function renderLog(){
   const L=[...S.sessions].sort((a,b)=>b.n-a.n);
+  const keep=rteFocusKey();
   $('#log-list').innerHTML = L.length ? L.map((s,i)=>logEntry(s,i===0)).join('') : '<p class="muted small">Start a session to keep its notes separate. The scratchpad stays as it is.</p>';
+  rteRefocus(keep);
 }
 let logTimer=null;
 document.addEventListener('input', e=>{
   const id=e.target.dataset.log; if(!id) return;
   const s=S.sessions.find(x=>x.id===id); if(!s) return;
-  if(e.target.classList.contains('log-title')) s.title=e.target.value; else s.text=e.target.value;
+  if(!e.target.classList.contains('log-title')) return;
+  s.title=e.target.value;
+  $$(`.log-title[data-log="${id}"]`).forEach(x=>{ if(x!==e.target) x.value=s.title; });
   clearTimeout(logTimer); logTimer=setTimeout(commit, 600);
 });
 
@@ -2387,8 +2555,8 @@ const dlgWarm=document.createElement('dialog'); dlgWarm.id='dlg-warm'; dlgWarm.s
 document.body.appendChild(dlgWarm);
 function startSession(){
   const prev=[...S.sessions].sort((a,b)=>b.n-a.n)[0]||null;
-  const n=curSessionN()+1; const s={id:uid(), n, date:today(), title:'', text:''};
-  S.sessions.push(s); commit(); renderLog();
+  const n=curSessionN()+1; const s={id:uid(), n, date:today(), title:'', text:'', html:''};
+  S.sessions.push(s); commit(); renderLog(); renderCampaign();
   const quests=[]; (S.sections||[]).filter(x=>x.type==='quests').forEach(sec=>(sec.items||[]).filter(it=>(it.status||'Active')==='Active').forEach(it=>quests.push(it)));
   const hasQuests=(S.sections||[]).some(x=>x.type==='quests');
   let npcs = prev ? S.npcs.filter(x=>x.session===prev.n) : [];
@@ -2444,7 +2612,7 @@ async function makeDoc(){
     add('s-'+s.id, s.title, body || '<p class="sub">Nothing here yet.</p>');
   });
   if(on('npcs')) add('npcs','NPCs', ATT.map(a=>{ const L=S.npcs.filter(n=>(n.attitude||'Indifferent')===a); return L.length?`<h3 class="grp">${a}</h3>`+L.map(n=>`<div class="card"><h3>${esc(n.name)}</h3><p class="meta">${esc([n.role, n.where&&'met at '+n.where].filter(Boolean).join(' · '))}</p>${on('npcnotes')&&n.notes?P(n.notes):''}</div>`).join(''):''; }).join(''));
-  if(on('log')) add('log','Session log', [...S.sessions].sort((a,b)=>a.n-b.n).map(s=>`<div class="card"><h3>Session ${s.n}${s.title?': '+esc(s.title):''}</h3><p class="meta">${esc(s.date)}</p>${s.text?P(s.text):''}</div>`).join(''));
+  if(on('log')) add('log','Session log', [...S.sessions].sort((a,b)=>a.n-b.n).map(s=>`<div class="card"><h3>Session ${s.n}${s.title?': '+esc(s.title):''}</h3><p class="meta">${esc(s.date)}</p>${sessHtml(s)?`<div class="rt">${sessHtml(s)}</div>`:''}</div>`).join(''));
   if(!parts.length){ toast('Pick at least one part to include.'); return; }
   const fonts=[hf[1],bf[1]].map(f=>'family='+f).join('&');
   const html=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(S.name)}</title>
@@ -2722,7 +2890,7 @@ function onClick(e){
   if(act==='warm-log'||act==='warm-close'){ warmAct(act); return; }
   if(act==='doc-make'){ makeDoc(); return; }
   switch(act){
-    case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#notes-text').focus(); break;
+    case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#scratch-rte .rte-body')?.focus(); break;
     case 'more': moreMenu(el); break;
     case 'camp-menu': campMenu(el); break;
     case 'drive-pill': drivePill(el); break;
@@ -2784,8 +2952,8 @@ function onClick(e){
     case 'save-name': { const n=genResult.names[+el.dataset.i]; S.saved.unshift({id:uid(), title:n.name, text:n.name+'\n'+n.anc+' name', at:Date.now()}); commit(); renderSaved(); toast('Saved to notes.'); break; }
     case 'ntab': $$('.ntabs button').forEach(b=>b.setAttribute('aria-pressed', b.dataset.id===id)); $('#n-scratch').hidden=id!=='scratch'; $('#n-log').hidden=id!=='log'; if(id==='log') renderLog(); break;
     case 'log-new': startSession(); break;
-    case 'log-move': { const s=S.sessions.find(x=>x.id===id); const t=(S.notes||'').trim(); if(!s) break; if(!t){ toast('The scratchpad is empty.'); break; } s.text=(s.text?s.text.replace(/\s+$/,'')+'\n\n':'')+t; S.notes=''; $('#notes-text').value=''; commit(); renderLog(); toast('Scratchpad moved into Session '+s.n+'.'); break; }
-    case 'log-del': { const s=S.sessions.find(x=>x.id===id); if(!s) break; confirmBox(`Delete Session ${s.n}?`, 'Its notes will be removed. This can’t be undone.', [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ S.sessions=S.sessions.filter(x=>x.id!==id); commit(); renderLog(); }}]); break; }
+    case 'log-move': { const s=S.sessions.find(x=>x.id===id); if(!s) break; const add=cleanHtml(S.notesHtml||textToHtml(S.notes||'')); if(!htmlToText(add).trim()){ toast('The scratchpad is empty.'); break; } s.html=(sessHtml(s)?sessHtml(s)+'<br><br>':'')+add; s.text=htmlToText(s.html); S.notes=''; S.notesHtml=''; commit(); renderScratch(); renderLog(); renderCampaign(); toast('Scratchpad moved into Session '+s.n+'.'); break; }
+    case 'log-del': { const s=S.sessions.find(x=>x.id===id); if(!s) break; confirmBox(`Delete Session ${s.n}?`, 'Its notes will be removed. This can’t be undone.', [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ S.sessions=S.sessions.filter(x=>x.id!==id); commit(); renderLog(); renderCampaign(); }}]); break; }
     case 'saved-del': S.saved=S.saved.filter(x=>x.id!==id); commit(); renderSaved(); break;
   }
 }
@@ -2807,7 +2975,7 @@ const updateToTop=()=>{ toTop.hidden = window.scrollY < 500; };
 window.addEventListener('scroll', updateToTop, {passive:true});
 toTop.addEventListener('click', ()=>{ window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); const t=$('.tab[aria-selected=true]'); if(t) t.focus({preventScroll:true}); });
 $('#m-cr').innerHTML='<option value="">—</option>'+CR_LIST.map(c=>`<option>${c}</option>`).join('');
-function renderAll(){ applyLook(); renderCampBtn(); $('#notes-text').value=S.notes||''; renderLog(); renderPins(); renderCombat(); renderParty(); renderRules(); renderTravel(); renderSocial(); renderCampaign(); renderGen(); renderSaved(); }
+function renderAll(){ applyLook(); renderCampBtn(); renderScratch(); renderLog(); renderPins(); renderCombat(); renderParty(); renderRules(); renderTravel(); renderSocial(); renderCampaign(); renderGen(); renderSaved(); }
 renderAll();
 initRemote();
 try{ if(!localStorage.getItem('dmmt.toured') && G.campaigns.length===1 && !(S.updatedAt>0)) setTimeout(openTour, 600); }catch(e){}
