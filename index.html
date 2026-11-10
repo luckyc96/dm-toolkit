@@ -317,6 +317,28 @@ details.jr-entry[open] > summary::before, details.log-entry[open] > summary::bef
 details[open] > summary .open-hint{display:none}
 details.jr-entry > summary:hover .open-hint, details.log-entry > summary:hover .open-hint{color:var(--brass)}
 .log-entry .log-t{order:5}
+/* wiki links */
+.wlink{border:none;background:none;padding:0;color:var(--brass);font:inherit;cursor:pointer;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px}
+.wlink:hover{text-decoration-thickness:2px}
+.wlink.missing{color:var(--muted);text-decoration-style:dashed}
+.wl-chips{display:flex;flex-wrap:wrap;gap:.3rem .7rem;align-items:baseline;margin:.35rem 0 .2rem;font-size:.88rem}
+.wl-chips[hidden]{display:none}
+#cd-rte .rte-body{min-height:9rem}
+/* link picker + import */
+.linkpick{position:fixed;z-index:62;width:min(340px,92vw);background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:.35rem}
+.linkpick.typing #lp-q,.linkpick.typing .lp-foot{display:none}
+#lp-q{width:100%;margin-bottom:.3rem}
+#lp-list button{display:flex;justify-content:space-between;gap:.6rem;width:100%;text-align:left;border:none;background:none;padding:.35rem .5rem;border-radius:5px;cursor:pointer}
+#lp-list button.on,#lp-list button:hover{background:var(--surface-2)}
+.lp-foot{padding:.3rem .5rem 0}
+.imp-pick{display:flex;flex-wrap:wrap;gap:.5rem;margin:.6rem 0}
+.imp-sum .ok{color:var(--heal);font-weight:700} .imp-sum .warn{color:var(--blood);font-weight:700}
+table.imp-t{width:100%;border-collapse:collapse;font-size:.92rem}
+table.imp-t td{padding:.35rem .4rem;border-bottom:1px solid var(--line);vertical-align:middle}
+table.imp-t select{max-width:100%}
+.imp-asks{max-height:240px;overflow:auto}
+.imp-more ul{max-height:200px;overflow:auto;font-size:.88rem}
+#dlg-imp h3{margin:1rem 0 .3rem}
 /* tour */
 .to-top{position:fixed;right:calc(env(safe-area-inset-right,0px) + 1rem);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);z-index:40;width:2.75rem;height:2.75rem;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;padding:0;transition:opacity .2s,transform .2s}
 .to-top svg{width:1.3rem;height:1.3rem}
@@ -860,11 +882,44 @@ const lsSet = (k,v) => { try{ localStorage.setItem(k, JSON.stringify(v)); return
 function newCampaign(name, kind){ const c=normalize({}); c.id=uid(); c.name=name||'New campaign'; c.kind=kind||''; c.createdAt=Date.now(); return c; }
 const indexEntry = c => ({id:c.id, name:c.name, kind:c.kind||'', createdAt:c.createdAt||0});
 let G, S;
-(function loadLocal(){
+
+/* campaigns live in IndexedDB (roomy), cached in memory so reads stay instant */
+const CAMPS=new Map();
+let idb=null, warnedStore=false;
+const storageWarn=()=>{ if(warnedStore) return; warnedStore=true; toast('This device’s storage is full. Save a campaign file to keep a copy.'); };
+function campGet(id){ const v=CAMPS.get(id); return v ? JSON.parse(JSON.stringify(v)) : null; }
+function campSet(id, val){
+  const v=JSON.parse(JSON.stringify(val)); CAMPS.set(id, v);
+  if(!idb){ if(!lsSet(CK(id), v)) storageWarn(); return true; }
+  try{ const tx=idb.transaction('campaigns','readwrite'); tx.objectStore('campaigns').put(v, id); tx.onerror=()=>storageWarn(); tx.onabort=()=>storageWarn(); }catch(e){ storageWarn(); }
+  return true;
+}
+function campDel(id){
+  CAMPS.delete(id);
+  if(!idb){ try{ localStorage.removeItem(CK(id)); }catch(e){} return; }
+  try{ idb.transaction('campaigns','readwrite').objectStore('campaigns').delete(id); }catch(e){}
+}
+function idbOpen(){ return new Promise(res=>{ try{ const r=indexedDB.open('dmmt',1); r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('campaigns')) r.result.createObjectStore('campaigns'); }; r.onsuccess=()=>res(r.result); r.onerror=()=>res(null); r.onblocked=()=>res(null); }catch(e){ res(null); } }); }
+const idbPutP=(id,v)=>new Promise(res=>{ try{ const tx=idb.transaction('campaigns','readwrite'); tx.objectStore('campaigns').put(v,id); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); tx.onabort=()=>res(false); }catch(e){ res(false); } });
+function idbAll(){ return new Promise(res=>{ const out=[]; try{ const req=idb.transaction('campaigns','readonly').objectStore('campaigns').openCursor(); req.onsuccess=()=>{ const c=req.result; if(c){ out.push([c.key,c.value]); c.continue(); } else res(out); }; req.onerror=()=>res(out); }catch(e){ res(out); } }); }
+async function storageInit(){
+  idb = window.indexedDB ? await Promise.race([idbOpen(), new Promise(r=>setTimeout(()=>r(null), 4000))]) : null;
+  const lsKeys=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.startsWith('dmmt.camp.')) lsKeys.push(k); } }catch(e){}
+  if(idb){
+    (await idbAll()).forEach(([k,v])=>CAMPS.set(k,v));
+    for(const k of lsKeys){
+      const id=k.slice(10), v=lsGet(k); if(!v) continue;
+      if(!CAMPS.has(id) || (v.updatedAt||0) > (CAMPS.get(id).updatedAt||0)){ CAMPS.set(id, v); if(!(await idbPutP(id, v))) continue; }
+      try{ localStorage.removeItem(k); }catch(e){}
+    }
+  } else lsKeys.forEach(k=>{ const v=lsGet(k); if(v) CAMPS.set(k.slice(10), v); });
+}
+
+function loadLocal(){
   G = lsGet(G_KEY);
   if(G && Array.isArray(G.campaigns) && G.campaigns.length){
     if(!Array.isArray(G.pins)) G.pins=[];
-    const act = lsGet(CK(G.activeId)) || G.campaigns.map(c=>lsGet(CK(c.id))).find(Boolean);
+    const act = campGet((G.activeId)) || G.campaigns.map(c=>campGet((c.id))).find(Boolean);
     S = act ? normalize(act) : newCampaign('My campaign');
     if(!G.campaigns.some(c=>c.id===S.id)) G.campaigns.push(indexEntry(S));
     G.activeId = S.id;
@@ -872,15 +927,15 @@ let G, S;
     const old = lsGet(LEGACY_KEY);
     S = normalize(old||{}); S.id=uid(); S.name='My campaign'; S.createdAt=Date.now(); S.updatedAt = old ? (old.updatedAt||0) : 0;
     G = {v:2, updatedAt:0, activeId:S.id, pins:(old && Array.isArray(old.pins)) ? old.pins : [], campaigns:[indexEntry(S)], legacyCamp:S.id};
-    lsSet(CK(S.id), S); lsSet(G_KEY, G);
+    campSet((S.id), S); lsSet(G_KEY, G);
   }
-})();
+}
 
 function commit(){
   S.updatedAt = Date.now(); G.updatedAt = Date.now(); G.activeId = S.id;
   const i=G.campaigns.findIndex(c=>c.id===S.id);
   if(i>=0) G.campaigns[i]=indexEntry(S); else G.campaigns.push(indexEntry(S));
-  if(!lsSet(CK(S.id), S)) toast('This device’s storage is full. Save a campaign file to keep a copy.');
+  campSet((S.id), S);
   lsSet(G_KEY, G);
   scheduleRemote(); scheduleDrive();
 }
@@ -931,19 +986,19 @@ async function initRemote(){
       if((R.updatedAt||0) > (G.updatedAt||0) && Array.isArray(R.campaigns) && R.campaigns.length){
         const localLegacy = (G.legacyCamp && G.legacyCamp!==R.legacyCamp) ? G.legacyCamp : null;
         if(localLegacy){
-          const L=lsGet(CK(localLegacy)), ent=R.campaigns.find(x=>x.id===R.legacyCamp);
-          if(L && (L.updatedAt||0)>0 && ent){ const prev=lsGet(CK(ent.id)); if(!prev || (prev.updatedAt||0) < L.updatedAt){ Object.assign(L,{id:ent.id, name:ent.name, kind:ent.kind, createdAt:ent.createdAt}); lsSet(CK(ent.id), L); } }
-          try{ localStorage.removeItem(CK(localLegacy)); }catch(e){}
+          const L=campGet((localLegacy)), ent=R.campaigns.find(x=>x.id===R.legacyCamp);
+          if(L && (L.updatedAt||0)>0 && ent){ const prev=campGet((ent.id)); if(!prev || (prev.updatedAt||0) < L.updatedAt){ Object.assign(L,{id:ent.id, name:ent.name, kind:ent.kind, createdAt:ent.createdAt}); campSet((ent.id), L); } }
+          try{ campDel((localLegacy)); }catch(e){}
         }
-        const keep = G.campaigns.filter(c=>c.id!==localLegacy && !R.campaigns.some(x=>x.id===c.id) && ((lsGet(CK(c.id))||{}).updatedAt||0)>0 && (c.createdAt||0) > (R.updatedAt||0));
+        const keep = G.campaigns.filter(c=>c.id!==localLegacy && !R.campaigns.some(x=>x.id===c.id) && ((campGet((c.id))||{}).updatedAt||0)>0 && (c.createdAt||0) > (R.updatedAt||0));
         G = Object.assign({}, R, {campaigns:[...R.campaigns, ...keep]}); if(!Array.isArray(G.pins)) G.pins=[];
         changed=true;
       }
     } else if(G.legacyCamp){
-      const leg = await readDoc('toolkit'), lc = lsGet(CK(G.legacyCamp));
+      const leg = await readDoc('toolkit'), lc = campGet((G.legacyCamp));
       if(leg && lc && (leg.updatedAt||0) > (lc.updatedAt||0)){
         const m = normalize(leg.obj); Object.assign(m, {id:lc.id, name:lc.name, kind:lc.kind, createdAt:lc.createdAt, updatedAt:leg.updatedAt});
-        lsSet(CK(lc.id), m);
+        campSet((lc.id), m);
         if(Array.isArray(leg.obj.pins) && !G.pins.length) G.pins = leg.obj.pins;
         changed=true;
       }
@@ -952,17 +1007,17 @@ async function initRemote(){
       const [rc, rl] = await Promise.all([readDoc('camp-'+e.id), readDoc('log-'+e.id)]);
       if(rc) lastPushed['camp-'+e.id]=rc.json;
       if(rl) lastPushed['log-'+e.id]=rl.json;
-      const local = lsGet(CK(e.id));
+      const local = campGet((e.id));
       if(rc && (!local || (rc.obj.updatedAt||0) > (local.updatedAt||0))){
         const c = normalize(Object.assign(rc.obj, {sessions: rl ? (rl.obj.sessions||[]) : []}));
-        lsSet(CK(e.id), c); changed=true;
+        campSet((e.id), c); changed=true;
       }
     }
     if(!G.campaigns.some(c=>c.id===G.activeId)) G.activeId = G.campaigns[0].id;
     lsSet(G_KEY, G);
-    const act = lsGet(CK(G.activeId)); if(act && (changed || act.id!==S.id)){ S = normalize(act); resetSession(); renderAll(); }
+    const act = campGet((G.activeId)); if(act && (changed || act.id!==S.id)){ S = normalize(act); resetSession(); renderAll(); }
     syncState='account';
-    for(const e of G.campaigns){ const c=lsGet(CK(e.id)); if(c) for(const [n,o] of campDocs(c)) await writeDoc(n, o, c.updatedAt); }
+    for(const e of G.campaigns){ const c=campGet((e.id)); if(c) for(const [n,o] of campDocs(c)) await writeDoc(n, o, c.updatedAt); }
     await writeDoc('toolkit-global', G, G.updatedAt);
   }catch(err){ db=null; syncState='local'; }
 }
@@ -974,12 +1029,12 @@ function activate(c, msg, touch){
   S=normalize(c); if(touch) S.updatedAt=Date.now();
   G.activeId=S.id; G.updatedAt=Date.now();
   const i=G.campaigns.findIndex(x=>x.id===S.id); if(i>=0) G.campaigns[i]=indexEntry(S); else G.campaigns.push(indexEntry(S));
-  lsSet(CK(S.id), S); lsSet(G_KEY, G); scheduleRemote(); if(touch) scheduleDrive();
+  campSet((S.id), S); lsSet(G_KEY, G); scheduleRemote(); if(touch) scheduleDrive();
   resetSession(); renderAll(); if(msg) toast(msg);
 }
 function switchCampaign(id){
   if(id===S.id) return;
-  const c=lsGet(CK(id)); if(!c){ toast('That campaign isn’t on this device yet.'); return; }
+  const c=campGet((id)); if(!c){ toast('That campaign isn’t on this device yet.'); return; }
   activate(c, `Switched to ${c.name}.`);
 }
 function campMenu(btn){
@@ -989,6 +1044,7 @@ function campMenu(btn){
     {key:'cp-open', label:'Open a campaign file…', fn:()=>$('#import-file').click()},
     {key:'cp-save', label:'Save this campaign to a file', fn:()=>exportCampaign(S)},
     {key:'cp-doc', label:'Export as a readable document…', fn:openDocDlg},
+    {key:'cp-import', label:'Import notes (Obsidian, Markdown)…', fn:openImport},
     {key:'cp-rename', label:'Rename this campaign…', fn:()=>openCampDlg(true)},
     {key:'cp-close', label:'Close this campaign…', danger:true, fn:closeCampaign},
     {note:'Campaign files open on any device, in any copy of the toolkit.'});
@@ -1039,10 +1095,10 @@ function closeCampaign(){
 function removeCampaign(id){
   const name=(G.campaigns.find(x=>x.id===id)||{}).name||'Campaign';
   G.campaigns = G.campaigns.filter(x=>x.id!==id);
-  try{ localStorage.removeItem(CK(id)); }catch(e){}
+  try{ campDel((id)); }catch(e){}
   if(db){ ['camp-','log-'].forEach(p=>{ db.doc(docPath(p+id)).delete().catch(()=>{}); delete lastPushed[p+id]; }); }
   driveForget(id);
-  const next = G.campaigns.map(x=>lsGet(CK(x.id))).find(Boolean) || newCampaign('My campaign');
+  const next = G.campaigns.map(x=>campGet((x.id))).find(Boolean) || newCampaign('My campaign');
   activate(next, `${name} closed.`);
 }
 function importCampaignObject(o, filename){
@@ -1194,7 +1250,7 @@ function lookAct(act){
 /* ================= show me around ================= */
 const TOUR=[
  {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
- {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault or Markdown files: folders become sections, and you review everything before it’s added.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
  {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
  {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Search 330 monsters from the free rules to fill everything in, stat block included. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
  {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
@@ -1952,7 +2008,7 @@ const ATT=['Friendly','Indifferent','Hostile'];
 const ATT_EFF={Friendly:'Advantage on Influence', Indifferent:'Influence rolls normally', Hostile:'Disadvantage on Influence'};
 const ATT_CLS={Friendly:'f',Indifferent:'i',Hostile:'h'};
 function npcRow(n){
-  return `<div class="npc ${ATT_CLS[n.attitude]||'i'}"><div class="npc-main"><div class="npc-name">${esc(n.name)}</div>${(n.role||n.where)?`<div class="npc-sub">${esc([n.role,n.where].filter(Boolean).join(' · '))}</div>`:''}${n.notes?`<div class="npc-notes">${esc(n.notes)}</div>`:''}</div>
+  return `<div class="npc ${ATT_CLS[n.attitude]||'i'}"><div class="npc-main"><div class="npc-name">${esc(n.name)}</div>${(n.role||n.where)?`<div class="npc-sub">${esc([n.role,n.where].filter(Boolean).join(' · '))}</div>`:''}${n.notes?`<div class="npc-notes">${linkify(esc(n.notes))}</div>`:''}</div>
   <div class="npc-side"><div class="seg" role="group" aria-label="Attitude of ${esc(n.name)}">${ATT.map(a=>`<button class="${ATT_CLS[a]}" data-act="npc-att" data-id="${n.id}" data-v="${a}" aria-pressed="${n.attitude===a}">${a}</button>`).join('')}</div><div class="npc-eff">${ATT_EFF[n.attitude]||''}</div><button class="btn sm quiet" data-act="npc-edit" data-id="${n.id}">Edit</button></div></div>`;
 }
 function renderNpcList(){
@@ -1969,7 +2025,7 @@ function renderNpcList(){
 const dlgNpc=document.createElement('dialog'); dlgNpc.id='dlg-npc';
 dlgNpc.innerHTML=`<h2 id="npc-title">Add an NPC</h2><div class="grid2"><label>Name <input id="n-name"></label><label>Who they are <input id="n-role" placeholder="Blacksmith, cult informant"></label><label>Where the party met them <input id="n-where" placeholder="Aldenmere market"></label></div>
 <div style="margin-top:.7rem"><div class="muted small" style="margin-bottom:.25rem">Attitude toward the party</div><div class="seg" id="n-att">${ATT.map(a=>`<button type="button" class="${ATT_CLS[a]}" data-v="${a}">${a}</button>`).join('')}</div></div>
-<label style="margin-top:.7rem">Notes <textarea id="n-notes" rows="4" placeholder="What they want, what they know, what the party promised them"></textarea></label>
+<label style="margin-top:.7rem">Notes <span class="muted" style="font-size:.8rem">· type [[Name]] to link a card, NPC, rule, or monster</span> <textarea id="n-notes" rows="4" placeholder="What they want, what they know, what the party promised them"></textarea></label>
 <div class="dlg-actions"><button class="btn quiet dmg" data-act="npc-del" id="n-del" style="margin-right:auto">Delete</button><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="npc-save">Save NPC</button></div>`;
 document.body.appendChild(dlgNpc);
 let editingNpc=null, npcAtt='Indifferent';
@@ -2021,6 +2077,34 @@ function renderSocial(){
 }
 
 
+
+/* ================= [[links]] between cards, NPCs, rules, and monsters ================= */
+const unesc = s => String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
+function resolveLink(name){
+  const n=String(name||'').trim().toLowerCase(); if(!n) return null;
+  for(const s of S.sections||[]){ if(['npcs','calendar','journal'].includes(s.type)) continue; const it=(s.items||[]).find(x=>(x.title||'').trim().toLowerCase()===n); if(it) return 'c:'+it.id; }
+  const npc=S.npcs.find(x=>(x.name||'').trim().toLowerCase()===n); if(npc) return 'n:'+npc.id;
+  const r=RULES.find(x=>x.t.toLowerCase()===n); if(r) return r.id;
+  const m=SRD_MON.find(x=>x.n.toLowerCase()===n); if(m) return 'm:'+m.n;
+  return null;
+}
+const WL_RE=/\[\[([^\[\]|<>]{1,80})(?:\|([^\[\]<>]{1,80}))?\]\]/g;
+function linkify(html){
+  return String(html||'').replace(WL_RE, (m,t,a)=>{ const target=unesc(t).trim(), found=resolveLink(target);
+    return `<button type="button" class="wlink${found?'':' missing'}" data-act="wlink" data-v="${esc(target)}" title="${found?'Open '+esc(target):'Nothing called '+esc(target)+' yet'}">${a||t}</button>`; });
+}
+const unlink = html => String(html||'').replace(WL_RE, (m,t,a)=>a||t);
+function linkChips(text, id){
+  const seen=new Set(), names=[]; String(text||'').replace(WL_RE, (m,t)=>{ const k=t.trim(); if(!seen.has(k.toLowerCase())){ seen.add(k.toLowerCase()); names.push(k); } return m; });
+  return `<div class="wl-chips" data-for="${id}" ${names.length?'':'hidden'}><span class="muted small">Links</span>${names.map(n=>{ const f=resolveLink(n); return `<button type="button" class="wlink${f?'':' missing'}" data-act="wlink" data-v="${esc(n)}">${esc(n)}</button>`; }).join('')}</div>`;
+}
+function wlinkOpen(name){
+  const id=resolveLink(name);
+  if(id){ pinRule(id); return; }
+  toast(`Nothing called “${name}” yet. Give a card or NPC that exact name to link it.`);
+}
+const itemHtml = it => it.html!=null ? cleanHtml(it.html) : textToHtml(it.text||'');
+
 /* ================= campaign tab ================= */
 const SEC_KINDS={cards:'Cards', npcs:'NPCs (shared with the Social tab)', journal:'Journal (your session log, as one story)', quests:'Quests', tables:'Random tables', calendar:'Calendar'};
 const SEC_PRESETS=[['Journal','journal'],['Gods','cards'],['Factions','cards'],['House rules','cards'],['Places','cards'],['Lore','cards'],['Items','cards'],['NPCs','npcs'],['Quests','quests'],['Random tables','tables'],['Calendar','calendar']];
@@ -2037,9 +2121,9 @@ function cardBody(s,it){
   if(s.type==='tables') return `<ul>${String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
   let h='';
   if(s.type==='quests') h+=`<p><b>${esc(it.status||'Active')}</b>${it.giver?` · from ${esc(it.giver)}`:''}${it.reward?` · reward: ${esc(it.reward)}`:''}</p>`;
-  return h+`<p>${nl2br(it.text)}</p>`;
+  return h+`<div>${linkify(itemHtml(it))}</div>`;
 }
-function npcBody(n){ return `<p><b>${esc(n.attitude||'Indifferent')}</b>${n.role?' · '+esc(n.role):''}${n.where?' · met at '+esc(n.where):''}</p>${n.notes?`<p>${nl2br(n.notes)}</p>`:''}`; }
+function npcBody(n){ return `<p><b>${esc(n.attitude||'Indifferent')}</b>${n.role?' · '+esc(n.role):''}${n.where?' · met at '+esc(n.where):''}</p>${n.notes?`<p>${linkify(nl2br(n.notes))}</p>`:''}`; }
 function houseRules(){
   const out=[]; (S.sections||[]).forEach(s=>{ if(s.type==='npcs'||s.type==='calendar') return; (s.items||[]).forEach(it=>{ if(itemTags(s,it).some(t=>t.replace(/s$/,'')==='house rule'||t==='houserule')) out.push({s,it}); }); });
   return out;
@@ -2078,7 +2162,7 @@ function cardHTML(s,it){
     body+=`<div class="seg qseg" role="group" aria-label="Quest status">${QSTAT.map(q=>`<button class="q-${slug(q)}" data-act="cx-qstat" data-sec="${s.id}" data-id="${it.id}" data-v="${q}" aria-pressed="${(it.status||'Active')===q}">${q}</button>`).join('')}</div>`;
     if(it.giver||it.reward) body+=`<div class="qmeta">${it.giver?`Given by <b>${esc(it.giver)}</b>`:''}${it.giver&&it.reward?' · ':''}${it.reward?`Reward: <b>${esc(it.reward)}</b>`:''}</div>`;
   }
-  if(it.text) body+=`<div class="ctext ${long&&!open?'clamp':''}">${nl2br(it.text)}</div>${long?`<button class="linkish" data-act="cx-more" data-id="${it.id}">${open?'Show less':'Show more'}</button>`:''}`;
+  if(it.text||it.html) body+=`<div class="ctext ${long&&!open?'clamp':''}">${linkify(itemHtml(it))}</div>${long?`<button class="linkish" data-act="cx-more" data-id="${it.id}">${open?'Show less':'Show more'}</button>`:''}`;
   const st = s.type==='quests' ? ' st-'+slug(it.status||'Active') : '';
   return `<div class="ccard${st}"><div class="ob-head"><h3>${esc(it.title||'Untitled')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>${tags?`<div class="tags">${tags}</div>`:''}${body}</div>`;
 }
@@ -2097,7 +2181,7 @@ function calendarHTML(s){
     <div class="cal-main"><div class="cal-n">Day ${c.day}</div><input class="cal-label" data-sec="${s.id}" value="${esc(c.label||'')}" placeholder="In-world date (e.g. 3rd of Harvestmoon)" aria-label="In-world date"></div>
     <button class="btn sm primary" data-act="cx-day" data-sec="${s.id}" data-v="1">Next day</button></div>
     <div class="cal-add"><input id="cal-ev-${s.id}" placeholder="Note something on day ${c.day}" aria-label="Event for day ${c.day}"><button class="btn sm" data-act="cx-evadd" data-sec="${s.id}">Add</button></div>
-    ${evs.length?`<ul class="cal-events">${evs.map(ev=>`<li><b>Day ${ev.day}</b><span>${esc(ev.text)}</span><button class="icon-btn" data-act="cx-evdel" data-sec="${s.id}" data-id="${ev.id}" aria-label="Delete">×</button></li>`).join('')}</ul>`:''}</div>`;
+    ${evs.length?`<ul class="cal-events">${evs.map(ev=>`<li><b>Day ${ev.day}</b><span>${linkify(esc(ev.text))}</span><button class="icon-btn" data-act="cx-evdel" data-sec="${s.id}" data-id="${ev.id}" aria-label="Delete">×</button></li>`).join('')}</ul>`:''}</div>`;
 }
 function secHint(s){
   if(s.type==='npcs') return `${S.npcs.length} NPC${S.npcs.length===1?'':'s'} · tag: npc`;
@@ -2113,10 +2197,10 @@ function renderCampaign(){
   const focusQ = document.activeElement && document.activeElement.id==='camp-q';
   const keepRte = rteFocusKey();
   const secs=S.sections||[];
-  let h=`<div class="camp-tools"><input type="search" id="camp-q" placeholder="Find in this campaign" value="${esc(campQ)}" aria-label="Find in this campaign"><button class="btn" data-act="cx-addsec">Add a section</button><button class="btn primary session-btn" data-act="cx-session" title="Opens a new session log entry with a recap of last time">Start a new session</button></div>`;
+  let h=`<div class="camp-tools"><input type="search" id="camp-q" placeholder="Find in this campaign" value="${esc(campQ)}" aria-label="Find in this campaign"><button class="btn" data-act="cx-addsec">Add a section</button><button class="btn" data-act="cx-import">Import notes</button><button class="btn primary session-btn" data-act="cx-session" title="Opens a new session log entry with a recap of last time">Start a new session</button></div>`;
   if(campTag) h+=`<div class="tag-filter">Showing cards tagged ${tagChip(campTag)} <button class="btn sm quiet" data-act="cx-tag" data-v="">Show everything</button></div>`;
   if(!secs.length){
-    h+=`<div class="empty" style="max-width:640px"><p>This campaign’s tab is empty.</p><p class="small">Add only the sections this campaign needs. Each section collapses, and every card in it is tagged automatically.</p><div class="preset-row">${SEC_PRESETS.map(([t,k],i)=>`<button class="btn sm" data-act="cx-preset" data-i="${i}">${t}</button>`).join('')}<button class="btn sm quiet" data-act="cx-addsec">Something else…</button></div></div>`;
+    h+=`<div class="empty" style="max-width:640px"><p>This campaign’s tab is empty.</p><p class="small">Add only the sections this campaign needs, or <button class="linkish" data-act="cx-import">import notes you already have</button>. Each section collapses, and every card in it is tagged automatically.</p><div class="preset-row">${SEC_PRESETS.map(([t,k],i)=>`<button class="btn sm" data-act="cx-preset" data-i="${i}">${t}</button>`).join('')}<button class="btn sm quiet" data-act="cx-addsec">Something else…</button></div></div>`;
     panel.innerHTML=h; return;
   }
   if(secs.length>1) h+=`<nav class="jump">${secs.map(s=>`<button data-act="jump" data-id="cs-${s.id}">${esc(s.title)}</button>`).join('')}</nav>`;
@@ -2155,7 +2239,7 @@ function journalHTML(){
   h+=L.map(s=>{ const open = q || campOpen['jr:'+s.id]!==false;
     return `<details class="jr-entry" id="jr-${s.id}" data-jr="${s.id}" ${open?'open':''}><summary class="jr-head"><span class="log-n">Session ${s.n}</span><span class="muted small">${esc(s.date)}</span>${s.title?`<span class="jr-t">${esc(s.title)}</span>`:''}<span class="open-hint">Show notes</span></summary>
       <input class="log-title" data-log="${s.id}" value="${esc(s.title||'')}" placeholder="Title this session" aria-label="Session ${s.n} title">
-      ${rteHTML('jr:'+s.id, sessHtml(s), 'Nothing written for this session yet.', '')}</details>`; }).join('');
+      ${rteHTML('jr:'+s.id, sessHtml(s), 'Nothing written for this session yet.', '')}${linkChips(s.text, 'jr:'+s.id)}</details>`; }).join('');
   return {html:h, shown:L.length};
 }
 document.addEventListener('toggle', e=>{ const d=e.target; if(d.matches && d.matches('details[data-jr]') && !campQ.trim()){ campOpen['jr:'+d.dataset.jr]=d.open; lsSet('dmmt.campopen', campOpen); } }, true);
@@ -2218,6 +2302,7 @@ const dlgCard=document.createElement('dialog'); dlgCard.id='dlg-card';
 dlgCard.innerHTML=`<h2 id="cd-h">Add a card</h2><label>Title <input id="cd-title"></label>
 <div class="grid2" id="cd-quest" style="margin-top:.6rem"><label>Given by <input id="cd-giver" list="cd-npcs"></label><label>Reward <input id="cd-reward"></label><label>Status <select id="cd-status">${QSTAT.map(q=>`<option>${q}</option>`).join('')}</select></label></div><datalist id="cd-npcs"></datalist>
 <label style="margin-top:.6rem" id="cd-text-wrap"><span id="cd-text-lbl">Details</span> <textarea id="cd-text" rows="8"></textarea></label>
+<div style="margin-top:.6rem" id="cd-rte-wrap"><div class="muted small" style="margin-bottom:.2rem">Details <span class="muted">· type [[Name]] to link another card, NPC, rule, or monster</span></div><div id="cd-rte"></div></div>
 <label style="margin-top:.6rem" id="cd-tags-wrap">More tags <input id="cd-tags" placeholder="separate with commas"></label>
 <p class="muted small" id="cd-note"></p>
 <div class="dlg-actions"><button class="btn quiet dmg" data-act="cx-carddel" id="cd-del" style="margin-right:auto">Delete</button><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="cx-cardsave">Save</button></div>`;
@@ -2227,7 +2312,9 @@ function openCard(s, it){
   cardSec=s; cardItem=it||null;
   const tbl=s.type==='tables', q=s.type==='quests';
   $('#cd-h').textContent = (it?'Edit ':'Add ')+(tbl?'a random table':q?'a quest':'a card')+' · '+s.title;
-  $('#cd-title').value=it?.title||''; $('#cd-text').value = tbl ? (it?.entries||'') : (it?.text||'');
+  $('#cd-title').value=it?.title||''; $('#cd-text').value = tbl ? (it?.entries||'') : '';
+  $('#cd-text-wrap').hidden=!tbl; $('#cd-rte-wrap').hidden=tbl;
+  $('#cd-rte').innerHTML = tbl ? '' : rteHTML('card', it ? itemHtml(it) : '', q ? 'What the party has to do, where, and what they know so far…' : 'Anything worth remembering. Use [[Name]] to link to another card.', 'tall');
   $('#cd-text-lbl').textContent = tbl ? 'Entries, one per line' : 'Details';
   $('#cd-text').placeholder = tbl ? 'A broken cart blocks the road\nA merchant with a limp asks for an escort\n…' : '';
   $('#cd-quest').hidden=!q; $('#cd-giver').value=it?.giver||''; $('#cd-reward').value=it?.reward||''; $('#cd-status').value=it?.status||'Active';
@@ -2242,7 +2329,7 @@ function saveCard(){
   const title=$('#cd-title').value.trim(); if(!title){ toast('Give it a title.'); return; }
   const it=cardItem||{id:uid()};
   it.title=title; it.tags=parseTags($('#cd-tags').value).filter(t=>t!==s.tag);
-  if(s.type==='tables') it.entries=$('#cd-text').value; else it.text=$('#cd-text').value;
+  if(s.type==='tables') it.entries=$('#cd-text').value; else { const body=$('#cd-rte .rte-body'); it.html=cleanHtml(body?body.innerHTML:''); it.text=htmlToText(it.html); }
   if(s.type==='quests'){ it.giver=$('#cd-giver').value.trim(); it.reward=$('#cd-reward').value.trim(); it.status=$('#cd-status').value; }
   if(!cardItem) s.items.push(it);
   delete tableRolls[it.id];
@@ -2469,7 +2556,7 @@ function htmlToText(html){
   return out.replace(/\n{3,}/g,'\n\n').trim();
 }
 const sessHtml = s => cleanHtml(s.html!=null ? s.html : textToHtml(s.text||''));
-const RTE_BTNS=[['bold','<b>B</b>','Bold (Ctrl+B)'],['italic','<i>I</i>','Italic (Ctrl+I)'],['underline','<u>U</u>','Underline (Ctrl+U)'],['insertUnorderedList','<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="5" r="1.6"/><circle cx="4" cy="10" r="1.6"/><circle cx="4" cy="15" r="1.6"/><path d="M8 5h9M8 10h9M8 15h9" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>','Bulleted list'],['insertOrderedList','<svg viewBox="0 0 20 20" aria-hidden="true"><text x="1" y="7.5" font-size="6.5" font-weight="700">1</text><text x="1" y="12.8" font-size="6.5" font-weight="700">2</text><text x="1" y="18" font-size="6.5" font-weight="700">3</text><path d="M8 5h9M8 10h9M8 15h9" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>','Numbered list']];
+const RTE_BTNS=[['bold','<b>B</b>','Bold (Ctrl+B)'],['italic','<i>I</i>','Italic (Ctrl+I)'],['underline','<u>U</u>','Underline (Ctrl+U)'],['insertUnorderedList','<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="4" cy="5" r="1.6"/><circle cx="4" cy="10" r="1.6"/><circle cx="4" cy="15" r="1.6"/><path d="M8 5h9M8 10h9M8 15h9" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>','Bulleted list'],['insertOrderedList','<svg viewBox="0 0 20 20" aria-hidden="true"><text x="1" y="7.5" font-size="6.5" font-weight="700">1</text><text x="1" y="12.8" font-size="6.5" font-weight="700">2</text><text x="1" y="18" font-size="6.5" font-weight="700">3</text><path d="M8 5h9M8 10h9M8 15h9" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>','Numbered list'],['wikilink','<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8.5 11.5a3.2 3.2 0 0 0 4.5 0l3-3a3.2 3.2 0 0 0-4.5-4.5l-1 1M11.5 8.5a3.2 3.2 0 0 0-4.5 0l-3 3a3.2 3.2 0 0 0 4.5 4.5l1-1" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>','Link to a card, NPC, rule, or monster (or type [[)']];
 function rteHTML(key, html, placeholder, size){
   return `<div class="rte ${size||''}"><div class="rte-bar" role="toolbar" aria-label="Formatting">${RTE_BTNS.map(([c,ic,l])=>`<button type="button" data-cmd="${c}" aria-label="${l}" title="${l}" aria-pressed="false">${ic}</button>`).join('')}</div><div class="rte-body" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" data-rte-key="${esc(key)}" data-placeholder="${esc(placeholder||'')}">${cleanHtml(html)}</div></div>`;
 }
@@ -2482,10 +2569,12 @@ function rteRefocus(key){
 const rteTimers={};
 function rteSave(el){
   const key=el.dataset.rteKey; const html=cleanHtml(el.innerHTML), text=htmlToText(html);
+  if(key==='card') return;
   if(key==='scratch'){ if(S.notesHtml===html) return; S.notesHtml=html; S.notes=text; commit(); return; }
   const id=key.split(':')[1]; const s=S.sessions.find(x=>x.id===id); if(!s) return;
   if(s.html===html) return;
   s.html=html; s.text=text; commit();
+  ['jr:','log:'].forEach(p=>{ const c=[...document.querySelectorAll('.wl-chips')].find(x=>x.dataset.for===p+id); if(c){ const t=document.createElement('div'); t.innerHTML=linkChips(text, p+id); c.replaceWith(t.firstElementChild); } });
   $$(`.rte-body[data-rte-key$=":${id}"]`).forEach(o=>{ if(o!==el && o!==document.activeElement) o.innerHTML=html; });
 }
 document.addEventListener('input', e=>{ const el=e.target.closest && e.target.closest('.rte-body'); if(!el) return; const k=el.dataset.rteKey; clearTimeout(rteTimers[k]); rteTimers[k]=setTimeout(()=>rteSave(el), 500); });
@@ -2495,6 +2584,7 @@ document.addEventListener('mousedown', keepSel); document.addEventListener('poin
 document.addEventListener('click', e=>{
   const b=e.target.closest('.rte-bar button'); if(!b) return;
   const body=b.closest('.rte').querySelector('.rte-body');
+  if(b.dataset.cmd==='wikilink'){ e.stopPropagation(); openLinkPicker(body, b); return; }
   if(!body.contains(document.activeElement) && document.activeElement!==body){ body.focus(); }
   try{ document.execCommand('styleWithCSS', false, false); }catch(err){}
   document.execCommand(b.dataset.cmd, false, null);
@@ -2533,11 +2623,93 @@ document.addEventListener('keydown', e=>{
   }
 }, true);
 
+
+/* ================= link picker: toolbar button and [[ autocomplete ================= */
+const lp=document.createElement('div'); lp.id='linkpick'; lp.className='linkpick'; lp.hidden=true;
+lp.innerHTML='<input type="search" id="lp-q" placeholder="Find a card, NPC, rule, or monster" autocomplete="off" aria-label="Find something to link"><div id="lp-list" role="listbox"></div><div class="lp-foot muted small">Tip: type <b>[[</b> while writing to link without leaving the keyboard.</div>';
+document.body.appendChild(lp);
+let lpState=null; // {body, range, mode:'button'|'type', partial, idx, items}
+function linkTargets(){
+  const out=[];
+  (S.sections||[]).forEach(s=>{ if(['npcs','calendar','journal'].includes(s.type)) return; (s.items||[]).forEach(it=>it.title && out.push([it.title, s.title])); });
+  S.npcs.forEach(n=>n.name && out.push([n.name,'NPC']));
+  RULES.forEach(r=>out.push([r.t, r.cat==='Conditions'?'Condition':'Rule']));
+  SRD_MON.forEach(m=>out.push([m.n,'Monster']));
+  return out;
+}
+function lpFilter(q){
+  q=String(q||'').trim().toLowerCase();
+  const all=linkTargets(), rank=t=>{ const n=t[0].toLowerCase(); return !q?(t[1]==='Monster'||t[1]==='Rule'||t[1]==='Condition'?3:0) : n.startsWith(q)?0 : n.split(/\s+/).some(w=>w.startsWith(q))?1 : n.includes(q)?2 : -1; };
+  const pri=t=>t[1]==='Monster'?2:(t[1]==='Rule'||t[1]==='Condition')?1:0;
+  return all.map(t=>[rank(t),t]).filter(x=>x[0]>=0).sort((a,b)=>a[0]-b[0]||pri(a[1])-pri(b[1])||a[1][0].localeCompare(b[1][0])).slice(0,8).map(x=>x[1]);
+}
+function lpRender(){
+  const L=lpState.items;
+  $('#lp-list').innerHTML = L.length ? L.map((t,i)=>`<button type="button" role="option" class="${i===lpState.idx?'on':''}" data-lp="${i}"><span>${esc(t[0])}</span><span class="muted small">${esc(t[1])}</span></button>`).join('') : `<p class="muted small" style="margin:.3rem .5rem">${lpState.mode==='type'&&lpState.partial?`Nothing called “${esc(lpState.partial)}” yet. Finish typing and close with ]] to link it anyway.`:'Nothing matches.'}</p>`;
+}
+function lpPlace(rect){
+  lp.hidden=false;
+  const w=lp.offsetWidth, ht=lp.offsetHeight;
+  let x=Math.min(Math.max(8, rect.left), window.innerWidth-w-8), y=rect.bottom+6;
+  if(y+ht>window.innerHeight-8) y=Math.max(8, rect.top-ht-6);
+  lp.style.left=x+'px'; lp.style.top=y+'px';
+}
+function openLinkPicker(body, btn){
+  const sel=getSelection(); let range=null;
+  if(sel.rangeCount && body.contains(sel.getRangeAt(0).commonAncestorContainer)) range=sel.getRangeAt(0).cloneRange();
+  if(!range){ range=document.createRange(); range.selectNodeContents(body); range.collapse(false); }
+  lpState={body, range, mode:'button', partial:'', idx:0, items:lpFilter('')};
+  lp.classList.remove('typing'); $('#lp-q').value=range.collapsed?'':range.toString().trim().slice(0,40);
+  lpState.items=lpFilter($('#lp-q').value);
+  lpRender(); lpPlace(btn.getBoundingClientRect()); $('#lp-q').focus();
+}
+function lpClose(){ lp.hidden=true; lpState=null; }
+function lpPick(i){
+  const st=lpState; if(!st) return; const t=st.items[i]; if(!t) return;
+  const body=st.body; body.focus();
+  const sel=getSelection();
+  if(st.mode==='type'){
+    const r=sel.rangeCount?sel.getRangeAt(0):null;
+    if(r && r.startContainer.nodeType===3){ const rr=document.createRange(); rr.setStart(r.startContainer, Math.max(0, r.startOffset-st.partial.length)); rr.setEnd(r.startContainer, r.startOffset); sel.removeAllRanges(); sel.addRange(rr); }
+    document.execCommand('insertText', false, t[0]+']]');
+  } else {
+    sel.removeAllRanges(); sel.addRange(st.range);
+    const alias=st.range.collapsed?'':st.range.toString().trim();
+    document.execCommand('insertText', false, alias && alias.toLowerCase()!==t[0].toLowerCase() ? `[[${t[0]}|${alias}]]` : `[[${t[0]}]]`);
+  }
+  lpClose(); body.dispatchEvent(new Event('input',{bubbles:true}));
+}
+$('#lp-q').addEventListener('input', ()=>{ if(!lpState) return; lpState.items=lpFilter($('#lp-q').value); lpState.idx=0; lpRender(); });
+lp.addEventListener('mousedown', e=>{ if(e.target.closest('[data-lp]')) e.preventDefault(); });
+lp.addEventListener('click', e=>{ const b=e.target.closest('[data-lp]'); if(b) lpPick(+b.dataset.lp); });
+function lpKeys(e){
+  if(!lpState || lp.hidden) return false;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); const n=lpState.items.length; if(n){ lpState.idx=(lpState.idx+(e.key==='ArrowDown'?1:-1)+n)%n; lpRender(); } return true; }
+  if(e.key==='Enter'||e.key==='Tab'){ if(lpState.items.length){ e.preventDefault(); lpPick(lpState.idx); return true; } }
+  if(e.key==='Escape'){ e.preventDefault(); const body=lpState.body; lpClose(); body.focus(); return true; }
+  return false;
+}
+$('#lp-q').addEventListener('keydown', e=>{ lpKeys(e); });
+document.addEventListener('keydown', e=>{ if(lpState && lpState.mode==='type' && e.target.closest && e.target.closest('.rte-body')){ if(lpKeys(e)) e.stopPropagation(); } }, true);
+document.addEventListener('input', e=>{
+  const body=e.target.closest && e.target.closest('.rte-body'); if(!body) return;
+  const sel=getSelection(); if(!sel.rangeCount){ return; } const r=sel.getRangeAt(0);
+  if(!r.collapsed || r.startContainer.nodeType!==3){ if(lpState&&lpState.mode==='type') lpClose(); return; }
+  const before=r.startContainer.textContent.slice(0, r.startOffset);
+  const m=before.match(/\[\[([^\[\]|]{0,40})$/);
+  if(!m){ if(lpState&&lpState.mode==='type') lpClose(); return; }
+  lpState={body, mode:'type', partial:m[1], idx:0, items:lpFilter(m[1])};
+  lp.classList.add('typing'); lpRender();
+  const rr=r.cloneRange(); let rect=rr.getBoundingClientRect(); if(!rect || (!rect.width && !rect.height)) rect=body.getBoundingClientRect();
+  lpPlace(rect);
+});
+document.addEventListener('mousedown', e=>{ if(!lp.hidden && !e.target.closest('#linkpick') && !e.target.closest('.rte-bar button[data-cmd=wikilink]')) lpClose(); });
+
 /* ================= session log ================= */
 const today = () => new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
 function logEntry(s, first){
   const body = `<input class="log-title" data-log="${s.id}" value="${esc(s.title||'')}" placeholder="What happened, in a few words" aria-label="Session title">
-    ${rteHTML('log:'+s.id, sessHtml(s), 'Recap, loose threads, loot handed out, who owes whom…', first?'tall':'')}
+    ${rteHTML('log:'+s.id, sessHtml(s), 'Recap, loose threads, loot handed out, who owes whom…', first?'tall':'')}${linkChips(s.text, 'log:'+s.id)}
     <div class="log-actions">${first?`<button class="btn sm" data-act="log-move" data-id="${s.id}" title="Appends the scratchpad to this session and clears the scratchpad">Move scratchpad here</button>`:''}<button class="btn sm quiet dmg" data-act="log-del" data-id="${s.id}">Delete</button></div>`;
   const head = `<span class="log-n">Session ${s.n}</span><span class="muted small">${esc(s.date)}</span>${s.title?`<span class="log-t">${esc(s.title)}</span>`:''}`;
   return first ? `<div class="log-entry current"><div class="log-head">${head}</div>${body}</div>` : `<details class="log-entry"><summary class="log-head">${head}<span class="open-hint">Show notes</span></summary>${body}</details>`;
@@ -2618,7 +2790,7 @@ async function makeDoc(){
     let body='';
     if(s.type==='calendar'){ const c=s.cal||{day:1,events:[]}; body=`<p class="lead">Day ${c.day}${c.label?' · '+esc(c.label):''}</p>${c.events.length?`<ul>${[...c.events].sort((a,b)=>a.day-b.day).map(ev=>`<li><b>Day ${ev.day}:</b> ${esc(ev.text)}</li>`).join('')}</ul>`:''}`; }
     else if(s.type==='tables') body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3><ol>${String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`).join('');
-    else body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3>${itemTags(s,it).length?`<p class="tags">${itemTags(s,it).map(esc).join(' · ')}</p>`:''}${s.type==='quests'?`<p class="meta"><b>${esc(it.status||'Active')}</b>${it.giver?' · given by '+esc(it.giver):''}${it.reward?' · reward: '+esc(it.reward):''}</p>`:''}${it.text?P(it.text):''}</div>`).join('');
+    else body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3>${itemTags(s,it).length?`<p class="tags">${itemTags(s,it).map(esc).join(' · ')}</p>`:''}${s.type==='quests'?`<p class="meta"><b>${esc(it.status||'Active')}</b>${it.giver?' · given by '+esc(it.giver):''}${it.reward?' · reward: '+esc(it.reward):''}</p>`:''}${(it.html||it.text)?`<div>${unlink(itemHtml(it))}</div>`:''}</div>`).join('');
     add('s-'+s.id, s.title, body || '<p class="sub">Nothing here yet.</p>');
   });
   if(on('npcs')) add('npcs','NPCs', ATT.map(a=>{ const L=S.npcs.filter(n=>(n.attitude||'Indifferent')===a); return L.length?`<h3 class="grp">${a}</h3>`+L.map(n=>`<div class="card"><h3>${esc(n.name)}</h3><p class="meta">${esc([n.role, n.where&&'met at '+n.where].filter(Boolean).join(' · '))}</p>${on('npcnotes')&&n.notes?P(n.notes):''}</div>`).join(''):''; }).join(''));
@@ -2653,6 +2825,212 @@ th{font-weight:600;color:var(--muted);font-size:.82rem}
 ${toc.length>1?`<nav>${toc.join('')}</nav>`:''}${parts.join('')}<p class="foot">Made with the DM Master Toolkit.</p></main></body></html>`;
   dlgDoc.close();
   try{ await saveFile(`${slug(S.name)}.html`, html, 'text/html'); toast('Document saved. Open it in any browser to read or print.'); }catch(e){ toast('Document not saved.'); }
+}
+
+
+/* ================= import notes (Obsidian / Markdown) ================= */
+const IMP_GUESS=[
+  [/^(gods?|deit(y|ies)|pantheons?|divinit(y|ies)|religions?|faiths?)$/i, 'cards','Gods'],
+  [/^(npcs?|non.?player.?characters?|characters?|people|persons?( of interest)?|cast|notable (figures|people)|figures)$/i, 'npcs','NPCs'],
+  [/^(player.?characters?|pcs?|party|adventurers?|heroes|the party)$/i, 'party','Party'],
+  [/^(places?|locations?|settlements?|cities|towns?|regions?|geography|maps?|world)$/i, 'cards','Places'],
+  [/^(factions?|organi[sz]ations?|guilds?|groups?|orders?)$/i, 'cards','Factions'],
+  [/^(quests?|plot ?hooks?|hooks|adventures?|missions?|jobs)$/i, 'quests','Quests'],
+  [/^(items?|magic items?|artifacts?|treasures?|loot|equipment)$/i, 'cards','Items'],
+  [/^(lore|history|histories|legends?|myths?)$/i, 'cards','Lore'],
+  [/^(house ?rules?|homebrew( rules)?|rules|variant rules)$/i, 'cards','House rules'],
+  [/^(sessions?|session ?notes|recaps?|session ?logs?|journal|logs?)$/i, 'log','Session log'],
+  [/^(monsters?|creatures?|bestiary|enemies)$/i, 'cards','Monsters']
+];
+let IMP=null; // {notes:[...], folders:{name:{dest, count}}}
+function mdInline(s){
+  let t=esc(s);
+  t=t.replace(/!\[\[[^\]]*\]\]/g,'').replace(/!\[[^\]]*\]\([^)]*\)/g,'');
+  t=t.replace(/`([^`]+)`/g,'$1');
+  t=t.replace(/\[([^\]]+)\]\((?:[^)]+)\)/g,'$1');
+  t=t.replace(/\*\*([^*]+)\*\*|__([^_]+)__/g,(m,a,b)=>`<b>${a||b}</b>`);
+  t=t.replace(/(^|[^*\w])\*([^*\n]+)\*(?!\*)/g,'$1<i>$2</i>').replace(/(^|[^_\w])_([^_\n]+)_(?!_)/g,'$1<i>$2</i>');
+  t=t.replace(/==([^=]+)==/g,'<b>$1</b>').replace(/~~([^~]+)~~/g,'$1');
+  t=t.replace(/(^|\s)#([A-Za-z][\w/-]*)/g,'$1');
+  return t;
+}
+function mdToHtml(md){
+  const lines=String(md||'').replace(/\r/g,'').split('\n'); const out=[]; let list=null, inCode=false;
+  const closeList=()=>{ if(list){ out.push(`</${list}>`); list=null; } };
+  for(let raw of lines){
+    if(/^\s*```/.test(raw)){ inCode=!inCode; closeList(); continue; }
+    if(inCode){ out.push(esc(raw)+'<br>'); continue; }
+    let L=raw.replace(/^\s*>\s?(\[![^\]]*\][+-]?\s*)?/,'');
+    if(/^\s*([-*_])\s*\1\s*\1[\s\1]*$/.test(L)){ closeList(); continue; }
+    if(/^\s*\|?\s*:?-{3,}/.test(L) && L.includes('|')) continue;
+    const hm=L.match(/^\s*#{1,6}\s+(.*)$/);
+    if(hm){ closeList(); out.push(`<div><b>${mdInline(hm[1])}</b></div>`); continue; }
+    const ul=L.match(/^\s*[-*+]\s+(?:\[[ xX]\]\s+)?(.*)$/), ol=L.match(/^\s*\d+[.)]\s+(.*)$/);
+    if(ul||ol){ const want=ul?'ul':'ol'; if(list!==want){ closeList(); out.push(`<${want}>`); list=want; } out.push(`<li>${mdInline((ul||ol)[1])}</li>`); continue; }
+    closeList();
+    if(!L.trim()){ out.push('<br>'); continue; }
+    if(L.includes('|') && /^\s*\|/.test(L)) L=L.split('|').map(x=>x.trim()).filter(Boolean).join(' · ');
+    const il=mdInline(L); if(!il.replace(/<[^>]+>/g,'').trim()) continue;
+    out.push(`<div>${il}</div>`);
+  }
+  closeList();
+  return cleanHtml(out.join('').replace(/(<br>){2,}/g,'<br>').replace(/^(<br>)+|(<br>)+$/g,''));
+}
+function parseNote(path, text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  let fm={}, body=text;
+  const m=text.match(/^---\s*\n([\s\S]*?)\n---\s*(\n|$)/);
+  if(m){ body=text.slice(m[0].length);
+    let key=null;
+    m[1].split('\n').forEach(l=>{ const kv=l.match(/^([A-Za-z_][\w-]*):\s*(.*)$/); if(kv){ key=kv[1].toLowerCase(); fm[key]=kv[2].trim(); } else { const li=l.match(/^\s*-\s+(.*)$/); if(li && key){ fm[key]=(Array.isArray(fm[key])?fm[key]:(fm[key]?[fm[key]]:[])).concat(li[1].trim()); } } });
+  }
+  const tagsFm = [].concat(fm.tags||fm.tag||[]).flatMap(x=>String(x).replace(/^\[|\]$/g,'').split(',')).map(x=>x.trim().replace(/^#/,'').replace(/^["']|["']$/g,'')).filter(Boolean);
+  const inline=[...body.replace(/```[\s\S]*?```/g,'').matchAll(/(?:^|\s)#([A-Za-z][\w/-]*)/g)].map(x=>x[1]);
+  const parts=path.split('/').filter(Boolean); const file=parts.pop();
+  const title=file.replace(/\.(md|markdown|txt)$/i,'');
+  const hm=body.match(/^\s*#\s+(.+)\s*\n/); if(hm && hm[1].trim().toLowerCase()===title.toLowerCase()) body=body.slice(hm[0].length);
+  const html=mdToHtml(body);
+  return {path, title, folder:parts[0]||'', sub:parts.slice(1), tags:[...new Set(tagsFm.concat(inline).map(t=>t.toLowerCase().replace(/[_-]/g,' ').split('/').pop()))], html, text:htmlToText(html), date:fm.date||''};
+}
+function guessDest(folder){
+  const f=folder.trim();
+  if(!f) return 'new:cards:Notes';
+  for(const [re,type,title] of IMP_GUESS){ if(re.test(f)) return impDestFor(type,title); }
+  return 'new:cards:'+f;
+}
+function impDestFor(type,title){
+  if(type==='npcs') return 'npcs'; if(type==='party') return 'party'; if(type==='log') return 'log';
+  const ex=(S.sections||[]).find(s=>(type==='quests'?s.type==='quests':s.type==='cards') && s.title.toLowerCase()===title.toLowerCase());
+  return ex ? 'sec:'+ex.id : `new:${type}:${title}`;
+}
+async function readImportFiles(fileList){
+  const files=[...fileList].filter(f=>/\.(md|markdown|txt)$/i.test(f.name));
+  const paths=files.map(f=>(f.webkitRelativePath||f.name).replace(/\\/g,'/'));
+  const hidden=p=>p.split('/').some(seg=>seg.startsWith('.'));
+  let rootStrip = files.length && files.every(f=>f.webkitRelativePath) ? 1 : 0;
+  const notes=[];
+  for(let i=0;i<files.length;i++){
+    let p=paths[i]; if(hidden(p)) continue;
+    if(rootStrip) p=p.split('/').slice(1).join('/');
+    notes.push(parseNote(p, await readText(files[i])));
+  }
+  return notes;
+}
+function impPlan(){
+  const plan=[];
+  IMP.notes.forEach(n=>{
+    const dest=IMP.folders[n.folder].dest; if(dest==='skip') return;
+    let match=null, how='';
+    if(dest==='npcs'){ match=S.npcs.find(x=>x.src===n.path); how=match?'src':''; if(!match){ match=S.npcs.find(x=>(x.name||'').toLowerCase()===n.title.toLowerCase()); how=match?'name':''; } }
+    else if(dest==='party'){ match=S.party.find(x=>x.src===n.path); how=match?'src':''; if(!match){ match=S.party.find(x=>(x.name||'').toLowerCase()===n.title.toLowerCase()); how=match?'name':''; } }
+    else if(dest==='log'){ match=S.sessions.find(x=>x.src===n.path); how=match?'src':''; if(!match){ match=S.sessions.find(x=>(x.title||'').toLowerCase()===n.title.toLowerCase()); how=match?'name':''; } }
+    else {
+      for(const s of S.sections||[]){ const it=(s.items||[]).find(x=>x.src===n.path); if(it){ match=it; how='src'; break; } }
+      if(!match && dest.startsWith('sec:')){ const s=secOf(dest.slice(4)); const it=s&&(s.items||[]).find(x=>(x.title||'').toLowerCase()===n.title.toLowerCase()); if(it){ match=it; how='name'; } }
+    }
+    let status='new', choice='add';
+    if(match){
+      const cur = dest==='npcs' ? (match.notes||'') : dest==='party' ? (match.notes||'') : (match.text||'');
+      const incoming = dest==='party' ? n.text.split('\n')[0].slice(0,200) : n.text;
+      const noteSame = incoming===(match.srcText!=null?match.srcText:null);
+      const appEdited = match.srcText!=null && cur!==match.srcText;
+      if(how==='name'){ status='name'; choice='update'; }
+      else if(noteSame){ status='same'; choice='keep'; }
+      else if(appEdited){ status='conflict'; choice='note'; }
+      else { status='update'; choice='update'; }
+    }
+    plan.push({n, dest, match, status, choice});
+  });
+  return plan;
+}
+const dlgImp=document.createElement('dialog'); dlgImp.id='dlg-imp'; dlgImp.style.width='min(760px,96vw)';
+document.body.appendChild(dlgImp);
+const impFileDir=document.createElement('input'); impFileDir.type='file'; impFileDir.multiple=true; impFileDir.setAttribute('webkitdirectory',''); impFileDir.hidden=true;
+const impFiles=document.createElement('input'); impFiles.type='file'; impFiles.multiple=true; impFiles.accept='.md,.markdown,.txt,text/markdown,text/plain'; impFiles.hidden=true;
+document.body.append(impFileDir, impFiles);
+const supportsDir = 'webkitdirectory' in document.createElement('input') && !/iPhone|iPad|iPod/.test(navigator.userAgent);
+function openImport(){
+  IMP=null;
+  dlgImp.innerHTML=`<h2>Import notes</h2><p>Bring in notes from Obsidian or any Markdown files. Each note becomes a card, folders become sections, and <b>[[links]]</b> and tags come along.</p>
+  <div class="imp-pick">${supportsDir?'<button class="btn primary" data-act="imp-dir">Choose a folder (like an Obsidian vault)</button>':''}<button class="btn ${supportsDir?'':'primary'}" data-act="imp-files">Choose files</button></div>
+  <p class="muted small">Nothing changes until you review and confirm. Word and Google Docs import is coming next; for now, Google Docs can download as Markdown (File → Download → Markdown).</p>
+  <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button></div>`;
+  dlgImp.showModal();
+}
+async function impLoad(fileList){
+  const notes=await readImportFiles(fileList);
+  if(!notes.length){ toast('No Markdown notes found there.'); return; }
+  const folders={}; notes.forEach(n=>{ if(!folders[n.folder]) folders[n.folder]={dest:guessDest(n.folder), count:0}; folders[n.folder].count++; });
+  IMP={notes, folders};
+  impRender();
+}
+impFileDir.addEventListener('change', e=>{ const f=e.target.files; if(f&&f.length) impLoad(f); e.target.value=''; });
+impFiles.addEventListener('change', e=>{ const f=e.target.files; if(f&&f.length) impLoad(f); e.target.value=''; });
+function destOptions(cur, folder){
+  const opts=[];
+  const newName=cur.startsWith('new:')?cur.split(':').slice(2).join(':'):(folder||'Notes');
+  const guess=guessDest(folder);
+  const newVal = cur.startsWith('new:') ? cur : (guess.startsWith('new:')?guess:`new:cards:${folder||'Notes'}`);
+  opts.push([newVal, `New section: ${newVal.split(':').slice(2).join(':')}`]);
+  (S.sections||[]).filter(s=>s.type==='cards'||s.type==='quests').forEach(s=>opts.push(['sec:'+s.id, `Existing section: ${s.title}`]));
+  opts.push(['npcs','NPC roster (also on the Social tab)'],['party','Party tab (player characters)'],['log','Session log and Journal'],['skip','Don’t import']);
+  return opts.map(([v,l])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(l)}</option>`).join('');
+}
+function impRender(){
+  const plan=impPlan(); IMP.plan=plan;
+  const c=k=>plan.filter(p=>p.status===k).length;
+  const asks=plan.filter(p=>p.status==='conflict'||p.status==='name');
+  const fRows=Object.entries(IMP.folders).sort((a,b)=>a[0].localeCompare(b[0])).map(([f,o])=>`<tr><td><b>${esc(f||'(top level)')}</b> <span class="muted small">${o.count} note${o.count===1?'':'s'}</span></td><td><select data-impf="${esc(f)}">${destOptions(o.dest,f)}</select></td></tr>`).join('');
+  const destLbl = p => p.dest==='npcs'?'NPC roster':p.dest==='party'?'Party':p.dest==='log'?'Session log':p.dest.startsWith('sec:')?(secOf(p.dest.slice(4))||{}).title:p.dest.split(':').slice(2).join(':');
+  const askRows=asks.map((p,i)=>{ const idx=plan.indexOf(p);
+    const opts = p.status==='name' ? [['update','Update the existing one'],['add','Add as a new card']] : [['note','Use the note’s version'],['keep','Keep the app’s version'],['both','Keep both']];
+    return `<tr><td><b>${esc(p.n.title)}</b><br><span class="muted small">${p.status==='name'?`Same name as an existing ${p.dest==='npcs'?'NPC':p.dest==='party'?'character':p.dest==='log'?'session':'card'} in ${esc(destLbl(p))}`:'Changed in both the note and the app since the last import'}</span></td><td><select data-impc="${idx}">${opts.map(([v,l])=>`<option value="${v}" ${p.choice===v?'selected':''}>${l}</option>`).join('')}</select></td></tr>`; }).join('');
+  dlgImp.innerHTML=`<h2>Review the import</h2>
+  <p class="imp-sum"><b>${plan.length}</b> note${plan.length===1?'':'s'}: <span class="ok">${c('new')} new</span> · ${c('update')} updated · ${c('same')} unchanged${asks.length?` · <span class="warn">${asks.length} need${asks.length===1?'s':''} your call</span>`:''}</p>
+  <h3>Where each folder goes</h3><div class="scroll-x"><table class="imp-t">${fRows}</table></div>
+  ${asks.length?`<h3>Needs your call</h3><div class="scroll-x imp-asks"><table class="imp-t">${askRows}</table></div>`:''}
+  <details class="imp-more"><summary class="muted small">See every note</summary><ul>${plan.map(p=>`<li>${esc(p.n.title)} <span class="muted small">→ ${esc(destLbl(p))} · ${{new:'new',update:'update',same:'unchanged',conflict:'your call',name:'your call'}[p.status]}</span></li>`).join('')}</ul></details>
+  <p class="muted small">App-only details stay put on updates: NPC attitudes, quest status, and tags you added in the app.</p>
+  <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="imp-go" ${plan.length?'':'disabled'}>Import ${plan.length} note${plan.length===1?'':'s'}</button></div>`;
+}
+dlgImp.addEventListener('change', e=>{
+  const f=e.target.dataset.impf; if(f!==undefined && IMP){ IMP.folders[f].dest=e.target.value; impRender(); return; }
+  const c=e.target.dataset.impc; if(c!==undefined && IMP){ IMP.plan[+c].choice=e.target.value; }
+});
+function impApply(){
+  const plan=IMP.plan; const made={}; let added=0, updated=0;
+  const secFor = dest => {
+    if(dest.startsWith('sec:')) return secOf(dest.slice(4));
+    if(made[dest]) return made[dest];
+    const [,type,...rest]=dest.split(':'); const title=rest.join(':');
+    const s={id:uid(), type, title, tag:singular(title), items:[]}; S.sections.push(s); made[dest]=s; return s;
+  };
+  const extraTags = (n, s) => [...new Set(n.tags.concat(n.sub.map(x=>x.toLowerCase())))].filter(t=>t && t!==(s&&s.tag));
+  plan.forEach(p=>{
+    const n=p.n; let ch=p.choice;
+    if(p.status==='same') return;
+    if(p.status==='update') ch='update';
+    if(ch==='keep') return;
+    const fresh = p.status==='new' || ch==='add' || ch==='both';
+    if(p.dest==='npcs'){
+      if(fresh){ S.npcs.unshift({id:uid(), created:Date.now(), session:curSessionN(), name:n.title+(ch==='both'?' (imported)':''), role:'', where:'', attitude:'Indifferent', notes:n.text, src:ch==='both'?null:n.path, srcText:n.text}); added++; }
+      else { Object.assign(p.match, {notes:n.text, src:n.path, srcText:n.text}); updated++; }
+    } else if(p.dest==='party'){
+      const pn=n.text.split('\n')[0].slice(0,200);
+      if(fresh){ S.party.push({id:uid(), name:n.title, notes:pn, saves:{}, src:ch==='both'?null:n.path, srcText:pn}); added++; }
+      else { Object.assign(p.match,{notes:pn, src:n.path, srcText:pn}); updated++; }
+    } else if(p.dest==='log'){
+      if(fresh){ const num=curSessionN()+1; S.sessions.push({id:uid(), n:num, date:n.date||'', title:n.title, html:n.html, text:n.text, src:ch==='both'?null:n.path, srcText:n.text}); added++; }
+      else { Object.assign(p.match, {html:n.html, text:n.text, src:n.path, srcText:n.text}); updated++; }
+    } else {
+      const s=secFor(p.dest);
+      if(fresh){ s.items.push({id:uid(), title:n.title+(ch==='both'?' (imported)':''), html:n.html, text:n.text, tags:extraTags(n,s), src:ch==='both'?null:n.path, srcText:n.text, ...(s.type==='quests'?{status:'Active'}:{})}); added++; }
+      else { const keepTags=p.match.tags||[]; Object.assign(p.match, {title:n.title, html:n.html, text:n.text, tags:[...new Set(keepTags.concat(extraTags(n,s)))], src:n.path, srcText:n.text}); updated++; }
+    }
+  });
+  dlgImp.close(); IMP=null;
+  commit(); renderAll(); setTab('campaign');
+  toast(`Imported: ${added} new, ${updated} updated.`);
 }
 
 /* ================= confirm box ================= */
@@ -2739,14 +3117,14 @@ async function driveDownload(f){
   return normalize(o.campaign);
 }
 function storeCampaign(c){
-  lsSet(CK(c.id), c);
+  campSet((c.id), c);
   const i=G.campaigns.findIndex(x=>x.id===c.id); if(i>=0) G.campaigns[i]=indexEntry(c); else G.campaigns.push(indexEntry(c));
   lsSet(G_KEY, G); scheduleRemote();
   if(c.id===S.id){ S=normalize(c); resetSession(); renderAll(); } else renderCampBtn();
 }
 function removeLocalOnly(id){
-  G.campaigns=G.campaigns.filter(x=>x.id!==id); try{ localStorage.removeItem(CK(id)); }catch(e){}
-  if(S.id===id){ const next=G.campaigns.map(x=>lsGet(CK(x.id))).find(Boolean) || newCampaign('My campaign'); activate(next); }
+  G.campaigns=G.campaigns.filter(x=>x.id!==id); try{ campDel((id)); }catch(e){}
+  if(S.id===id){ const next=G.campaigns.map(x=>campGet((x.id))).find(Boolean) || newCampaign('My campaign'); activate(next); }
   else { lsSet(G_KEY, G); renderCampBtn(); }
 }
 function driveForget(id){
@@ -2777,7 +3155,7 @@ async function driveSyncAll(first){
     for(const cid of [...D.closed]){ if(remote[cid]){ await gapi(`${DAPI}/${remote[cid].id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({trashed:true})}); delete remote[cid]; } }
     D.closed=[]; saveD();
     for(const [cid,f] of Object.entries(remote)){
-      const local=lsGet(CK(cid)), meta=D.files[cid];
+      const local=campGet((cid)), meta=D.files[cid];
       const rChanged = !meta || meta.id!==f.id || meta.remoteMod!==f.modifiedTime;
       const lChanged = !!local && (!meta || (local.updatedAt||0) > (meta.syncedAt||0));
       if(!local){ const c=await driveDownload(f); D.files[cid]={id:f.id, syncedAt:c.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); storeCampaign(c); added++; continue; }
@@ -2799,7 +3177,7 @@ async function driveSyncAll(first){
     }
     for(const e of [...G.campaigns]){
       if(remote[e.id]) continue;
-      const local=lsGet(CK(e.id)); if(!local) continue;
+      const local=campGet((e.id)); if(!local) continue;
       if(D.files[e.id]){
         const ch=await ask(`${local.name} isn’t in Google Drive anymore`, 'It may have been closed on another device, or its file was deleted from Drive. Remove it from this device too, or put it back in Drive?', ['Not now', {label:'Remove it here', danger:true}, {label:'Put it back in Drive', primary:true}]);
         if(ch===1){ delete D.files[e.id]; saveD(); removeLocalOnly(e.id); }
@@ -2894,11 +3272,16 @@ function onClick(e){
   if(!el){ const tp=e.target.closest('[data-tip]'); if(tp) pinRule(tp.dataset.tip); return; }
   const act=el.dataset.act, id=el.dataset.id, c=id?byId(id):null;
   if(el.closest('summary') && el.tagName==='BUTTON') e.preventDefault();
+  if(act==='wlink'){ wlinkOpen(el.dataset.v); return; }
   if(act.startsWith('cx-')){ campAct(act, el, e); return; }
   if(act.startsWith('lk-')){ lookAct(act); return; }
   if(act.startsWith('tour-')){ tourAct(act, el); return; }
   if(act==='warm-log'||act==='warm-close'){ warmAct(act); return; }
   if(act==='doc-make'){ makeDoc(); return; }
+  if(act==='imp-dir'){ impFileDir.click(); return; }
+  if(act==='imp-files'){ impFiles.click(); return; }
+  if(act==='imp-go'){ impApply(); return; }
+  if(act==='cx-import'){ openImport(); return; }
   switch(act){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#scratch-rte .rte-body')?.focus(); break;
     case 'more': moreMenu(el); break;
@@ -2986,10 +3369,14 @@ window.addEventListener('scroll', updateToTop, {passive:true});
 toTop.addEventListener('click', ()=>{ window.scrollTo({top:0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); const t=$('.tab[aria-selected=true]'); if(t) t.focus({preventScroll:true}); });
 $('#m-cr').innerHTML='<option value="">—</option>'+CR_LIST.map(c=>`<option>${c}</option>`).join('');
 function renderAll(){ applyLook(); renderCampBtn(); renderScratch(); renderLog(); renderPins(); renderCombat(); renderParty(); renderRules(); renderTravel(); renderSocial(); renderCampaign(); renderGen(); renderSaved(); }
-renderAll();
-initRemote();
-try{ if(!localStorage.getItem('dmmt.toured') && G.campaigns.length===1 && !(S.updatedAt>0)) setTimeout(openTour, 600); }catch(e){}
-if(driveOK){ loadGis().then(initGis).catch(()=>{}); if(D.connected) setDrive(pendingDrive()?'pending':'needtoken'); }
+(async ()=>{
+  await storageInit();
+  loadLocal();
+  renderAll();
+  initRemote();
+  try{ if(!localStorage.getItem('dmmt.toured') && G.campaigns.length===1 && !(S.updatedAt>0)) setTimeout(openTour, 600); }catch(e){}
+  if(driveOK){ loadGis().then(initGis).catch(()=>{}); if(D.connected) setDrive(pendingDrive()?'pending':'needtoken'); }
+})();
 </script>
 </body>
 </html>
