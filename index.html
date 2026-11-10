@@ -2926,27 +2926,57 @@ function blocksToHtml(parts){
     return el.outerHTML;
   }).join(''));
 }
+const isKnownSection = name => IMP_GUESS.some(([re])=>re.test(String(name||'').trim()));
+function splitEntry(el){
+  // one paragraph or list item -> {title, html}
+  const txt=el.textContent.replace(/\s+/g,' ').trim(); if(!txt) return null;
+  const first=el.firstElementChild;
+  if(first && /^(STRONG|B)$/.test(first.tagName) && el.firstChild===first && first.textContent.trim() && first.textContent.trim().length<=70){
+    const title=first.textContent.trim().replace(/[\s:.\-–—]+$/,''); const rest=el.cloneNode(true); rest.removeChild(rest.firstElementChild);
+    const body=rest.innerHTML.replace(/^\s*[:.\-–—]\s*/,'');
+    return {title, html:cleanHtml(body)};
+  }
+  const m=txt.match(/^(.{1,70}?)\s+[-–—]\s+(.+)$/) || txt.match(/^([^:]{1,70}):\s+(.+)$/);
+  if(m) return {title:m[1].trim(), html:textToHtml(m[2].trim())};
+  if(txt.length<=80) return {title:txt, html:''};
+  const words=txt.split(' '); return {title:words.slice(0,7).join(' ')+'…', html:textToHtml(txt)};
+}
 function docHtmlToNotes(html, docName){
   const t=document.createElement('template'); t.innerHTML=html;
   const blocks=[...t.content.children];
   const hl=el=>{ const m=el.tagName.match(/^H([1-6])$/); return m?+m[1]:0; };
   const counts={}; blocks.forEach(b=>{ const l=hl(b); if(l) counts[l]=(counts[l]||0)+1; });
   let levels=Object.keys(counts).map(Number).sort((a,b)=>a-b), skipTitle=0, title=docName;
-  if(levels.length>1 && counts[levels[0]]===1){ skipTitle=levels[0]; levels=levels.slice(1); }
-  const secL = levels.length>=2 ? levels[0] : 0, cardL = levels.length>=2 ? levels[1] : (levels[0]||0);
-  const notes=[]; let section=docName, cur=null;
-  const flush=()=>{ if(!cur) return; const html=blocksToHtml(cur.parts), text=htmlToText(html);
-    if(!(cur.intro && !text.trim())) notes.push({path:`${docName}/${cur.section}/${cur.title}`, title:cur.title, folder:cur.section, sub:[], tags:[], html, text, date:''});
-    cur=null; };
+  if(levels.length>1 && counts[levels[0]]===1 && !isKnownSection(blocks.find(b=>hl(b)===levels[0]).textContent)){ skipTitle=levels[0]; levels=levels.slice(1); }
+  let secL=0, cardL=0;
+  if(levels.length>=2){ secL=levels[0]; cardL=levels[1]; }
+  else if(levels.length===1){
+    const names=blocks.filter(b=>hl(b)===levels[0]).map(b=>b.textContent.trim());
+    if(names.some(isKnownSection)) secL=levels[0]; else cardL=levels[0];
+  }
+  // build structure
+  const secs=[]; let sec={name:docName, intro:[], cards:[]}; secs.push(sec); let card=null;
   blocks.forEach(b=>{
     const l=hl(b), name=b.textContent.trim();
     if(l && l===skipTitle){ if(name) title=name; return; }
-    if(l && secL && l===secL){ flush(); section=name||'Untitled'; cur={section, title:`${section}: overview`, parts:[], intro:true}; return; }
-    if(l && l===cardL){ flush(); cur={section, title:name||'Untitled', parts:[]}; return; }
-    if(!cur) cur={section, title:`${title}: overview`, parts:[], intro:true};
-    cur.parts.push(b);
+    if(l && secL && l===secL){ sec={name:name||'Untitled', intro:[], cards:[]}; secs.push(sec); card=null; return; }
+    if(l && cardL && l===cardL){ card={title:name||'Untitled', parts:[]}; sec.cards.push(card); return; }
+    if(card) card.parts.push(b); else sec.intro.push(b);
   });
-  flush();
+  const notes=[];
+  const push=(section, t, html)=>{ notes.push({path:`${docName}/${section}/${t}`, title:t, folder:section, sub:[], tags:[], html, text:htmlToText(html), date:''}); };
+  secs.forEach(s=>{
+    if(s.cards.length || (s===secs[0] && secs.length>1)){
+      const ih=blocksToHtml(s.intro); if(htmlToText(ih).trim()) push(s.name, `${s.name===docName?title:s.name}: overview`, ih);
+      s.cards.forEach(c=>push(s.name, c.title, blocksToHtml(c.parts)));
+    } else if(s.intro.length){
+      // no card headings: each paragraph or list item becomes its own card
+      s.intro.forEach(b=>{
+        const items = /^(UL|OL)$/.test(b.tagName) ? [...b.children] : [b];
+        items.forEach(it=>{ if(/^H[1-6]$/.test(it.tagName)) return; const en=splitEntry(it); if(en) push(s.name, en.title, en.html); });
+      });
+    }
+  });
   return notes;
 }
 async function parseDocx(file){
