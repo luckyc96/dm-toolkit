@@ -345,6 +345,14 @@ table.imp-t select{max-width:100%}
 .fmt-opts{display:flex;flex-direction:column;gap:.45rem}
 .fmt-opts .row-label{align-items:flex-start}
 .fmt-opts input{margin-top:.25rem}
+.imp-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:.4rem}
+.imp-head h2{margin-bottom:.3rem}
+.guide{max-height:52vh;overflow:auto;padding-right:.3rem}
+.guide section{margin-bottom:.7rem}
+.guide h3{margin:.3rem 0 .2rem;font-size:1.02rem;color:var(--brass)}
+.guide ul{margin:.2rem 0;padding-left:1.1rem;font-size:.93rem}
+.guide li{margin:.25rem 0}
+.guide-sample{border:1px solid var(--line);border-left:3px solid var(--brass);border-radius:6px;padding:.5rem .7rem;margin-top:.6rem;background:var(--bg)}
 /* tour */
 .to-top{position:fixed;right:calc(env(safe-area-inset-right,0px) + 1rem);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);z-index:40;width:2.75rem;height:2.75rem;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;padding:0;transition:opacity .2s,transform .2s}
 .to-top svg{width:1.3rem;height:1.3rem}
@@ -1257,7 +1265,7 @@ function lookAct(act){
 /* ================= show me around ================= */
 const TOUR=[
  {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
- {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault, Markdown files, or a Word or Google Docs document split by its headings. You review everything before it’s added.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault, Markdown files, or a Word or Google Docs document split by its headings. You review everything before it’s added, and “How to format your notes” in that window has a guide and a sample to try.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
  {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
  {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Search 330 monsters from the free rules to fill everything in, stat block included. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
  {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
@@ -3069,7 +3077,7 @@ impDocx.addEventListener('change', e=>{ const f=e.target.files; if(f&&f.length) 
 const supportsDir = 'webkitdirectory' in document.createElement('input') && !/iPhone|iPad|iPod/.test(navigator.userAgent);
 function openImport(){
   IMP=null;
-  dlgImp.innerHTML=`<h2>Import notes</h2>
+  dlgImp.innerHTML=`<div class="imp-head"><h2>Import notes</h2><button class="btn sm" data-act="imp-guide">How to format your notes</button></div>
   <div class="imp-ways">
     <div><h3>From Obsidian or Markdown</h3><p class="small">Each note becomes a card and each folder a section. <b>[[Links]]</b> and tags come along.</p><div class="imp-pick">${supportsDir?'<button class="btn primary" data-act="imp-dir">Choose a folder</button>':''}<button class="btn ${supportsDir?'':'primary'}" data-act="imp-files">Choose files</button></div></div>
     <div><h3>From Word or Google Docs</h3><p class="small">The document is split by its headings: top-level headings become sections, the next level becomes cards. From Google Docs, use File → Download → Microsoft Word (.docx).</p><div class="imp-pick"><button class="btn" data-act="imp-docx">Choose a Word document</button></div></div>
@@ -3253,13 +3261,16 @@ function htmlToParas(html, nums){
   walk(t.content); flush();
   return out;
 }
-async function exportDocx(on){
+const exportDocx = on => buildDocx(S.name, exportModel(on));
+async function buildDocx(docTitle, parts){
   await loadJSZip();
   const nums=['bullet']; const body=[];
   const P=(text, style, f={})=>`<w:p>${style?`<w:pPr><w:pStyle w:val="${style}"/></w:pPr>`:''}<w:r>${(f.b||f.i)?`<w:rPr>${f.b?'<w:b/>':''}${f.i?'<w:i/>':''}</w:rPr>`:''}<w:t xml:space="preserve">${xq(text)}</w:t></w:r></w:p>`;
-  body.push(P(S.name,'Title'));
-  exportModel(on).forEach(part=>{
+  body.push(P(docTitle,'Title'));
+  parts.forEach(part=>{
     body.push(P(part.title,'Heading1'));
+    if(part.note) body.push(`<w:p><w:r><w:rPr><w:i/><w:color w:val="6B665E"/></w:rPr><w:t xml:space="preserve">${xq(part.note)}</w:t></w:r></w:p>`);
+    if(part.quick){ part.items.forEach(it=>body.push(`<w:p><w:r><w:t xml:space="preserve">${xq(it.title)} - ${xq(it.text)}</w:t></w:r></w:p>`)); return; }
     part.items.forEach(it=>{
       body.push(P(it.title,'Heading2'));
       it.meta.forEach(([k,v])=>body.push(`<w:p><w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">${xq(k)}: </w:t></w:r><w:r><w:t xml:space="preserve">${xq(v)}</w:t></w:r></w:p>`));
@@ -3294,6 +3305,63 @@ async function exportAlt(fmt, on){
     await saveFile(`${slug(S.name)}${fmt==='docx'?'.docx':'-markdown.zip'}`, blob);
     toast(fmt==='docx' ? 'Word document saved.' : 'Markdown saved. Unzip it into your Obsidian vault.');
   }catch(e){ toast('Couldn’t build the file. Check your internet connection and try again.'); }
+}
+
+
+/* ================= import guide + sample document ================= */
+const SAMPLE_PARTS=[
+  {title:'Gods', items:[
+    {title:'Seluan', tags:['sea'], meta:[], html:'Goddess of the <b>tides</b> and the drowned. Sailors leave salt on her shrines.<ul><li>Symbol: a curling wave</li><li>Rival of [[Korrin]]</li></ul>'},
+    {title:'Korrin', tags:[], meta:[['Domain','the forge and the hearth']], html:'God of smiths. His temples never let their fires go out.'}]},
+  {title:'Factions', quick:true, items:[
+    {title:'The Ember Court', text:'Fire-sworn nobles who rule the southern cities.'},
+    {title:'Gravel Lanterns', text:'A smuggling ring working the river docks.'}]},
+  {title:'NPCs', items:[
+    {title:'Bren', tags:[], meta:[['Attitude','Friendly'],['Role','Miller']], html:'Runs the mill in [[Ashford]]. Owes the guild more than he lets on.'}]},
+  {title:'Places', items:[
+    {title:'Ashford', tags:['town'], meta:[], html:'A river town of about 900 people, built around [[Bren]]’s mill.'}]},
+  {title:'Quests', items:[
+    {title:'Find the lost caravan', tags:[], meta:[['Status','Active'],['Given by','Bren'],['Reward','50 gp']], html:'A grain caravan vanished on the north road three days ago.'}]},
+  {title:'Random tables', items:[
+    {title:'Road events', tags:[], meta:[], html:'<ol><li>Wolves shadow the party</li><li>A peddler with a limp asks for an escort</li><li>Heavy rain turns the road to mud</li><li>A broken cart blocks the way</li></ol>'}]}
+];
+const sampleDocx = () => buildDocx('My Campaign Notes (sample)', SAMPLE_PARTS);
+function openImportGuide(){
+  dlgImp.innerHTML=`<h2>How to format your notes</h2>
+  <div class="guide">
+    <section><h3>From Word or Google Docs</h3>
+      <ul>
+        <li><b>Use real heading styles,</b> not just big bold text. In Word or Google Docs, pick Heading 1 or Heading 2 from the style menu.</li>
+        <li><b>Heading 1 = a section</b> (Gods, NPCs, Places, Quests…). <b>Heading 2 = one entry</b> in it (Seluan, Bren, Ashford…). Write as much as you like under each entry.</li>
+        <li><b>Quick lists work too.</b> Under a Heading 1 with no Heading 2s, each line like <i>Seluan - goddess of the tides</i> becomes its own card.</li>
+        <li><b>Optional labels</b> on the first lines of an entry fill in details: <i>Tags:</i> for any card, <i>Attitude:</i> and <i>Role:</i> for NPCs, <i>Status:</i>, <i>Given by:</i>, and <i>Reward:</i> for quests.</li>
+        <li><b>Bold, italics, underline, and lists</b> come across. Images don’t.</li>
+        <li>From Google Docs, use <i>File → Download → Microsoft Word (.docx)</i>.</li>
+      </ul></section>
+    <section><h3>From Obsidian</h3>
+      <ul>
+        <li>Choose your <b>vault folder</b> on a computer (phones and tablets can only pick individual files).</li>
+        <li><b>Each top-level folder becomes a section</b> and each note a card. Subfolders become tags.</li>
+        <li><b>[[Links]] and #tags</b> come along, and so do tags in a note’s properties.</li>
+      </ul></section>
+    <section><h3>Either way</h3>
+      <ul>
+        <li>Section names are matched for you: <i>Deities</i> → Gods, <i>Characters</i> → NPC roster, <i>Player Characters</i> → Party, <i>Locations</i> → Places, <i>Session Notes</i> → your session log. You can change any of them before importing.</li>
+        <li><b>Nothing is added until you review it and click Import.</b> Importing the same notes again later updates what changed and leaves the rest alone.</li>
+      </ul></section>
+  </div>
+  <div class="guide-sample"><div><b>See it in action.</b> <span class="muted small">A short sample with gods, a quick list, an NPC, a place, a quest, and a random table.</span></div>
+    <div class="imp-pick"><button class="btn" data-act="imp-sample-dl">Download the sample (.docx)</button><button class="btn primary" data-act="imp-sample-try">Try importing the sample</button></div>
+    <p class="muted small">Trying it opens the normal review screen, and nothing is added unless you click Import. To keep your campaign tidy, try it in a new campaign first.</p></div>
+  <div class="dlg-actions"><button class="btn" data-act="imp-back">Back to import</button></div>`;
+}
+async function sampleAct(act){
+  try{
+    const blob=await sampleDocx();
+    if(act==='imp-sample-dl'){ await saveFile('sample-campaign-notes.docx', blob); toast('Sample saved. Open it to see the format.'); return; }
+    const f=new File([blob], 'Sample campaign notes.docx', {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    impLoad([f]);
+  }catch(e){ toast('Couldn’t make the sample. Check your internet connection and try again.'); }
 }
 
 /* ================= confirm box ================= */
@@ -3544,6 +3612,9 @@ function onClick(e){
   if(act==='imp-dir'){ impFileDir.click(); return; }
   if(act==='imp-files'){ impFiles.click(); return; }
   if(act==='imp-docx'){ impDocx.click(); return; }
+  if(act==='imp-guide'){ openImportGuide(); return; }
+  if(act==='imp-back'){ openImport(); return; }
+  if(act==='imp-sample-dl'||act==='imp-sample-try'){ sampleAct(act); return; }
   if(act==='imp-go'){ impApply(); return; }
   switch(act){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#scratch-rte .rte-body')?.focus(); break;
