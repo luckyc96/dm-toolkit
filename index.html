@@ -339,6 +339,9 @@ table.imp-t select{max-width:100%}
 .imp-asks{max-height:240px;overflow:auto}
 .imp-more ul{max-height:200px;overflow:auto;font-size:.88rem}
 #dlg-imp h3{margin:1rem 0 .3rem}
+.imp-ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.8rem;margin:.4rem 0}
+.imp-ways > div{border:1px solid var(--line);border-radius:8px;padding:.5rem .75rem;background:var(--bg)}
+.imp-ways h3{margin:.1rem 0 .2rem;font-size:1rem}
 /* tour */
 .to-top{position:fixed;right:calc(env(safe-area-inset-right,0px) + 1rem);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);z-index:40;width:2.75rem;height:2.75rem;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;padding:0;transition:opacity .2s,transform .2s}
 .to-top svg{width:1.3rem;height:1.3rem}
@@ -1045,7 +1048,7 @@ function campMenu(btn){
     {key:'cp-open', label:'Open a campaign file…', fn:()=>$('#import-file').click()},
     {key:'cp-save', label:'Save this campaign to a file', fn:()=>exportCampaign(S)},
     {key:'cp-doc', label:'Export as a readable document…', fn:openDocDlg},
-    {key:'cp-import', label:'Import notes (Obsidian, Markdown)…', fn:openImport},
+    {key:'cp-import', label:'Import notes (Obsidian, Markdown, Word)…', fn:openImport},
     {key:'cp-rename', label:'Rename this campaign…', fn:()=>openCampDlg(true)},
     {key:'cp-close', label:'Close this campaign…', danger:true, fn:closeCampaign},
     {note:'Campaign files open on any device, in any copy of the toolkit.'});
@@ -1251,7 +1254,7 @@ function lookAct(act){
 /* ================= show me around ================= */
 const TOUR=[
  {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
- {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault or Markdown files: folders become sections, and you review everything before it’s added.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault, Markdown files, or a Word or Google Docs document split by its headings. You review everything before it’s added.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
  {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
  {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Search 330 monsters from the free rules to fill everything in, stat block included. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
  {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
@@ -2908,12 +2911,61 @@ function impDestFor(type,title){
   const ex=(S.sections||[]).find(s=>(type==='quests'?s.type==='quests':s.type==='cards') && s.title.toLowerCase()===title.toLowerCase());
   return ex ? 'sec:'+ex.id : `new:${type}:${title}`;
 }
+
+/* Word (.docx) import: split by headings */
+function loadMammoth(){
+  if(window.mammoth) return Promise.resolve();
+  if(loadMammoth.p) return loadMammoth.p;
+  return loadMammoth.p = new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js'; s.onload=res; s.onerror=()=>{ loadMammoth.p=null; rej(); }; document.head.appendChild(s); });
+}
+const readBuf = f => f.arrayBuffer ? f.arrayBuffer() : new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsArrayBuffer(f); });
+function blocksToHtml(parts){
+  return cleanHtml(parts.map(el=>{
+    if(/^H[1-6]$/.test(el.tagName)) return `<div><b>${el.innerHTML}</b></div>`;
+    if(el.tagName==='TABLE') return [...el.querySelectorAll('tr')].map(tr=>`<div>${[...tr.children].map(td=>esc(td.textContent.trim())).filter(Boolean).join(' · ')}</div>`).join('');
+    return el.outerHTML;
+  }).join(''));
+}
+function docHtmlToNotes(html, docName){
+  const t=document.createElement('template'); t.innerHTML=html;
+  const blocks=[...t.content.children];
+  const hl=el=>{ const m=el.tagName.match(/^H([1-6])$/); return m?+m[1]:0; };
+  const counts={}; blocks.forEach(b=>{ const l=hl(b); if(l) counts[l]=(counts[l]||0)+1; });
+  let levels=Object.keys(counts).map(Number).sort((a,b)=>a-b), skipTitle=0, title=docName;
+  if(levels.length>1 && counts[levels[0]]===1){ skipTitle=levels[0]; levels=levels.slice(1); }
+  const secL = levels.length>=2 ? levels[0] : 0, cardL = levels.length>=2 ? levels[1] : (levels[0]||0);
+  const notes=[]; let section=docName, cur=null;
+  const flush=()=>{ if(!cur) return; const html=blocksToHtml(cur.parts), text=htmlToText(html);
+    if(!(cur.intro && !text.trim())) notes.push({path:`${docName}/${cur.section}/${cur.title}`, title:cur.title, folder:cur.section, sub:[], tags:[], html, text, date:''});
+    cur=null; };
+  blocks.forEach(b=>{
+    const l=hl(b), name=b.textContent.trim();
+    if(l && l===skipTitle){ if(name) title=name; return; }
+    if(l && secL && l===secL){ flush(); section=name||'Untitled'; cur={section, title:`${section}: overview`, parts:[], intro:true}; return; }
+    if(l && l===cardL){ flush(); cur={section, title:name||'Untitled', parts:[]}; return; }
+    if(!cur) cur={section, title:`${title}: overview`, parts:[], intro:true};
+    cur.parts.push(b);
+  });
+  flush();
+  return notes;
+}
+async function parseDocx(file){
+  await loadMammoth();
+  const res = await mammoth.convertToHtml({arrayBuffer: await readBuf(file)}, {styleMap:['u => u'], ignoreEmptyParagraphs:true});
+  return docHtmlToNotes(res.value, file.name.replace(/\.docx$/i,''));
+}
+
 async function readImportFiles(fileList){
   const files=[...fileList].filter(f=>/\.(md|markdown|txt)$/i.test(f.name));
   const paths=files.map(f=>(f.webkitRelativePath||f.name).replace(/\\/g,'/'));
   const hidden=p=>p.split('/').some(seg=>seg.startsWith('.'));
   let rootStrip = files.length && files.every(f=>f.webkitRelativePath) ? 1 : 0;
   const notes=[];
+  for(const f of [...fileList].filter(f=>/\.docx$/i.test(f.name))){
+    try{ notes.push(...await parseDocx(f)); }
+    catch(e){ toast(`Couldn’t read ${f.name}. If it’s open in Word, close it and try again.`); }
+  }
+  if([...fileList].some(f=>/\.doc$/i.test(f.name))) toast('Older .doc files can’t be read. Save them as .docx first.');
   for(let i=0;i<files.length;i++){
     let p=paths[i]; if(hidden(p)) continue;
     if(rootStrip) p=p.split('/').slice(1).join('/');
@@ -2951,20 +3003,26 @@ function impPlan(){
 const dlgImp=document.createElement('dialog'); dlgImp.id='dlg-imp'; dlgImp.style.width='min(760px,96vw)';
 document.body.appendChild(dlgImp);
 const impFileDir=document.createElement('input'); impFileDir.type='file'; impFileDir.multiple=true; impFileDir.setAttribute('webkitdirectory',''); impFileDir.hidden=true;
-const impFiles=document.createElement('input'); impFiles.type='file'; impFiles.multiple=true; impFiles.accept='.md,.markdown,.txt,text/markdown,text/plain'; impFiles.hidden=true;
-document.body.append(impFileDir, impFiles);
+const impFiles=document.createElement('input'); impFiles.type='file'; impFiles.multiple=true; impFiles.accept='.md,.markdown,.txt,.docx,text/markdown,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const impDocx=document.createElement('input'); impDocx.type='file'; impDocx.multiple=true; impDocx.accept='.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document'; impDocx.hidden=true; impFiles.hidden=true;
+document.body.append(impFileDir, impFiles, impDocx);
+impDocx.addEventListener('change', e=>{ const f=e.target.files; if(f&&f.length) impLoad(f); e.target.value=''; });
 const supportsDir = 'webkitdirectory' in document.createElement('input') && !/iPhone|iPad|iPod/.test(navigator.userAgent);
 function openImport(){
   IMP=null;
-  dlgImp.innerHTML=`<h2>Import notes</h2><p>Bring in notes from Obsidian or any Markdown files. Each note becomes a card, folders become sections, and <b>[[links]]</b> and tags come along.</p>
-  <div class="imp-pick">${supportsDir?'<button class="btn primary" data-act="imp-dir">Choose a folder (like an Obsidian vault)</button>':''}<button class="btn ${supportsDir?'':'primary'}" data-act="imp-files">Choose files</button></div>
-  <p class="muted small">Nothing changes until you review and confirm. Word and Google Docs import is coming next; for now, Google Docs can download as Markdown (File → Download → Markdown).</p>
+  dlgImp.innerHTML=`<h2>Import notes</h2>
+  <div class="imp-ways">
+    <div><h3>From Obsidian or Markdown</h3><p class="small">Each note becomes a card and each folder a section. <b>[[Links]]</b> and tags come along.</p><div class="imp-pick">${supportsDir?'<button class="btn primary" data-act="imp-dir">Choose a folder</button>':''}<button class="btn ${supportsDir?'':'primary'}" data-act="imp-files">Choose files</button></div></div>
+    <div><h3>From Word or Google Docs</h3><p class="small">The document is split by its headings: top-level headings become sections, the next level becomes cards. From Google Docs, use File → Download → Microsoft Word (.docx).</p><div class="imp-pick"><button class="btn" data-act="imp-docx">Choose a Word document</button></div></div>
+  </div>
+  <p class="muted small">Nothing changes until you review and confirm.</p>
   <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button></div>`;
   dlgImp.showModal();
 }
 async function impLoad(fileList){
+  dlgImp.innerHTML='<h2>Import notes</h2><p class="muted">Reading your files…</p>';
   const notes=await readImportFiles(fileList);
-  if(!notes.length){ toast('No Markdown notes found there.'); return; }
+  if(!notes.length){ toast('Nothing to import was found there.'); openImport(); return; }
   const folders={}; notes.forEach(n=>{ if(!folders[n.folder]) folders[n.folder]={dest:guessDest(n.folder), count:0}; folders[n.folder].count++; });
   IMP={notes, folders};
   impRender();
@@ -3285,6 +3343,7 @@ function onClick(e){
   if(act==='doc-make'){ makeDoc(); return; }
   if(act==='imp-dir'){ impFileDir.click(); return; }
   if(act==='imp-files'){ impFiles.click(); return; }
+  if(act==='imp-docx'){ impDocx.click(); return; }
   if(act==='imp-go'){ impApply(); return; }
   switch(act){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#scratch-rte .rte-body')?.focus(); break;
