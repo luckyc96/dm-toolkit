@@ -704,7 +704,8 @@ const num = (v,f=0) => (v===''||v==null||isNaN(+v)) ? f : +v;
 const has = v => !(v===''||v==null||isNaN(+v));
 const sgn = n => (n>=0?'+':'−')+Math.abs(n);
 const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
+const topHost = () => [...document.querySelectorAll('dialog[open]')].pop() || document.body;
+function toast(msg){ const t=$('#toast'); const host=topHost(); if(t.parentElement!==host) host.appendChild(t); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2400); }
 
 /* ================= rules data (2024 SRD, in summary) ================= */
 const ul = items => '<ul>'+items.map(i=>'<li>'+i+'</li>').join('')+'</ul>';
@@ -2630,6 +2631,7 @@ const lp=document.createElement('div'); lp.id='linkpick'; lp.className='linkpick
 lp.innerHTML='<input type="search" id="lp-q" placeholder="Find a card, NPC, rule, or monster" autocomplete="off" aria-label="Find something to link"><div id="lp-list" role="listbox"></div><div class="lp-foot muted small">Tip: type <b>[[</b> while writing to link without leaving the keyboard.</div>';
 document.body.appendChild(lp);
 let lpState=null; // {body, range, mode:'button'|'type', partial, idx, items}
+function lpHost(body){ const host=body.closest('dialog') || document.body; if(lp.parentElement!==host) host.appendChild(lp); }
 function linkTargets(){
   const out=[];
   (S.sections||[]).forEach(s=>{ if(['npcs','calendar','journal'].includes(s.type)) return; (s.items||[]).forEach(it=>it.title && out.push([it.title, s.title])); });
@@ -2659,6 +2661,7 @@ function openLinkPicker(body, btn){
   const sel=getSelection(); let range=null;
   if(sel.rangeCount && body.contains(sel.getRangeAt(0).commonAncestorContainer)) range=sel.getRangeAt(0).cloneRange();
   if(!range){ range=document.createRange(); range.selectNodeContents(body); range.collapse(false); }
+  lpHost(body);
   lpState={body, range, mode:'button', partial:'', idx:0, items:lpFilter('')};
   lp.classList.remove('typing'); $('#lp-q').value=range.collapsed?'':range.toString().trim().slice(0,40);
   lpState.items=lpFilter($('#lp-q').value);
@@ -2699,9 +2702,10 @@ document.addEventListener('input', e=>{
   const before=r.startContainer.textContent.slice(0, r.startOffset);
   const m=before.match(/\[\[([^\[\]|]{0,40})$/);
   if(!m){ if(lpState&&lpState.mode==='type') lpClose(); return; }
+  lpHost(body);
   lpState={body, mode:'type', partial:m[1], idx:0, items:lpFilter(m[1])};
   lp.classList.add('typing'); lpRender();
-  const rr=r.cloneRange(); let rect=rr.getBoundingClientRect(); if(!rect || (!rect.width && !rect.height)) rect=body.getBoundingClientRect();
+  const rr=r.cloneRange(); let rect=rr.getBoundingClientRect ? rr.getBoundingClientRect() : null; if(!rect || (!rect.width && !rect.height)) rect=body.getBoundingClientRect();
   lpPlace(rect);
 });
 document.addEventListener('mousedown', e=>{ if(!lp.hidden && !e.target.closest('#linkpick') && !e.target.closest('.rte-bar button[data-cmd=wikilink]')) lpClose(); });
