@@ -342,6 +342,9 @@ table.imp-t select{max-width:100%}
 .imp-ways{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.8rem;margin:.4rem 0}
 .imp-ways > div{border:1px solid var(--line);border-radius:8px;padding:.5rem .75rem;background:var(--bg)}
 .imp-ways h3{margin:.1rem 0 .2rem;font-size:1rem}
+.fmt-opts{display:flex;flex-direction:column;gap:.45rem}
+.fmt-opts .row-label{align-items:flex-start}
+.fmt-opts input{margin-top:.25rem}
 /* tour */
 .to-top{position:fixed;right:calc(env(safe-area-inset-right,0px) + 1rem);bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);z-index:40;width:2.75rem;height:2.75rem;border-radius:50%;border:1px solid var(--brass);background:var(--surface);color:var(--brass);box-shadow:var(--shadow);cursor:pointer;display:grid;place-items:center;padding:0;transition:opacity .2s,transform .2s}
 .to-top svg{width:1.3rem;height:1.3rem}
@@ -1047,7 +1050,7 @@ function campMenu(btn){
     {key:'cp-new', label:'New campaign…', fn:()=>openCampDlg(false)},
     {key:'cp-open', label:'Open a campaign file…', fn:()=>$('#import-file').click()},
     {key:'cp-save', label:'Save this campaign to a file', fn:()=>exportCampaign(S)},
-    {key:'cp-doc', label:'Export as a readable document…', fn:openDocDlg},
+    {key:'cp-doc', label:'Export (readable page, Word, or Markdown)…', fn:openDocDlg},
     {key:'cp-import', label:'Import notes (Obsidian, Markdown, Word)…', fn:openImport},
     {key:'cp-rename', label:'Rename this campaign…', fn:()=>openCampDlg(true)},
     {key:'cp-close', label:'Close this campaign…', danger:true, fn:closeCampaign},
@@ -1080,7 +1083,7 @@ function saveCampDlg(){
 async function saveFile(filename, text, type='application/json'){
   const dl = (window.claude && window.claude.use) ? await claude.use('downloads').catch(()=>null) : null;
   if(dl){ await dl.save({filename, data:text}); return; }
-  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=filename;
+  const a=document.createElement('a'); a.href=URL.createObjectURL((text && typeof text==='object' && typeof text.size==='number' && typeof text.slice==='function') ? text : new Blob([text],{type})); a.download=filename;
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
 const slug = s => (String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')) || 'campaign';
@@ -1262,7 +1265,7 @@ const TOUR=[
  {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li><li>Cards tagged “house rule” on the Campaign tab show up here too, under <b>House rules</b>.</li></ul>`},
  {tab:'gen', hi:'[data-tab=gen]', title:'Generate', body:`<p>For when the players go somewhere you didn’t plan.</p><ul><li>Names by species, full NPCs, taverns, shops with prices, quick loot, and complications.</li><li><b>Save to notes</b> keeps anything you liked. A rolled NPC can go straight into the roster.</li></ul>`},
  {hi:'#notes-btn', notes:true, title:'Notes', body:`<p>The Notes button opens a drawer from the right.</p><ul><li><b>Scratchpad</b> for anything you jot mid-game, plus whatever you saved from the generators.</li><li><b>Session log</b> gives each game night its own dated entry. “Move scratchpad here” files tonight’s scratch notes into the session.</li><li>Notes have a small toolbar for <b>bold</b>, <i>italic</i>, <u>underline</u>, and lists. Typing “- ” at the start of a line starts a bulleted list.</li><li><b>Start a session</b> (also at the top right of the Campaign tab) opens a new entry and a quick recap: last session’s notes, active quests, and the NPCs met last time.</li></ul>`},
- {hi:'#camp-btn', title:'Campaigns', body:`<p>The button beside the title holds your campaigns.</p><ul><li>Switch between campaigns, start a new one, or rename it.</li><li><b>Save this campaign to a file</b> makes a backup or something to share. <b>Open a campaign file</b> loads one, even on a fresh copy of the app.</li><li><b>Export as a readable document</b> makes a tidy page to read, print, or share, with only the parts you choose.</li><li><b>Close this campaign</b> when it’s finished. Save its file first if you might want it back.</li></ul>`},
+ {hi:'#camp-btn', title:'Campaigns', body:`<p>The button beside the title holds your campaigns.</p><ul><li>Switch between campaigns, start a new one, or rename it.</li><li><b>Save this campaign to a file</b> makes a backup or something to share. <b>Open a campaign file</b> loads one, even on a fresh copy of the app.</li><li><b>Export</b> makes a readable page, a Word document, or Markdown notes for Obsidian, with only the parts you choose.</li><li><b>Close this campaign</b> when it’s finished. Save its file first if you might want it back.</li></ul>`},
  {hi:'#more-btn', title:'Settings and syncing', body:`<p>The ⋯ menu holds the rest.</p><ul><li><b>Customize</b> changes light or dark, colors, fonts, and text size, for all campaigns or just one.</li><li><b>Connect Google Drive</b> keeps your campaigns synced between your computer, tablet, and phone. When it’s on, a Drive button in the header shows whether everything is saved; tap it if it asks you to sign in.</li><li><b>Show me around</b> brings this tour back.</li></ul><p>That’s everything. Have a good game.</p>`}
 ];
 let tourI=0, tourOpenedNotes=false;
@@ -2776,17 +2779,25 @@ const dlgDoc=document.createElement('dialog'); dlgDoc.id='dlg-doc'; dlgDoc.style
 document.body.appendChild(dlgDoc);
 function openDocDlg(){
   const secs=(S.sections||[]).filter(s=>s.type!=='npcs');
-  dlgDoc.innerHTML=`<h2>Export as a readable document</h2><p class="muted small" style="margin-top:-.3rem">A tidy page you can read, print, or save as a PDF from your browser. Choose what goes in. Leave out anything your players shouldn’t see.</p>
+  dlgDoc.innerHTML=`<h2>Export this campaign</h2>
+  <fieldset><legend>Format</legend><div class="fmt-opts">
+    <label class="row-label"><input type="radio" name="doc-fmt" value="html" checked> <span><b>Readable page</b><br><span class="muted small">A tidy web page to read, print, or save as a PDF.</span></span></label>
+    <label class="row-label"><input type="radio" name="doc-fmt" value="docx"> <span><b>Word document (.docx)</b><br><span class="muted small">Opens in Word and Google Docs. Sections are Heading 1, cards are Heading 2, so it imports back cleanly.</span></span></label>
+    <label class="row-label"><input type="radio" name="doc-fmt" value="md"> <span><b>Markdown for Obsidian (.zip)</b><br><span class="muted small">A folder per section and a note per card, with tags and [[links]] intact. Unzip it into your vault.</span></span></label>
+  </div></fieldset>
+  <p class="muted small" style="margin:.6rem 0 .2rem">What to include. Leave out anything your players shouldn’t see.</p>
   <div class="doc-opts"><label class="row-label"><input type="checkbox" data-doc="party" ${S.party.length?'checked':'disabled'}> Party</label>
   <label class="row-label"><input type="checkbox" data-doc="npcs" ${S.npcs.length?'checked':'disabled'}> NPC roster</label>
   <label class="row-label" style="padding-left:1.5rem"><input type="checkbox" data-doc="npcnotes" ${S.npcs.length?'checked':'disabled'}> Include NPC notes</label>
   ${secs.map(s=>`<label class="row-label"><input type="checkbox" data-doc="sec:${s.id}" checked> ${esc(s.title)}</label>`).join('')}
   <label class="row-label"><input type="checkbox" data-doc="log" ${S.sessions.length?'checked':'disabled'}> Session log</label></div>
-  <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="doc-make">Download document</button></div>`;
+  <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="doc-make">Download</button></div>`;
   dlgDoc.showModal();
 }
 async function makeDoc(){
   const on = k => { const i=dlgDoc.querySelector(`[data-doc="${k}"]`); return i && i.checked && !i.disabled; };
+  const fmt=(dlgDoc.querySelector('input[name=doc-fmt]:checked')||{}).value||'html';
+  if(fmt!=='html') return exportAlt(fmt, on);
   const look=lookFor(), pal=PALETTES.find(x=>x.id===look.palette)||PALETTES[0], accent=look.accent||pal.light.accent;
   const hf=HEAD_FONTS.find(f=>f[0]===look.head)||HEAD_FONTS[0], bf=BODY_FONTS.find(f=>f[0]===look.body)||BODY_FONTS[0];
   const P = t => `<p>${esc(t||'').replace(/\n/g,'<br>')}</p>`;
@@ -2848,7 +2859,8 @@ const IMP_GUESS=[
   [/^(lore|history|histories|legends?|myths?)$/i, 'cards','Lore'],
   [/^(house ?rules?|homebrew( rules)?|rules|variant rules)$/i, 'cards','House rules'],
   [/^(sessions?|session ?notes|recaps?|session ?logs?|journal|logs?)$/i, 'log','Session log'],
-  [/^(monsters?|creatures?|bestiary|enemies)$/i, 'cards','Monsters']
+  [/^(monsters?|creatures?|bestiary|enemies)$/i, 'cards','Monsters'],
+  [/^((random |rollable )?tables?|random encounters?)$/i, 'tables','Random tables']
 ];
 let IMP=null; // {notes:[...], folders:{name:{dest, count}}}
 function mdInline(s){
@@ -2858,7 +2870,7 @@ function mdInline(s){
   t=t.replace(/\[([^\]]+)\]\((?:[^)]+)\)/g,'$1');
   t=t.replace(/\*\*([^*]+)\*\*|__([^_]+)__/g,(m,a,b)=>`<b>${a||b}</b>`);
   t=t.replace(/(^|[^*\w])\*([^*\n]+)\*(?!\*)/g,'$1<i>$2</i>').replace(/(^|[^_\w])_([^_\n]+)_(?!_)/g,'$1<i>$2</i>');
-  t=t.replace(/==([^=]+)==/g,'<b>$1</b>').replace(/~~([^~]+)~~/g,'$1');
+  t=t.replace(/==([^=]+)==/g,'<b>$1</b>').replace(/~~([^~]+)~~/g,'$1').replace(/&lt;u&gt;([\s\S]*?)&lt;\/u&gt;/g,'<u>$1</u>');
   t=t.replace(/(^|\s)#([A-Za-z][\w/-]*)/g,'$1');
   return t;
 }
@@ -2898,7 +2910,8 @@ function parseNote(path, text){
   const title=file.replace(/\.(md|markdown|txt)$/i,'');
   const hm=body.match(/^\s*#\s+(.+)\s*\n/); if(hm && hm[1].trim().toLowerCase()===title.toLowerCase()) body=body.slice(hm[0].length);
   const html=mdToHtml(body);
-  return {path, title, folder:parts[0]||'', sub:parts.slice(1), tags:[...new Set(tagsFm.concat(inline).map(t=>t.toLowerCase().replace(/[_-]/g,' ').split('/').pop()))], html, text:htmlToText(html), date:fm.date||''};
+  const meta={}; Object.entries(fm).forEach(([k,v])=>{ const mk=metaKey(k); if(mk && mk!=='tags' && !Array.isArray(v)) meta[mk]=String(v).replace(/^["']|["']$/g,''); });
+  return {path, title, meta, folder:parts[0]||'', sub:parts.slice(1), tags:[...new Set(tagsFm.concat(inline).map(t=>t.toLowerCase().replace(/[_-]/g,' ').split('/').pop()))], html, text:htmlToText(html), date:fm.date||''};
 }
 function guessDest(folder){
   const f=folder.trim();
@@ -2908,7 +2921,7 @@ function guessDest(folder){
 }
 function impDestFor(type,title){
   if(type==='npcs') return 'npcs'; if(type==='party') return 'party'; if(type==='log') return 'log';
-  const ex=(S.sections||[]).find(s=>(type==='quests'?s.type==='quests':s.type==='cards') && s.title.toLowerCase()===title.toLowerCase());
+  const ex=(S.sections||[]).find(s=>(type==='quests'||type==='tables'?s.type===type:s.type==='cards') && s.title.toLowerCase()===title.toLowerCase());
   return ex ? 'sec:'+ex.id : `new:${type}:${title}`;
 }
 
@@ -2926,6 +2939,21 @@ function blocksToHtml(parts){
     return el.outerHTML;
   }).join(''));
 }
+
+const META_KEYS={'tags':'tags','status':'status','given by':'giver','giver':'giver','reward':'reward','attitude':'attitude','role':'role','met at':'where','date':'date','species':'species','class':'cls','level':'level','player':'player','ac':'ac','max hp':'maxHp','passive perception':'pp','passive insight':'ins','passive investigation':'inv','languages':'langs'};
+const metaKey = k => META_KEYS[String(k||'').toLowerCase().replace(/_/g,' ').trim()];
+function peelMeta(parts){
+  const meta={lines:[]}; let i=0;
+  for(; i<parts.length; i++){
+    const el=parts[i]; if(el.tagName!=='P' && el.tagName!=='DIV') break;
+    const m=el.textContent.trim().match(/^([A-Za-z][A-Za-z ]{0,24}):\s*(.+)$/); const k=m&&metaKey(m[1]);
+    if(!k) break;
+    meta[k] = k==='tags' ? m[2].split(',').map(x=>x.trim().toLowerCase()).filter(Boolean) : m[2].trim();
+    if(k!=='tags') meta.lines.push([m[1].trim(), k, m[2].trim()]);
+  }
+  return {meta, rest:parts.slice(i)};
+}
+
 const isKnownSection = name => IMP_GUESS.some(([re])=>re.test(String(name||'').trim()));
 function splitEntry(el){
   // one paragraph or list item -> {title, html}
@@ -2958,17 +2986,18 @@ function docHtmlToNotes(html, docName){
   const secs=[]; let sec={name:docName, intro:[], cards:[]}; secs.push(sec); let card=null;
   blocks.forEach(b=>{
     const l=hl(b), name=b.textContent.trim();
+    if(b.classList && b.classList.contains('doc-title')){ if(name && title===docName) title=name; return; }
     if(l && l===skipTitle){ if(name) title=name; return; }
     if(l && secL && l===secL){ sec={name:name||'Untitled', intro:[], cards:[]}; secs.push(sec); card=null; return; }
     if(l && cardL && l===cardL){ card={title:name||'Untitled', parts:[]}; sec.cards.push(card); return; }
     if(card) card.parts.push(b); else sec.intro.push(b);
   });
   const notes=[];
-  const push=(section, t, html)=>{ notes.push({path:`${docName}/${section}/${t}`, title:t, folder:section, sub:[], tags:[], html, text:htmlToText(html), date:''}); };
+  const push=(section, t, html, meta={})=>{ notes.push({path:`${docName}/${section}/${t}`, title:t, folder:section, sub:[], tags:meta.tags||[], meta, html, text:htmlToText(html), date:meta.date||''}); };
   secs.forEach(s=>{
     if(s.cards.length || (s===secs[0] && secs.length>1)){
       const ih=blocksToHtml(s.intro); if(htmlToText(ih).trim()) push(s.name, `${s.name===docName?title:s.name}: overview`, ih);
-      s.cards.forEach(c=>push(s.name, c.title, blocksToHtml(c.parts)));
+      s.cards.forEach(c=>{ const pm=peelMeta(c.parts); push(s.name, c.title, blocksToHtml(pm.rest), pm.meta); });
     } else if(s.intro.length){
       // no card headings: each paragraph or list item becomes its own card
       s.intro.forEach(b=>{
@@ -2981,7 +3010,7 @@ function docHtmlToNotes(html, docName){
 }
 async function parseDocx(file){
   await loadMammoth();
-  const res = await mammoth.convertToHtml({arrayBuffer: await readBuf(file)}, {styleMap:['u => u'], ignoreEmptyParagraphs:true});
+  const res = await mammoth.convertToHtml({arrayBuffer: await readBuf(file)}, {styleMap:['u => u', "p[style-name='Title'] => p.doc-title:fresh", "p[style-name='Subtitle'] => p.doc-title:fresh"], ignoreEmptyParagraphs:true});
   return docHtmlToNotes(res.value, file.name.replace(/\.docx$/i,''));
 }
 
@@ -3065,7 +3094,7 @@ function destOptions(cur, folder){
   const guess=guessDest(folder);
   const newVal = cur.startsWith('new:') ? cur : (guess.startsWith('new:')?guess:`new:cards:${folder||'Notes'}`);
   opts.push([newVal, `New section: ${newVal.split(':').slice(2).join(':')}`]);
-  (S.sections||[]).filter(s=>s.type==='cards'||s.type==='quests').forEach(s=>opts.push(['sec:'+s.id, `Existing section: ${s.title}`]));
+  (S.sections||[]).filter(s=>s.type==='cards'||s.type==='quests'||s.type==='tables').forEach(s=>opts.push(['sec:'+s.id, `Existing section: ${s.title}`]));
   opts.push(['npcs','NPC roster (also on the Social tab)'],['party','Party tab (player characters)'],['log','Session log and Journal'],['skip','Don’t import']);
   return opts.map(([v,l])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(l)}</option>`).join('');
 }
@@ -3090,6 +3119,8 @@ dlgImp.addEventListener('change', e=>{
   const f=e.target.dataset.impf; if(f!==undefined && IMP){ IMP.folders[f].dest=e.target.value; impRender(); return; }
   const c=e.target.dataset.impc; if(c!==undefined && IMP){ IMP.plan[+c].choice=e.target.value; }
 });
+const META_USED={npcs:['attitude','role','where'], party:['species','cls','level','player','ac','maxHp','pp','ins','inv','langs'], log:['date'], quests:['status','giver','reward'], cards:[]};
+function metaLeft(n, kind){ const used=META_USED[kind]||[]; return ((n.meta||{}).lines||[]).filter(([,k])=>!used.includes(k)); }
 function impApply(){
   const plan=IMP.plan; const made={}; let added=0, updated=0;
   const secFor = dest => {
@@ -3106,24 +3137,163 @@ function impApply(){
     if(ch==='keep') return;
     const fresh = p.status==='new' || ch==='add' || ch==='both';
     if(p.dest==='npcs'){
-      if(fresh){ S.npcs.unshift({id:uid(), created:Date.now(), session:curSessionN(), name:n.title+(ch==='both'?' (imported)':''), role:'', where:'', attitude:'Indifferent', notes:n.text, src:ch==='both'?null:n.path, srcText:n.text}); added++; }
-      else { Object.assign(p.match, {notes:n.text, src:n.path, srcText:n.text}); updated++; }
+      const mt=n.meta||{};
+      const npcNotes=metaLeft(n,'npcs').map(([l,,v])=>`${l}: ${v}`).concat(n.text?[n.text]:[]).join('\n');
+      if(fresh){ S.npcs.unshift({id:uid(), created:Date.now(), session:curSessionN(), name:n.title+(ch==='both'?' (imported)':''), role:mt.role||'', where:mt.where||'', attitude:ATT.includes(mt.attitude)?mt.attitude:'Indifferent', notes:npcNotes, src:ch==='both'?null:n.path, srcText:n.text}); added++; }
+      else { Object.assign(p.match, {notes:npcNotes, src:n.path, srcText:n.text}); updated++; }
     } else if(p.dest==='party'){
       const pn=n.text.split('\n')[0].slice(0,200);
-      if(fresh){ S.party.push({id:uid(), name:n.title, notes:pn, saves:{}, src:ch==='both'?null:n.path, srcText:pn}); added++; }
+      const mt=n.meta||{};
+      if(fresh){ S.party.push({id:uid(), name:n.title, notes:pn, saves:{}, species:mt.species||'', cls:mt.cls||'', level:mt.level||'', player:mt.player||'', ac:mt.ac||'', maxHp:mt.maxHp||'', pp:mt.pp||'', ins:mt.ins||'', inv:mt.inv||'', langs:mt.langs||'', src:ch==='both'?null:n.path, srcText:pn}); added++; }
       else { Object.assign(p.match,{notes:pn, src:n.path, srcText:pn}); updated++; }
     } else if(p.dest==='log'){
       if(fresh){ const num=curSessionN()+1; S.sessions.push({id:uid(), n:num, date:n.date||'', title:n.title, html:n.html, text:n.text, src:ch==='both'?null:n.path, srcText:n.text}); added++; }
       else { Object.assign(p.match, {html:n.html, text:n.text, src:n.path, srcText:n.text}); updated++; }
     } else {
       const s=secFor(p.dest);
-      if(fresh){ s.items.push({id:uid(), title:n.title+(ch==='both'?' (imported)':''), html:n.html, text:n.text, tags:extraTags(n,s), src:ch==='both'?null:n.path, srcText:n.text, ...(s.type==='quests'?{status:'Active'}:{})}); added++; }
+      if(s.type==='tables'){ const entries=n.text.split('\n').map(x=>x.replace(/^\s*(•|\d+[.)])\s*/,'').trim()).filter(Boolean).join('\n');
+        if(fresh){ s.items.push({id:uid(), title:n.title+(ch==='both'?' (imported)':''), entries, tags:extraTags(n,s), src:ch==='both'?null:n.path, srcText:n.text}); added++; }
+        else { Object.assign(p.match,{title:n.title, entries, src:n.path, srcText:n.text}); updated++; }
+        return; }
+      const left=metaLeft(n, s.type==='quests'?'quests':'cards'); if(left.length){ n.html=cleanHtml(left.map(([l,,v])=>`<div><b>${esc(l)}:</b> ${esc(v)}</div>`).join('')+n.html); }
+      if(fresh){ s.items.push({id:uid(), title:n.title+(ch==='both'?' (imported)':''), html:n.html, text:n.text, tags:extraTags(n,s), src:ch==='both'?null:n.path, srcText:n.text, ...(s.type==='quests'?{status:QSTAT.includes((n.meta||{}).status)?n.meta.status:'Active', giver:(n.meta||{}).giver||'', reward:(n.meta||{}).reward||''}:{})}); added++; }
       else { const keepTags=p.match.tags||[]; Object.assign(p.match, {title:n.title, html:n.html, text:n.text, tags:[...new Set(keepTags.concat(extraTags(n,s)))], src:n.path, srcText:n.text}); updated++; }
     }
   });
   dlgImp.close(); IMP=null;
   commit(); renderAll(); setTab('campaign');
   toast(`Imported: ${added} new, ${updated} updated.`);
+}
+
+
+/* ================= export as Word (.docx) or Markdown (.zip) ================= */
+function loadJSZip(){
+  if(window.JSZip) return Promise.resolve();
+  if(loadJSZip.p) return loadJSZip.p;
+  return loadJSZip.p = new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload=res; s.onerror=()=>{ loadJSZip.p=null; rej(); }; document.head.appendChild(s); });
+}
+function exportModel(on){
+  const parts=[];
+  if(on('party')) parts.push({title:'Player Characters', items:S.party.map(p=>({title:p.name||'Unnamed', html:p.notes?textToHtml(p.notes):'', tags:[], meta:[['Species',p.species],['Class',p.cls],['Level',p.level],['Player',p.player],['AC',p.ac],['Max HP',p.maxHp],['Passive Perception',p.pp],['Passive Insight',p.ins],['Passive Investigation',p.inv],['Languages',p.langs]].filter(x=>x[1])}))});
+  (S.sections||[]).forEach(s=>{
+    if(s.type==='npcs'||s.type==='journal'||!on('sec:'+s.id)) return;
+    if(s.type==='calendar'){ const c=s.cal||{day:1,events:[]}; parts.push({title:s.title, items:[{title:'Calendar', tags:[], meta:[['Current day',`Day ${c.day}${c.label?' ('+c.label+')':''}`]], html:c.events.length?'<ul>'+[...c.events].sort((a,b)=>a.day-b.day).map(ev=>`<li><b>Day ${ev.day}:</b> ${esc(ev.text)}</li>`).join('')+'</ul>':''}]}); return; }
+    parts.push({title:s.title, items:(s.items||[]).map(it=>({title:it.title||'Untitled', tags:itemTags(s,it),
+      meta: s.type==='quests' ? [['Status',it.status||'Active'],['Given by',it.giver],['Reward',it.reward]].filter(x=>x[1]) : [],
+      html: s.type==='tables' ? '<ol>'+String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')+'</ol>' : itemHtml(it)}))});
+  });
+  if(on('npcs')) parts.push({title:'NPCs', items:S.npcs.map(n=>({title:n.name||'Unnamed', tags:['npc'], meta:[['Attitude',n.attitude||'Indifferent'],['Role',n.role],['Met at',n.where]].filter(x=>x[1]), html: on('npcnotes')&&n.notes ? textToHtml(n.notes) : ''}))});
+  if(on('log')) parts.push({title:'Sessions', items:[...S.sessions].sort((a,b)=>a.n-b.n).map(s=>({title:`Session ${s.n}${s.title?' - '+s.title:''}`, tags:[], meta:[['Date',s.date]].filter(x=>x[1]), html:sessHtml(s)}))});
+  return parts;
+}
+const safeName = s => (String(s||'Untitled').replace(/[\\/:*?"<>|#^\[\]]+/g,' ').replace(/\s+/g,' ').trim() || 'Untitled').slice(0,120);
+function htmlToMd(html){
+  const t=document.createElement('template'); t.innerHTML=cleanHtml(html);
+  const inl=n=>{ let s=''; n.childNodes.forEach(c=>{
+    if(c.nodeType===3){ s+=c.textContent; return; } if(c.nodeType!==1) return;
+    const tg=c.tagName; if(tg==='UL'||tg==='OL') return;
+    if(tg==='BR') s+='\n'; else if(tg==='B'||tg==='STRONG'){ const x=inl(c); s+= x.trim()?`**${x}**`:x; } else if(tg==='I'||tg==='EM'){ const x=inl(c); s+= x.trim()?`*${x}*`:x; } else if(tg==='U') s+=`<u>${inl(c)}</u>`; else s+=inl(c);
+  }); return s; };
+  const lines=[]; let buf='';
+  const flush=()=>{ if(buf.trim()) lines.push(...buf.split('\n')); buf=''; };
+  const walk=(n, depth)=>{ n.childNodes.forEach(c=>{
+    if(c.nodeType===3){ buf+=c.textContent; return; } if(c.nodeType!==1) return;
+    const tg=c.tagName;
+    if(tg==='UL'||tg==='OL'){ flush(); let i=1; [...c.children].forEach(li=>{ lines.push('  '.repeat(depth)+(tg==='UL'?'- ':`${i++}. `)+inl(li).replace(/\n/g,' ').trim()); [...li.children].filter(x=>x.tagName==='UL'||x.tagName==='OL').forEach(sub=>{ const w=document.createElement('div'); w.appendChild(sub.cloneNode(true)); walk(w, depth+1); }); }); return; }
+    if(tg==='DIV'||tg==='P'){ flush(); const hasList=[...c.children].some(x=>x.tagName==='UL'||x.tagName==='OL'); if(hasList) walk(c, depth); else { const x=inl(c); lines.push(...(x.trim()?x.split('\n'):[''])); } return; }
+    if(tg==='BR'){ buf+='\n'; return; }
+    buf+=inl({childNodes:[c]});
+  }); };
+  walk(t.content, 0); flush();
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+const yq = v => /[:#\[\]{},&*!|>'"%@`]|^\s|\s$/.test(String(v)) ? JSON.stringify(String(v)) : String(v);
+async function exportMarkdown(on){
+  await loadJSZip();
+  const zip=new JSZip(), root=zip.folder(safeName(S.name));
+  exportModel(on).forEach(part=>{
+    const dir=root.folder(safeName(part.title)), used=new Set();
+    part.items.forEach(it=>{
+      let base=safeName(it.title), name=base, k=2; while(used.has(name.toLowerCase())) name=`${base} (${k++})`; used.add(name.toLowerCase());
+      const fm=[]; if(it.tags.length) fm.push('tags:', ...it.tags.map(t=>'  - '+yq(t.replace(/\s+/g,'-'))));
+      it.meta.forEach(([k2,v])=>fm.push(`${k2.toLowerCase().replace(/\s+/g,'_')}: ${yq(v)}`));
+      const body=htmlToMd(it.html||'');
+      dir.file(name+'.md', (fm.length?`---\n${fm.join('\n')}\n---\n\n`:'')+body+'\n');
+    });
+  });
+  return zip.generateAsync({type:'blob', mimeType:'application/zip'});
+}
+const xq = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function htmlToParas(html, nums){
+  // returns WordprocessingML paragraphs for our limited HTML
+  const t=document.createElement('template'); t.innerHTML=cleanHtml(html);
+  const out=[]; let runs=[];
+  const run=(text,f)=>`<w:r>${(f.b||f.i||f.u)?`<w:rPr>${f.b?'<w:b/>':''}${f.i?'<w:i/>':''}${f.u?'<w:u w:val="single"/>':''}</w:rPr>`:''}<w:t xml:space="preserve">${xq(text)}</w:t></w:r>`;
+  const para=(rs, ppr='')=>`<w:p>${ppr?`<w:pPr>${ppr}</w:pPr>`:''}${rs.join('')}</w:p>`;
+  const flush=(ppr)=>{ if(runs.length){ out.push(para(runs, ppr)); runs=[]; } };
+  const inl=(n,f)=>{ n.childNodes.forEach(c=>{
+    if(c.nodeType===3){ if(c.textContent) runs.push(run(c.textContent,f)); return; } if(c.nodeType!==1) return;
+    const tg=c.tagName; if(tg==='UL'||tg==='OL') return;
+    if(tg==='BR'){ runs.push('<w:r><w:br/></w:r>'); return; }
+    inl(c, {b:f.b||tg==='B'||tg==='STRONG', i:f.i||tg==='I'||tg==='EM', u:f.u||tg==='U'});
+  }); };
+  const list=(el, lvl)=>{
+    let numId; if(el.tagName==='OL'){ nums.push('dec'); numId=nums.length; } else numId=1;
+    [...el.children].forEach(li=>{ runs=[]; inl(li,{}); flush(`<w:pStyle w:val="ListParagraph"/><w:numPr><w:ilvl w:val="${lvl}"/><w:numId w:val="${numId}"/></w:numPr>`);
+      [...li.children].filter(x=>x.tagName==='UL'||x.tagName==='OL').forEach(sub=>list(sub, Math.min(lvl+1,2))); });
+  };
+  const walk=n=>{ n.childNodes.forEach(c=>{
+    if(c.nodeType===3){ if(c.textContent) runs.push(run(c.textContent,{})); return; } if(c.nodeType!==1) return;
+    const tg=c.tagName;
+    if(tg==='UL'||tg==='OL'){ flush(); list(c,0); return; }
+    if(tg==='DIV'||tg==='P'){ flush(); if([...c.children].some(x=>x.tagName==='UL'||x.tagName==='OL')) walk(c); else { inl(c,{}); flush(); } return; }
+    if(tg==='BR'){ flush(); return; }
+    inl({childNodes:[c]},{});
+  }); };
+  walk(t.content); flush();
+  return out;
+}
+async function exportDocx(on){
+  await loadJSZip();
+  const nums=['bullet']; const body=[];
+  const P=(text, style, f={})=>`<w:p>${style?`<w:pPr><w:pStyle w:val="${style}"/></w:pPr>`:''}<w:r>${(f.b||f.i)?`<w:rPr>${f.b?'<w:b/>':''}${f.i?'<w:i/>':''}</w:rPr>`:''}<w:t xml:space="preserve">${xq(text)}</w:t></w:r></w:p>`;
+  body.push(P(S.name,'Title'));
+  exportModel(on).forEach(part=>{
+    body.push(P(part.title,'Heading1'));
+    part.items.forEach(it=>{
+      body.push(P(it.title,'Heading2'));
+      it.meta.forEach(([k,v])=>body.push(`<w:p><w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">${xq(k)}: </w:t></w:r><w:r><w:t xml:space="preserve">${xq(v)}</w:t></w:r></w:p>`));
+      if(it.tags.length) body.push(`<w:p><w:r><w:rPr><w:i/><w:color w:val="6B665E"/></w:rPr><w:t xml:space="preserve">Tags: ${xq(it.tags.join(', '))}</w:t></w:r></w:p>`);
+      body.push(...htmlToParas(it.html||'', nums));
+    });
+  });
+  const W='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+  const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${W}><w:body>${body.join('')}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  const st=(id,name,extra)=>`<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${name}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/>${extra}</w:style>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="120" w:line="276" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>
+<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>
+${st('Title','Title','<w:pPr><w:spacing w:after="240"/></w:pPr><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="52"/></w:rPr>')}
+${st('Heading1','heading 1','<w:pPr><w:keepNext/><w:spacing w:before="360" w:after="120"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="36"/></w:rPr>')}
+${st('Heading2','heading 2','<w:pPr><w:keepNext/><w:spacing w:before="240" w:after="80"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:rFonts w:ascii="Georgia" w:hAnsi="Georgia"/><w:b/><w:sz w:val="28"/></w:rPr>')}
+${st('ListParagraph','List Paragraph','<w:pPr><w:spacing w:after="40"/><w:ind w:left="720"/><w:contextualSpacing/></w:pPr>')}
+</w:styles>`;
+  const lvl=(fmt,i)=>`<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="${fmt}"/><w:lvlText w:val="${fmt==='bullet'?['•','◦','▪'][i]:`%${i+1}.`}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${720*(i+1)}" w:hanging="360"/></w:pPr></w:lvl>`;
+  const numbering=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering ${W}><w:abstractNum w:abstractNumId="0">${[0,1,2].map(i=>lvl('bullet',i)).join('')}</w:abstractNum><w:abstractNum w:abstractNumId="1">${[0,1,2].map(i=>lvl('decimal',i)).join('')}</w:abstractNum>${nums.map((k,i)=>`<w:num w:numId="${i+1}"><w:abstractNumId w:val="${k==='bullet'?0:1}"/>${k==='bullet'?'':'<w:lvlOverride w:ilvl="0"><w:startOverride w:val="1"/></w:lvlOverride>'}</w:num>`).join('')}</w:numbering>`;
+  const zip=new JSZip();
+  zip.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>');
+  zip.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  zip.file('word/_rels/document.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>');
+  zip.file('word/document.xml', doc); zip.file('word/styles.xml', styles); zip.file('word/numbering.xml', numbering);
+  return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+async function exportAlt(fmt, on){
+  if(!exportModel(on).length){ toast('Pick at least one part to include.'); return; }
+  try{
+    const blob = fmt==='docx' ? await exportDocx(on) : await exportMarkdown(on);
+    dlgDoc.close();
+    await saveFile(`${slug(S.name)}${fmt==='docx'?'.docx':'-markdown.zip'}`, blob);
+    toast(fmt==='docx' ? 'Word document saved.' : 'Markdown saved. Unzip it into your Obsidian vault.');
+  }catch(e){ toast('Couldn’t build the file. Check your internet connection and try again.'); }
 }
 
 /* ================= confirm box ================= */
