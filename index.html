@@ -2341,6 +2341,7 @@ function campAct(act, el, e){
   const it = s && el.dataset.id ? (s.items||[]).find(x=>x.id===el.dataset.id) : null;
   switch(act){
     case 'cx-addsec': openSecDlg(); break;
+    case 'cx-import': openImport(); break;
     case 'cx-jrorder': jrOrder=el.dataset.v; lsSet('dmmt.jrorder', jrOrder); renderCampaign(); break;
     case 'cx-session': startSession(); break;
     case 'cx-preset': addPresetSection(+el.dataset.i); break;
@@ -3281,7 +3282,6 @@ function onClick(e){
   if(act==='imp-dir'){ impFileDir.click(); return; }
   if(act==='imp-files'){ impFiles.click(); return; }
   if(act==='imp-go'){ impApply(); return; }
-  if(act==='cx-import'){ openImport(); return; }
   switch(act){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#scratch-rte .rte-body')?.focus(); break;
     case 'more': moreMenu(el); break;
