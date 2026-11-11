@@ -705,6 +705,14 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
 </dialog>
 
 <script>
+/* Sandbox mode (index.html?sandbox=1): used by test.html. Memory-only storage, no syncing, no downloads. */
+const SANDBOX = /[?&]sandbox=1\b/.test(location.search);
+if(SANDBOX){
+  const mem={};
+  const shim={getItem:k=>Object.prototype.hasOwnProperty.call(mem,k)?mem[k]:null, setItem:(k,v)=>{mem[k]=String(v);}, removeItem:k=>{delete mem[k];}, key:i=>Object.keys(mem)[i]??null, clear:()=>{Object.keys(mem).forEach(k=>delete mem[k]);}, get length(){return Object.keys(mem).length;}};
+  try{ Object.defineProperty(window,'localStorage',{value:shim, configurable:true}); }catch(e){}
+  window.__downloads=[];
+}
 /* ================= helpers ================= */
 const $ = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => [...r.querySelectorAll(s)];
@@ -918,7 +926,7 @@ function idbOpen(){ return new Promise(res=>{ try{ const r=indexedDB.open('dmmt'
 const idbPutP=(id,v)=>new Promise(res=>{ try{ const tx=idb.transaction('campaigns','readwrite'); tx.objectStore('campaigns').put(v,id); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); tx.onabort=()=>res(false); }catch(e){ res(false); } });
 function idbAll(){ return new Promise(res=>{ const out=[]; try{ const req=idb.transaction('campaigns','readonly').objectStore('campaigns').openCursor(); req.onsuccess=()=>{ const c=req.result; if(c){ out.push([c.key,c.value]); c.continue(); } else res(out); }; req.onerror=()=>res(out); }catch(e){ res(out); } }); }
 async function storageInit(){
-  idb = window.indexedDB ? await Promise.race([idbOpen(), new Promise(r=>setTimeout(()=>r(null), 4000))]) : null;
+  idb = (!SANDBOX && window.indexedDB) ? await Promise.race([idbOpen(), new Promise(r=>setTimeout(()=>r(null), 4000))]) : null;
   const lsKeys=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.startsWith('dmmt.camp.')) lsKeys.push(k); } }catch(e){}
   if(idb){
     (await idbAll()).forEach(([k,v])=>CAMPS.set(k,v));
@@ -987,7 +995,7 @@ async function pushRemote(){
   pushing=false; if(pushAgain){ pushAgain=false; pushRemote(); }
 }
 async function initRemote(){
-  if(!window.claude || !window.claude.use) return;
+  if(SANDBOX || !window.claude || !window.claude.use) return;
   try{
     const [d,user] = await Promise.all([claude.use('db'), claude.use('user')]);
     if(!d || !user) return;
@@ -1089,6 +1097,7 @@ function saveCampDlg(){
   dlgCamp.close(); activate(c, `Started ${c.name}.`, true);
 }
 async function saveFile(filename, text, type='application/json'){
+  if(SANDBOX){ window.__downloads.push({filename, data:text}); return; }
   const dl = (window.claude && window.claude.use) ? await claude.use('downloads').catch(()=>null) : null;
   if(dl){ await dl.save({filename, data:text}); return; }
   const a=document.createElement('a'); a.href=URL.createObjectURL((text && typeof text==='object' && typeof text.size==='number' && typeof text.slice==='function') ? text : new Blob([text],{type})); a.download=filename;
@@ -3229,7 +3238,7 @@ async function exportMarkdown(on){
       dir.file(name+'.md', (fm.length?`---\n${fm.join('\n')}\n---\n\n`:'')+body+'\n');
     });
   });
-  return zip.generateAsync({type:'blob', mimeType:'application/zip'});
+  return zip.generateAsync({type:'arraybuffer'}).then(buf=>new Blob([buf],{type:'application/zip'}));
 }
 const xq = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 function htmlToParas(html, nums){
@@ -3295,7 +3304,7 @@ ${st('ListParagraph','List Paragraph','<w:pPr><w:spacing w:after="40"/><w:ind w:
   zip.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
   zip.file('word/_rels/document.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>');
   zip.file('word/document.xml', doc); zip.file('word/styles.xml', styles); zip.file('word/numbering.xml', numbering);
-  return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  return zip.generateAsync({type:'arraybuffer'}).then(buf=>new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
 }
 async function exportAlt(fmt, on){
   if(!exportModel(on).length){ toast('Pick at least one part to include.'); return; }
@@ -3379,7 +3388,7 @@ const DRIVE_CLIENT_ID='130710118046-0c4lcgevurere0sb152qs2j0u42gt569.apps.google
 const DRIVE_SCOPE='https://www.googleapis.com/auth/drive.file';
 const DRIVE_FOLDER='DM Toolkit', DRIVE_KEY='dmmt.drive';
 const DAPI='https://www.googleapis.com/drive/v3/files', DUP='https://www.googleapis.com/upload/drive/v3/files';
-const driveOK = !window.claude;
+const driveOK = !window.claude && !SANDBOX;
 let D = lsGet(DRIVE_KEY) || {};
 D = Object.assign({connected:false, folderId:null, files:{}, closed:[]}, D);
 const saveD = () => lsSet(DRIVE_KEY, D);
@@ -3697,6 +3706,7 @@ document.addEventListener('keydown', e=>{
 });
 
 /* ================= boot ================= */
+if(SANDBOX) document.title='DM Toolkit (test sandbox)';
 const toTop=$('#to-top');
 const updateToTop=()=>{ toTop.hidden = window.scrollY < 500; };
 window.addEventListener('scroll', updateToTop, {passive:true});
@@ -3708,7 +3718,7 @@ function renderAll(){ applyLook(); renderCampBtn(); renderScratch(); renderLog()
   loadLocal();
   renderAll();
   initRemote();
-  try{ if(!localStorage.getItem('dmmt.toured') && G.campaigns.length===1 && !(S.updatedAt>0)) setTimeout(openTour, 600); }catch(e){}
+  try{ if(!SANDBOX && !localStorage.getItem('dmmt.toured') && G.campaigns.length===1 && !(S.updatedAt>0)) setTimeout(openTour, 600); }catch(e){}
   if(driveOK){ loadGis().then(initGis).catch(()=>{}); if(D.connected) setDrive(pendingDrive()?'pending':'needtoken'); }
 })();
 </script>
