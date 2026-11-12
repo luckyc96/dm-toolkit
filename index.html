@@ -205,6 +205,33 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .tsec{scroll-margin-top:calc(env(safe-area-inset-top,0px) + 110px);margin-top:1.4rem}
 .tsec h2{border-bottom:2px solid var(--brass);padding-bottom:.2rem;display:inline-block}
 .open-block{margin:.5rem 0 1rem;max-width:72ch}
+.tv-set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.5rem .8rem;margin:.6rem 0;max-width:900px;align-items:end}
+.tv-set-grid label{display:flex;flex-direction:column;gap:.15rem;font-size:.85rem;color:var(--muted)}
+.tv-set-grid select{color:var(--ink)}
+.tv-tbl{display:flex;flex-direction:column;gap:.2rem;grid-column:span 2}
+@media (max-width:560px){ .tv-tbl{grid-column:auto} }
+.tv-src{margin:0;color:var(--muted);line-height:1.35}
+.tv-cur{display:block;color:var(--ink);font-weight:600}
+.tv-cur .tbl-warn{font-weight:400}
+.tv-set-grid .tv-road{flex-direction:row;align-items:center;gap:.4rem;color:var(--ink);padding-bottom:.4rem}
+.tv-setup{max-width:900px;margin:.5rem 0}
+.tv-setup>summary{cursor:pointer;padding:.3rem 0}
+.tv-go{display:flex;gap:.5rem;align-items:center;margin:.7rem 0}
+.tv-warn{color:var(--blood)}
+.tv-day{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;margin:.6rem 0;max-width:900px}
+.tv-day.latest{border-left:4px solid var(--brass)}
+.tv-day header{display:flex;flex-wrap:wrap;gap:.2rem .7rem;align-items:baseline;margin-bottom:.3rem}
+.tv-day h3{margin:0}
+.tv-row{display:grid;grid-template-columns:7rem 1fr;gap:.6rem;padding:.3rem 0;border-top:1px solid var(--line)}
+.tv-k{font-weight:700;color:var(--muted);font-size:.85rem;padding-top:.1rem}
+.tv-fx{display:inline-flex;flex-wrap:wrap;gap:.2rem .6rem;margin-left:.5rem}
+.tv-chk{display:block;margin:.1rem 0}
+.tv-chk.hit{color:var(--blood)}
+.tv-chk .tv-entry{color:var(--ink);font-weight:600}
+.tv-actions{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.5rem}
+.tv-earlier{max-width:900px;margin-top:.4rem}
+.tv-earlier summary{cursor:pointer;color:var(--muted)}
+@media (max-width:560px){ .tv-row{grid-template-columns:1fr;gap:.1rem} }
 .ob-head{display:flex;align-items:baseline;gap:.5rem}
 .ob-head h3{margin:.3rem 0}
 .tbl-row{display:flex;flex-wrap:wrap;gap:.8rem 1.6rem;align-items:flex-start}
@@ -251,6 +278,11 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .roll-res{font-family:var(--font-head);font-size:1.05rem}
 .roll-res b{color:var(--brass);margin-right:.2rem}
 .tbl-entries summary{cursor:pointer;margin-top:.3rem}
+.tbl-ranged{list-style:none;padding-left:0;font-size:.88rem;margin:.3rem 0}
+.tbl-ranged b{display:inline-block;min-width:3.2rem;font-variant-numeric:tabular-nums}
+.tbl-warn{color:var(--blood);margin-left:.5rem}
+.tbl-spread{display:flex;flex-wrap:wrap;gap:.3rem;align-items:center}
+.tbl-spread .btn{min-width:2.8rem}
 .tbl-entries ol{font-size:.88rem;margin:.3rem 0;padding-left:1.4rem}
 .camp-npcs{max-height:none}
 .cal{max-width:640px}
@@ -743,6 +775,7 @@ function toast(msg){ const t=$('#toast'); const host=topHost(); if(t.parentEleme
 
 /* ================= rules data (2024 SRD, in summary) ================= */
 const ul = items => '<ul>'+items.map(i=>'<li>'+i+'</li>').join('')+'</ul>';
+const TERRAINS = [['Arctic','Fast*','6d6 × 10 ft',20,10,10],['Coastal','Normal','2d10 × 10 ft',10,5,15],['Desert','Normal','6d6 × 10 ft',20,10,10],['Forest','Normal','2d8 × 10 ft',10,15,15],['Grassland','Fast','6d6 × 10 ft',15,5,15],['Hill','Normal','2d10 × 10 ft',15,10,15],['Mountain','Slow','4d10 × 10 ft',20,15,20],['Swamp','Slow','2d8 × 10 ft',10,15,20],['Underdark','Normal','2d6 × 10 ft',20,10,20],['Urban','Normal','2d6 × 10 ft',20,15,15],['Waterborne','Special†','6d6 × 10 ft',15,10,15]]; // name, max pace, encounter distance, foraging DC, navigation DC, search DC
 const RULES = [
  // Conditions
  {id:'blinded',cat:'Conditions',t:'Blinded',s:'Can’t see. Attacks against it have advantage; its attacks have disadvantage.',b:ul(['Automatically fails any ability check that requires sight.','Attack rolls against it have advantage.','Its attack rolls have disadvantage.'])},
@@ -796,7 +829,7 @@ const RULES = [
  {id:'vision',cat:'Movement & environment',t:'Vision & light',s:'Dim light is Lightly Obscured; darkness is Heavily Obscured. Darkvision treats each one step brighter.',b:ul(['<b>Lightly Obscured</b> (dim light, patchy fog, moderate foliage): disadvantage on Wisdom (Perception) checks that rely on sight.','<b>Heavily Obscured</b> (darkness, heavy fog, dense foliage): a creature trying to see something there has the Blinded condition for that purpose.','<b>Darkvision:</b> within range, dim light counts as bright and darkness counts as dim. No color in darkness, only shades of gray.','<b>Blindsight:</b> perceive without sight within range. <b>Truesight:</b> sees in magical darkness, sees Invisible creatures, spots illusions, sees true forms.'])},
  {id:'travel',cat:'Movement & environment',t:'Travel pace',s:'Fast 4 mph / 30 mi a day. Normal 3 / 24. Slow 2 / 18.',b:'<div class="scroll-x"><table class="ref"><tr><th>Pace</th><th>Per minute</th><th>Per hour</th><th>Per day</th><th>Effect</th></tr><tr><td>Fast</td><td>400 ft</td><td>4 miles</td><td>30 miles</td><td>Disadvantage on Wisdom (Perception or Survival) and Dexterity (Stealth) checks</td></tr><tr><td>Normal</td><td>300 ft</td><td>3 miles</td><td>24 miles</td><td>Disadvantage on Dexterity (Stealth) checks</td></tr><tr><td>Slow</td><td>200 ft</td><td>2 miles</td><td>18 miles</td><td>Advantage on Wisdom (Perception or Survival) checks</td></tr></table></div><p>A day assumes 8 hours of travel. The terrain sets the fastest pace allowed (see Travel terrain). Mounted travelers can cover twice the distance for 1 hour, then the mounts need a Short or Long Rest before doing it again.</p>'},
  // Travel
- {id:'terrain',cat:'Travel',t:'Travel terrain',s:'Max pace, encounter distance, and foraging, navigation, and search DCs by terrain.',b:'<div class="scroll-x"><table class="ref"><tr><th>Terrain</th><th>Max pace</th><th>Encounter distance</th><th>Foraging DC</th><th>Navigation DC</th><th>Search DC</th></tr>'+[['Arctic','Fast*','6d6 × 10 ft',20,10,10],['Coastal','Normal','2d10 × 10 ft',10,5,15],['Desert','Normal','6d6 × 10 ft',20,10,10],['Forest','Normal','2d8 × 10 ft',10,15,15],['Grassland','Fast','6d6 × 10 ft',15,5,15],['Hill','Normal','2d10 × 10 ft',15,10,15],['Mountain','Slow','4d10 × 10 ft',20,15,20],['Swamp','Slow','2d8 × 10 ft',10,15,20],['Underdark','Normal','2d6 × 10 ft',20,10,20],['Urban','Normal','2d6 × 10 ft',20,15,15],['Waterborne','Special†','6d6 × 10 ft',15,10,15]].map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('')+'</table></div><p class="small">* Keeping a Fast pace in arctic terrain takes the right gear, such as skis. † Speed depends on the vessel (see Vehicles).</p>'},
+ {id:'terrain',cat:'Travel',t:'Travel terrain',s:'Max pace, encounter distance, and foraging, navigation, and search DCs by terrain.',b:'<div class="scroll-x"><table class="ref"><tr><th>Terrain</th><th>Max pace</th><th>Encounter distance</th><th>Foraging DC</th><th>Navigation DC</th><th>Search DC</th></tr>'+TERRAINS.map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join('')+'</tr>').join('')+'</table></div><p class="small">* Keeping a Fast pace in arctic terrain takes the right gear, such as skis. † Speed depends on the vessel (see Vehicles).</p>'},
  {id:'good-roads',cat:'Travel',t:'Good roads',s:'A good road raises the maximum pace one step.',b:'<p>Traveling on a good road raises the group’s maximum pace by one step: Slow becomes Normal, and Normal becomes Fast.</p>'},
  {id:'slower',cat:'Travel',t:'Slower travelers',s:'Anyone at half Speed or less forces a Slow pace.',b:'<p>If any member of the group has their Speed reduced to half or less of normal, the whole group must travel at a Slow pace.</p>'},
  {id:'forced-march',cat:'Travel',t:'Extended travel (forced march)',s:'Each hour past 8: Con save, DC 10 + hours past 8, or gain 1 Exhaustion level.',b:'<p>Characters can push past 8 hours of travel in a day. At the end of each extra hour, every character makes a Constitution saving throw or gains 1 Exhaustion level. The DC is 10 plus 1 for each hour past 8, so the 9th hour is DC 11, the 10th DC 12, and so on.</p>'},
@@ -901,12 +934,13 @@ const strip = h => h.replace(/<[^>]+>/g,' ');
 
 /* ================= state & persistence ================= */
 const LEGACY_KEY='dmmt.state.v1', G_KEY='dmmt.global.v2', CK=id=>'dmmt.camp.'+id;
-const DEFAULT = { v:2, id:'', name:'My campaign', kind:'', look:null, notesHtml:'', createdAt:0, updatedAt:0, party:[], library:[], notes:'', saved:[], npcs:[], sessions:[], sections:[], combat:{active:false, round:0, turnId:null, list:[], prompts:[], seq:0} };
+const DEFAULT = { v:2, id:'', name:'My campaign', kind:'', look:null, notesHtml:'', createdAt:0, updatedAt:0, party:[], library:[], notes:'', saved:[], npcs:[], sessions:[], sections:[], combat:{active:false, round:0, turnId:null, list:[], prompts:[], seq:0}, travel:{terrain:'Forest', pace:'Normal', road:false, climate:'Temperate', season:'Summer', chance:18, checks:2, table:'', day:0, days:[]} };
 const clone = o => JSON.parse(JSON.stringify(o));
 function normalize(o){
   const s = clone(DEFAULT); if(!o || typeof o!=='object') return s;
   for(const k of Object.keys(DEFAULT)) if(o[k]!==undefined && k!=='combat') s[k]=o[k];
   s.combat = Object.assign(clone(DEFAULT.combat), o.combat||{});
+  s.travel = Object.assign(clone(DEFAULT.travel), o.travel||{}); if(!Array.isArray(s.travel.days)) s.travel.days=[];
   ['party','library','saved','npcs','sessions','sections'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
   if(!Array.isArray(s.combat.list)) s.combat.list=[];
   if(!Array.isArray(s.combat.prompts)) s.combat.prompts=[];
@@ -1292,7 +1326,7 @@ const TOUR=[
  {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault, Markdown files, or a Word or Google Docs document split by its headings. You review everything before it’s added, and “How to format your notes” in that window has a guide and a sample to try.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
  {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
  {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Search 330 monsters from the free rules to fill everything in, stat block included. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
- {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
+ {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>The travel day roller: pick terrain, pace, and climate, then roll each day’s distance, weather, and encounter checks, and add the day to your session journal.</li><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
  {tab:'social', hi:'[data-tab=social]', title:'Social', body:`<p>For conversations, deals, and lies.</p><ul><li><b>NPC roster:</b> everyone the party has met, with a Friendly, Indifferent, or Hostile switch and what that means for Influence checks.</li><li>Attitudes, the Influence action, and which skill fits which approach.</li><li>Social spells, languages (with who in the party speaks them), hirelings, selling, and haggling.</li></ul>`},
  {tab:'rules', hi:'[data-tab=rules]', title:'Rules', body:`<p>The quick-reference shelf.</p><ul><li><b>Conditions</b> sit at the top as chips: hover for a summary, click to pin.</li><li><b>Category buttons</b> filter the rules: actions, combat, movement, hazards, traps, checks, resting, weapon mastery, and encounter building.</li><li>Click any rule to expand it, or <b>Pin</b> it to keep it on screen while you work in another tab.</li><li>Cards tagged “house rule” on the Campaign tab show up here too, under <b>House rules</b>.</li></ul>`},
  {tab:'gen', hi:'[data-tab=gen]', title:'Generate', body:`<p>For when the players go somewhere you didn’t plan.</p><ul><li>Names by species, full NPCs, taverns, shops with prices, quick loot, and complications.</li><li><b>Save to notes</b> keeps anything you liked. A rolled NPC can go straight into the roster.</li></ul>`},
@@ -1369,6 +1403,176 @@ document.addEventListener('mouseover', e=>{ const el=e.target.closest('[data-tip
 document.addEventListener('focusin', e=>{ const el=e.target.closest('[data-tip]'); if(el) showTip(el); });
 document.addEventListener('focusout', e=>{ if(e.target.closest('[data-tip]')) hideTip(); });
 window.addEventListener('scroll', hideTip, true);
+
+
+/* ================= travel day roller ================= */
+const PACES=['Slow','Normal','Fast'], PACE_MI={Slow:18, Normal:24, Fast:30};
+const PACE_FX={Fast:'Disadvantage on Perception, Survival, and Stealth checks', Normal:'Disadvantage on Stealth checks', Slow:'Advantage on Perception and Survival checks'};
+const CLIMATES={ // °F ranges per season; precipitation: d20 at or above light / heavy
+  'Temperate':{t:{Spring:[45,65],Summer:[65,85],Autumn:[45,65],Winter:[20,40]}, p:[13,18]},
+  'Cold':{t:{Spring:[10,30],Summer:[35,55],Autumn:[5,25],Winter:[-25,5]}, p:[14,19]},
+  'Hot and dry':{t:{Spring:[75,95],Summer:[90,110],Autumn:[70,90],Winter:[55,75]}, p:[19,20]},
+  'Hot and wet':{t:{Spring:[78,90],Summer:[82,95],Autumn:[78,90],Winter:[72,85]}, p:[9,16]}
+};
+const SEASONS=['Spring','Summer','Autumn','Winter'];
+const CHANCES=[[-1,'Let the table decide'],[0,'Never'],[20,'5% (d20: 20)'],[18,'15% (d20: 18+)'],[15,'30% (d20: 15+)'],[12,'45% (d20: 12+)']];
+const CHECK_LABELS={1:['During the day'],2:['Day','Night'],3:['Morning','Afternoon','Night']};
+const TV = () => S.travel;
+let tvSetupOpen = null;
+document.addEventListener('click', e=>{ const sm=e.target.closest && e.target.closest('.tv-setup>summary'); if(sm) tvSetupOpen=!sm.parentElement.open; }, true);
+const terrainOf = n => TERRAINS.find(t=>t[0]===n) || TERRAINS[3];
+function rollDice(expr){ // "2d8 × 10 ft" -> {total, rolls}
+  const m=String(expr).match(/(\d+)d(\d+)(?:\s*×\s*(\d+))?/); if(!m) return null;
+  const rolls=Array.from({length:+m[1]}, ()=>d(+m[2])); const sum=rolls.reduce((a,b)=>a+b,0);
+  return {total: sum*(+m[3]||1), rolls, sum, mult:+m[3]||1};
+}
+function travelTables(){ const out=[]; (S.sections||[]).forEach(s=>{ if(s.type==='tables') (s.items||[]).forEach(it=>out.push({id:it.id, t:it.title||'Untitled table', it})); }); return out; }
+function allowedPace(tv){
+  const ter=terrainOf(tv.terrain), max=ter[1].replace(/[*†]/g,'');
+  if(max==='Special') return {pace:tv.pace, special:true};
+  let i=PACES.indexOf(max); if(tv.road) i=Math.min(2,i+1);
+  const want=PACES.indexOf(tv.pace);
+  return want>i ? {pace:PACES[i], capped:true, max:PACES[i]} : {pace:tv.pace};
+}
+function rollWeather(tv){
+  const cl=CLIMATES[tv.climate]||CLIMATES.Temperate, [lo,hi]=cl.t[tv.season]||cl.t.Summer;
+  let temp=lo+rand(hi-lo+1); const tr=d(20); let shift='';
+  if(tr<=3){ temp-=10+rand(11); shift='colder than usual'; } else if(tr>=18){ temp+=10+rand(11); shift='warmer than usual'; }
+  const pr=d(20), precip = pr>=cl.p[1] ? 'heavy' : pr>=cl.p[0] ? 'light' : 'none';
+  const wr=d(20), wind = wr>=18 ? 'strong' : wr>=13 ? 'breezy' : 'calm';
+  const feel = temp<=0?'Bitter cold' : temp<=32?'Freezing' : temp<=50?'Cold' : temp<=65?'Cool' : temp<=80?'Mild' : temp<=95?'Hot' : 'Scorching';
+  const fall = temp<=32 ? 'snow' : 'rain';
+  const parts=[`${feel}, about ${temp} °F${shift?' ('+shift+')':''}`];
+  parts.push(precip==='none' ? 'no '+fall : precip==='light' ? 'light '+fall : 'heavy '+fall);
+  parts.push(wind==='calm' ? 'still air' : wind==='breezy' ? 'a steady breeze' : 'strong winds');
+  const fx=[];
+  if(temp<=0) fx.push('extreme-cold');
+  if(temp>=100) fx.push('extreme-heat');
+  if(precip==='heavy') fx.push('heavy-precip');
+  if(wind==='strong') fx.push('strong-wind');
+  return {temp, precip, wind, fall, text:parts.join(', ')+'.', fx, sand: wind==='strong' && (tv.terrain==='Desert' || tv.climate==='Hot and dry')};
+}
+function rollTravelDay(){
+  const tv=TV(), ter=terrainOf(tv.terrain), ap=allowedPace(tv);
+  const day={id:uid(), n:tv.day+1, at:Date.now(), terrain:ter[0], road:!!tv.road, pace:ap.pace, capped:!!ap.capped, special:!!ap.special,
+    miles: ap.special ? null : PACE_MI[ap.pace], nav:ter[4], forage:ter[3], search:ter[5], weather:rollWeather(tv), checks:[]};
+  const labels=CHECK_LABELS[tv.checks]||CHECK_LABELS[2], tbl=travelTables().find(x=>x.id===tv.table);
+  labels.forEach(l=>{
+    const c={label:l};
+    if(+tv.chance===-1){
+      if(tbl){ const r=rollTable(tbl.it.entries); if(r){ c.direct=true; c.roll=r.n; c.die=r.die; c.table=tbl.t; c.hit=!r.none && !isQuiet(r.text); c.entry=r.none ? '' : r.text; } }
+      else c.noTable=true;
+    } else if(+tv.chance){ c.roll=d(20); c.need=+tv.chance; c.hit=c.roll>=c.need; }
+    if(c.hit){
+      const dist=rollDice(ter[2]); if(dist){ c.dist=dist.total; c.distExpr=ter[2].replace(/\s*ft$/,''); }
+      if(tbl && !c.direct){ const r=rollTable(tbl.it.entries); if(r){ c.table=tbl.t; c.tblRoll=r.n; c.die=r.die; c.entry=r.none?'':r.text; } }
+    }
+    day.checks.push(c);
+  });
+  tv.day=day.n; tv.days.unshift(day); tv.days=tv.days.slice(0,10);
+  commit(); renderTravel();
+  const go=document.querySelector('#t-day .tv-go'), hdr=document.querySelector('header.top');
+  if(go){ const y=go.getBoundingClientRect().top - (hdr?Math.max(0,hdr.getBoundingClientRect().bottom):0) - 8; if(Math.abs(y)>4) window.scrollBy(0,y); }
+}
+function travelDayText(day){
+  const w=day.weather, bits=[];
+  bits.push(`${day.terrain}${day.road?', on a road':''}, ${day.pace.toLowerCase()} pace${day.miles?', '+day.miles+' miles':''}.`);
+  bits.push('Weather: '+w.text.charAt(0).toLowerCase()+w.text.slice(1));
+  const enc=day.checks.filter(c=>c.hit);
+  if(day.checks.some(c=>c.noTable)) bits.push('No encounter table chosen.');
+  if(day.checks.some(c=>c.noTable)){}
+  else if(!day.checks.some(c=>c.roll)) bits.push('No encounter checks.');
+  else if(!enc.length) bits.push('No encounters.');
+  else enc.forEach(c=>bits.push(`Encounter (${c.label.toLowerCase()})${c.entry?': '+c.entry:''}${c.dist?`, starting ${c.dist} ft away`:''}.`));
+  return bits.join(' ');
+}
+function logTravelDay(id){
+  const day=TV().days.find(x=>x.id===id); if(!day) return;
+  const para=`<p><b>Travel, day ${day.n}.</b> ${esc(travelDayText(day))}</p>`;
+  const sess=[...S.sessions].sort((a,b)=>b.n-a.n)[0];
+  if(sess){ const h=sessHtml(sess)+para; sess.html=h; sess.text=htmlToText(h); day.logged='Session '+sess.n; }
+  else { const h=(S.notesHtml || textToHtml(S.notes||''))+para; S.notesHtml=h; S.notes=htmlToText(h); day.logged='the Notes drawer'; renderScratch(); }
+  commit(); renderTravel(); renderLog(); renderCampaign();
+  toast(`Day ${day.n} added to ${day.logged}.`);
+}
+function travelTableNote(tv, tbls){
+  const cur=tbls.find(x=>x.id===tv.table);
+  let h='<p class="tv-src small">';
+  if(!tbls.length) h+=`Encounter tables come from <b>Random tables</b> on the Campaign tab. You don’t have any yet. <button type="button" class="wlink" data-act="tv-tables">Add one</button>`;
+  else {
+    if(cur){ const t=parseTable(cur.it.entries), w=tableWarnings(t); h+=`<span class="tv-cur">${esc(tableSummary(t))}${w.map(x=>`<span class="tbl-warn">${esc(x)}</span>`).join('')}</span>`; }
+    h+=`Listed from <b>Random tables</b> on the Campaign tab (${tbls.length} table${tbls.length===1?'':'s'}). <button type="button" class="wlink" data-act="tv-tables">${cur?'Edit or add tables':'See or add tables'}</button>`;
+  }
+  return h+'</p>';
+}
+function goToTables(){
+  let sec=(S.sections||[]).find(x=>x.type==='tables'), added=false;
+  if(!sec){ const i=SEC_PRESETS.findIndex(([t,k])=>k==='tables'); addPresetSection(i); sec=S.sections.find(x=>x.type==='tables'); added=true; }
+  if(!sec) return;
+  campOpen[sec.id]=true; lsSet('dmmt.campopen', campOpen);
+  setTab('campaign'); renderCampaign();
+  const box=document.getElementById('cs-'+sec.id), hdr=document.querySelector('header.top');
+  if(box){ const fd=box.querySelector('details.fold'); if(fd) fd.open=true; const y=box.getBoundingClientRect().top-(hdr?Math.max(0,hdr.getBoundingClientRect().bottom):0)-8; window.scrollBy(0,y); }
+  if(added){ openCard(sec); toast('Added a Random tables section. One encounter per line, with numbers if you want set odds.'); }
+}
+function travelCheckHTML(c){
+  const tblNote = c.table ? ` <span class="muted small">(${esc(c.table)}${c.tblRoll!=null?`, rolled ${c.tblRoll}${c.die?' on d'+c.die:''}`:''})</span>` : '';
+  const where = c.dist ? ` Starts ${c.dist} ft away <span class="muted small">(${esc(c.distExpr)})</span>.` : '';
+  if(c.direct) return `<span class="tv-chk ${c.hit?'hit':''}"><b>${esc(c.label)}</b> rolled ${c.roll}${c.die?' on d'+c.die:''} on ${esc(c.table)}: ${c.hit ? `<span class="tv-entry">${esc(c.entry)}</span>.${where}` : (c.entry ? esc(c.entry)+' <span class="muted small">(quiet)</span>' : 'nothing on the table for that roll (quiet).')}</span>`;
+  return `<span class="tv-chk ${c.hit?'hit':''}"><b>${esc(c.label)}</b> rolled ${c.roll} (needs ${c.need}+): ${c.hit ? `<b>encounter!</b>${c.table ? (c.entry && !isQuiet(c.entry) ? ` <span class="tv-entry">${esc(c.entry)}</span>` : ` <span class="muted small">The table came up empty${c.entry?' ('+esc(c.entry)+')':''}: pick one that fits.</span>`)+tblNote : ` <span class="muted small">Pick one that fits, or roll on a table.</span>`}${where}` : 'quiet.'}</span>`;
+}
+function travelDayCard(day, latest){
+  const w=day.weather, pin=(id,l)=>`<button class="wlink" data-act="pin" data-id="${id}">${l}</button>`;
+  const FXL={'extreme-cold':'Extreme cold','extreme-heat':'Extreme heat','heavy-precip':'Heavy '+w.fall,'strong-wind':'Strong wind'};
+  let h=`<article class="tv-day${latest?' latest':''}" data-day="${day.id}"><header><h3>Day ${day.n}</h3><span class="muted small">${esc(day.terrain)}${day.road?' · road':''} · ${day.pace} pace${day.miles?` · ${day.miles} miles`:''}</span></header>`;
+  if(day.capped) h+=`<p class="tv-warn small">${esc(day.terrain)} only allows a ${day.pace} pace${day.road?' even on a road':''}, so the day used that.</p>`;
+  if(day.special) h+=`<p class="small muted">Waterborne: distance depends on the vessel. See ${pin('vehicles','Vehicles & ships')}.</p>`;
+  h+=`<div class="tv-row"><span class="tv-k">Weather</span><span>${esc(w.text)}${w.fx.length?`<span class="tv-fx">${w.fx.map(id=>pin(id,FXL[id])).join(' ')}</span>`:''}${w.sand?' <span class="small muted">Desert winds can raise a sandstorm.</span>':''}</span></div>`;
+  h+=`<div class="tv-row"><span class="tv-k">Encounters</span><span>${day.checks.some(c=>c.noTable) ? '<span class="muted">Pick an encounter table to let it decide.</span>' : !day.checks.some(c=>c.roll) ? '<span class="muted">No checks (set to Never).</span>' : day.checks.map(c=>travelCheckHTML(c)).join('')}</span></div>`;
+  h+=`<div class="tv-row"><span class="tv-k">Checks</span><span class="small">Navigation DC ${day.nav} · Foraging DC ${day.forage} · Search DC ${day.search} · ${esc(PACE_FX[day.pace]||'')}</span></div>`;
+  if(latest) h+=`<div class="tv-actions">${day.logged?`<span class="muted small">Logged to ${esc(day.logged)}.</span>`:`<button class="btn sm" data-act="tv-log" data-id="${day.id}">${S.sessions.length?'Add to the session journal':'Add to the Notes drawer'}</button>`}<button class="btn sm quiet" data-act="tv-reroll">Reroll this day</button></div>`;
+  return h+'</article>';
+}
+function travelDayHTML(){
+  const tv=TV(), tbls=travelTables(), ap=allowedPace(tv);
+  if(tv.table && !tbls.some(x=>x.id===tv.table)) tv.table='';
+  const sel=(k,opts,label)=>`<label>${label}<select class="tv-set" data-k="${k}">${opts.map(([v,l])=>`<option value="${esc(v)}" ${String(tv[k])===String(v)?'selected':''}>${esc(l)}</option>`).join('')}</select></label>`;
+  let h=`<section class="tsec" id="t-day"><h2>Travel day</h2><p class="muted small" style="margin-top:.2rem">Set the trip once, then roll each day: distance, weather, and encounter checks. Weather rolls are this toolkit’s own, not an official table.</p>
+  <details class="tv-setup" ${(tvSetupOpen ?? !tv.days.length)?'open':''}><summary><b>Trip settings</b> <span class="muted small">${esc([tv.terrain+(tv.road?' road':''), ap.pace+' pace', tv.climate+' '+tv.season.toLowerCase(), +tv.chance===-1 ? 'table decides, '+(CHECK_LABELS[tv.checks]||[]).length+'× a day' : +tv.chance ? (CHANCES.find(c=>c[0]===+tv.chance)||[0,''])[1].split(' ')[0]+' encounters, '+(CHECK_LABELS[tv.checks]||[]).length+'× a day' : 'no encounters'].join(' · '))}</span></summary>
+  <div class="tv-set-grid">
+    ${sel('terrain', TERRAINS.map(t=>[t[0],t[0]]), 'Terrain')}
+    ${sel('pace', PACES.map(p=>[p,p+' ('+PACE_MI[p]+' mi/day)']), 'Pace')}
+    <label class="row-label tv-road"><input type="checkbox" class="tv-set" data-k="road" ${tv.road?'checked':''}> On a good road</label>
+    ${sel('climate', Object.keys(CLIMATES).map(c=>[c,c]), 'Climate')}
+    ${sel('season', SEASONS.map(x=>[x,x]), 'Season')}
+    ${sel('chance', CHANCES, 'Encounter chance')}
+    ${sel('checks', [[1,'Once a day'],[2,'Day and night'],[3,'Morning, afternoon, night']], 'Checks per day')}
+    <div class="tv-tbl">${sel('table', [['','No table: I’ll pick'], ...tbls.map(x=>[x.id,x.t])], 'Encounter table')}${travelTableNote(tv, tbls)}</div>
+  </div></details>`;
+  if(+tv.chance===-1 && !tv.table) h+=`<p class="tv-warn small">“Let the table decide” needs an encounter table. Pick one above.</p>`;
+  if(ap.capped) h+=`<p class="tv-warn small">${esc(tv.terrain)} allows a ${ap.max} pace at most${tv.road?' on a road':''}. Days will use ${ap.max}.</p>`;
+  h+=`<div class="tv-go"><button class="btn primary" data-act="tv-roll">Roll day ${tv.day+1}</button>${tv.days.length?`<button class="btn quiet" data-act="tv-new">Start a new trip</button>`:''}</div>`;
+  if(tv.days.length){
+    h+=travelDayCard(tv.days[0], true);
+    if(tv.days.length>1) h+=`<details class="tv-earlier"><summary>Earlier days (${tv.days.length-1})</summary>${tv.days.slice(1).map(x=>travelDayCard(x,false)).join('')}</details>`;
+  }
+  return h+'</section>';
+}
+function travelAct(act, el){
+  const tv=TV();
+  if(act==='tv-roll') rollTravelDay();
+  else if(act==='tv-reroll'){ if(tv.days.length){ tv.days.shift(); tv.day=Math.max(0,tv.day-1); } rollTravelDay(); }
+  else if(act==='tv-log') logTravelDay(el.dataset.id);
+  else if(act==='tv-tables') goToTables();
+  else if(act==='tv-new') confirmBox('Start a new trip?', 'The day count goes back to 1 and the rolled days are cleared. Anything you already added to the journal stays there.', [
+    {label:'Cancel'}, {label:'Start a new trip', primary:true, fn:()=>{ tv.day=0; tv.days=[]; commit(); renderTravel(); }}]);
+}
+document.addEventListener('change', e=>{
+  const t=e.target; if(!t.classList || !t.classList.contains('tv-set')) return;
+  const k=t.dataset.k, tv=TV();
+  tv[k] = t.type==='checkbox' ? t.checked : (['chance','checks'].includes(k) ? +t.value : t.value);
+  commit(); renderTravel();
+});
 
 /* ================= search ================= */
 const q=$('#q'), results=$('#results'); let hits=[], hitIdx=0;
@@ -2047,7 +2251,8 @@ function ruleRow(id){ const r=RULE[id]; return `<details class="rule"><summary><
 function openBlock(id, bare){ const r=RULE[id]; return `<div class="open-block">${bare?'':`<div class="ob-head"><h3>${esc(r.t)}</h3><button class="btn sm quiet" data-act="pin" data-id="${r.id}">Pin</button></div>`}${r.b}</div>`; }
 const secHead = (l,pin) => `<div class="ob-head"><h2>${l}</h2>${pin?`<button class="btn sm quiet" data-act="pin" data-id="${pin}">Pin</button>`:''}</div>`;
 function renderTravel(){
-  let h=`<nav class="jump">${TRAVEL.map(([id,l])=>`<button data-act="jump" data-id="${id}">${l}</button>`).join('')}</nav>`;
+  let h=`<nav class="jump"><button data-act="jump" data-id="t-day">Travel day</button>${TRAVEL.map(([id,l])=>`<button data-act="jump" data-id="${id}">${l}</button>`).join('')}</nav>`;
+  h+=travelDayHTML();
   TRAVEL.forEach(([id,l,s])=>{
     h+=`<section class="tsec" id="${id}"><h2>${l}</h2>${(s.open||[]).map(openBlock).join('')}${s.list?'<div class="tlist">'+s.list.map(ruleRow).join('')+'</div>':''}</section>`;
   });
@@ -2186,6 +2391,57 @@ function wlinkOpen(name){
 }
 const itemHtml = it => it.html!=null ? cleanHtml(it.html) : textToHtml(it.text||'');
 
+
+/* ================= random tables: numbered ranges and real dice ================= */
+const DICE=[4,6,8,10,12,20,100];
+const DICE_BTNS = () => DICE.map(n=>`<button type="button" class="btn sm" data-act="tbl-spread" data-die="${n}">d${n}</button>`).join('');
+const RANGE_RE=/^(\d{1,3}|00)\s*(?:[-–—]|to)\s*(\d{1,3}|00)\s*[:.)\-–—]?\s*(.*)$/i, ONE_RE=/^(\d{1,3}|00)\s*[:.)]\s*(.+)$/;
+const dieNum = v => v==='00' ? 100 : +v;
+function parseTable(text){
+  const lines=String(text||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const rows=lines.map(l=>{ let m=l.match(RANGE_RE); if(m){ let lo=dieNum(m[1]), hi=dieNum(m[2]); if(lo>hi) [lo,hi]=[hi,lo]; return {lo,hi,text:m[3].trim()}; }
+    m=l.match(ONE_RE); if(m) return {lo:dieNum(m[1]), hi:dieNum(m[1]), text:m[2].trim()}; return {text:l}; });
+  const num=rows.filter(r=>r.lo!=null);
+  if(num.length>=2 && num.length*2>=rows.length){
+    const max=Math.max(...num.map(r=>r.hi)), die=DICE.find(x=>x>=max)||max;
+    const hits=new Array(die+1).fill(0); num.forEach(r=>{ for(let i=Math.max(1,r.lo);i<=Math.min(die,r.hi);i++) hits[i]++; });
+    const runs=test=>{ const out=[]; let a=null; for(let i=1;i<=die+1;i++){ const on=i<=die && test(hits[i]); if(on && a==null) a=i; if(!on && a!=null){ out.push(a===i-1?`${a}`:`${a}–${i-1}`); a=null; } } return out; };
+    return {ranged:true, rows:num, die, gaps:runs(h=>h===0), overlaps:runs(h=>h>1), loose:rows.length-num.length};
+  }
+  return {ranged:false, rows:rows.map((r,i)=>({lo:i+1, hi:i+1, text:r.lo!=null ? lines[i] : r.text})), die: DICE.includes(rows.length) ? rows.length : null};
+}
+function rollTable(text){
+  const t=parseTable(text); if(!t.rows.length) return null;
+  if(t.ranged || t.die){ const n=d(t.die), row=t.rows.find(x=>n>=x.lo && n<=x.hi); return {n, die:t.die, text: row ? row.text : '', none:!row}; }
+  const i=rand(t.rows.length); return {n:i+1, die:null, text:t.rows[i].text};
+}
+const isQuiet = txt => !String(txt||'').trim() || /^(no (event|encounter)s?|nothing( happens)?|quiet|uneventful)\b/i.test(String(txt).trim());
+const rangeLabel = r => r.lo===r.hi ? `${r.lo}` : `${r.lo}–${r.hi}`;
+function tableSummary(t){
+  if(!t.rows.length) return 'No entries yet.';
+  if(t.ranged) return `${t.rows.length} result${t.rows.length===1?'':'s'} · d${t.die}`;
+  return `${t.rows.length} entr${t.rows.length===1?'y':'ies'} · ${t.die ? 'd'+t.die : 'picks one evenly'}`;
+}
+function tableWarnings(t){
+  const w=[];
+  if(t.ranged && t.gaps.length) w.push(`No result for ${t.gaps.join(', ')}`);
+  if(t.ranged && t.overlaps.length) w.push(`${t.overlaps.join(', ')} ${t.overlaps.length===1 && !/–/.test(t.overlaps[0])?'is':'are'} listed twice (the first match wins)`);
+  if(t.ranged && t.loose) w.push(`${t.loose} line${t.loose===1?' has':'s have'} no number and won’t come up`);
+  return w;
+}
+function spreadTable(text, die){
+  const t=parseTable(text), items=t.rows.map(r=>r.text).filter(Boolean);
+  if(!items.length) return null;
+  if(items.length>die) return {error:`${items.length} entries won’t fit on a d${die}. Pick a bigger die.`};
+  const base=Math.floor(die/items.length), extra=die%items.length; let at=1;
+  return {text: items.map((x,i)=>{ const span=base+(i<extra?1:0), lo=at, hi=at+span-1; at=hi+1; return `${lo===hi?lo:lo+'–'+hi}: ${x}`; }).join('\n')};
+}
+function tableDlgSummary(){
+  const box=$('#cd-tbl-sum'); if(!box) return; const t=parseTable($('#cd-text').value), w=tableWarnings(t);
+  box.innerHTML = `<b>${esc(tableSummary(t))}</b>${w.map(x=>`<span class="tbl-warn"> · ${esc(x)}</span>`).join('')}`;
+}
+document.addEventListener('input', e=>{ if(e.target.id==='cd-text' && !$('#cd-tbl-tools').hidden) tableDlgSummary(); });
+
 /* ================= campaign tab ================= */
 const SEC_KINDS={cards:'Cards', npcs:'NPCs (shared with the Social tab)', journal:'Journal (your session log, as one story)', quests:'Quests', tables:'Random tables', calendar:'Calendar'};
 const SEC_PRESETS=[['Journal','journal'],['Gods','cards'],['Factions','cards'],['House rules','cards'],['Places','cards'],['Lore','cards'],['Items','cards'],['NPCs','npcs'],['Quests','quests'],['Random tables','tables'],['Calendar','calendar']];
@@ -2262,12 +2518,12 @@ function cardHTML(s,it){
   return `<div class="ccard${st}"><div class="ob-head"><h3>${esc(it.title||'Untitled')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>${tags?`<div class="tags">${tags}</div>`:''}${body}</div>`;
 }
 function tableHTML(s,it){
-  const entries=String(it.entries||'').split('\n').map(x=>x.trim()).filter(Boolean);
+  const t=parseTable(it.entries), entries=t.rows, warn=tableWarnings(t);
   const r=tableRolls[it.id];
   return `<div class="ccard"><div class="ob-head"><h3>${esc(it.title||'Untitled table')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>
-    <div class="tags">${itemTags(s,it).map(tagChip).join('')}<span class="muted small">${entries.length} entr${entries.length===1?'y':'ies'} · d${entries.length||'?'}</span></div>
-    <div class="roll-row"><button class="btn primary sm" data-act="cx-roll" data-id="${it.id}" data-sec="${s.id}" ${entries.length?'':'disabled'}>Roll</button>${r?`<span class="roll-res"><b>${r.n}</b> ${esc(r.text)}</span><button class="btn sm quiet" data-act="cx-rollsave" data-id="${it.id}" data-sec="${s.id}">Save to notes</button>`:''}</div>
-    <details class="tbl-entries"><summary class="small muted">Show entries</summary><ol>${entries.map(x=>`<li>${esc(x)}</li>`).join('')}</ol></details></div>`;
+    <div class="tags">${itemTags(s,it).map(tagChip).join('')}<span class="muted small">${esc(tableSummary(t))}</span>${warn.map(x=>`<span class="tbl-warn small">${esc(x)}</span>`).join('')}</div>
+    <div class="roll-row"><button class="btn primary sm" data-act="cx-roll" data-id="${it.id}" data-sec="${s.id}" ${entries.length?'':'disabled'}>Roll</button>${r?`<span class="roll-res"><b>${r.n}</b>${r.die?`<span class="muted small"> on d${r.die}</span>`:''} ${r.none?'<span class="muted">Nothing on the table for that roll.</span>':esc(r.text)}</span><button class="btn sm quiet" data-act="cx-rollsave" data-id="${it.id}" data-sec="${s.id}">Save to notes</button>`:''}</div>
+    <details class="tbl-entries"><summary class="small muted">Show entries</summary>${t.ranged ? `<ul class="tbl-ranged">${entries.map(x=>`<li><b>${rangeLabel(x)}</b> ${esc(x.text)}</li>`).join('')}</ul>` : `<ol>${entries.map(x=>`<li>${esc(x.text)}</li>`).join('')}</ol>`}</details></div>`;
 }
 function calendarHTML(s){
   const c=s.cal||(s.cal={day:1,label:'',events:[]});
@@ -2397,6 +2653,8 @@ const dlgCard=document.createElement('dialog'); dlgCard.id='dlg-card';
 dlgCard.innerHTML=`<h2 id="cd-h">Add a card</h2><label>Title <input id="cd-title"></label>
 <div class="grid2" id="cd-quest" style="margin-top:.6rem"><label>Given by <input id="cd-giver" list="cd-npcs"></label><label>Reward <input id="cd-reward"></label><label>Status <select id="cd-status">${QSTAT.map(q=>`<option>${q}</option>`).join('')}</select></label></div><datalist id="cd-npcs"></datalist>
 <label style="margin-top:.6rem" id="cd-text-wrap"><span id="cd-text-lbl">Details</span> <textarea id="cd-text" rows="8"></textarea></label>
+<div id="cd-tbl-tools" class="tbl-tools" hidden><p class="muted small" style="margin:.3rem 0">Put numbers in front to set the odds, like <b>1–4: Wolves shadow the party</b>. Without numbers, every entry is equally likely.</p>
+<div class="tbl-spread"><span class="muted small">Number them for</span>${DICE_BTNS()}</div><p id="cd-tbl-sum" class="small" style="margin:.3rem 0 0"></p></div>
 <div style="margin-top:.6rem" id="cd-rte-wrap"><div class="muted small" style="margin-bottom:.2rem">Details <span class="muted">· type [[Name]] to link another card, NPC, rule, or monster</span></div><div id="cd-rte"></div></div>
 <label style="margin-top:.6rem" id="cd-tags-wrap">More tags <input id="cd-tags" placeholder="separate with commas"></label>
 <p class="muted small" id="cd-note"></p>
@@ -2408,10 +2666,10 @@ function openCard(s, it){
   const tbl=s.type==='tables', q=s.type==='quests';
   $('#cd-h').textContent = (it?'Edit ':'Add ')+(tbl?'a random table':q?'a quest':'a card')+' · '+s.title;
   $('#cd-title').value=it?.title||''; $('#cd-text').value = tbl ? (it?.entries||'') : '';
-  $('#cd-text-wrap').hidden=!tbl; $('#cd-rte-wrap').hidden=tbl;
+  $('#cd-text-wrap').hidden=!tbl; $('#cd-rte-wrap').hidden=tbl; $('#cd-tbl-tools').hidden=!tbl; if(tbl) tableDlgSummary();
   $('#cd-rte').innerHTML = tbl ? '' : rteHTML('card', it ? itemHtml(it) : '', q ? 'What the party has to do, where, and what they know so far…' : 'Anything worth remembering. Use [[Name]] to link to another card.', 'tall');
   $('#cd-text-lbl').textContent = tbl ? 'Entries, one per line' : 'Details';
-  $('#cd-text').placeholder = tbl ? 'A broken cart blocks the road\nA merchant with a limp asks for an escort\n…' : '';
+  $('#cd-text').placeholder = tbl ? '1–4: Wolves shadow the party\n5–8: A peddler with a limp asks for an escort\n…\n17–20: No event' : '';
   $('#cd-quest').hidden=!q; $('#cd-giver').value=it?.giver||''; $('#cd-reward').value=it?.reward||''; $('#cd-status').value=it?.status||'Active';
   $('#cd-npcs').innerHTML=S.npcs.map(n=>`<option value="${esc(n.name)}">`).join('');
   $('#cd-tags').value=(it?.tags||[]).join(', ');
@@ -2448,8 +2706,8 @@ function campAct(act, el, e){
     case 'cx-tag': campTag = el.dataset.v===campTag ? '' : el.dataset.v; renderCampaign(); break;
     case 'cx-more': expanded.has(el.dataset.id)?expanded.delete(el.dataset.id):expanded.add(el.dataset.id); renderCampaign(); break;
     case 'cx-qstat': if(it){ it.status=el.dataset.v; commit(); renderCampaign(); } break;
-    case 'cx-roll': { if(!it) break; const en=String(it.entries||'').split('\n').map(x=>x.trim()).filter(Boolean); if(!en.length) break; const i=rand(en.length); tableRolls[it.id]={n:i+1, text:en[i]}; renderCampaign(); break; }
-    case 'cx-rollsave': { const r=tableRolls[el.dataset.id]; if(it&&r){ S.saved.unshift({id:uid(), title:it.title, text:it.title+'\n'+r.text, at:Date.now()}); commit(); renderSaved(); toast('Saved to notes.'); } break; }
+    case 'cx-roll': { if(!it) break; const r=rollTable(it.entries); if(!r) break; tableRolls[it.id]=r; renderCampaign(); break; }
+    case 'cx-rollsave': { const r=tableRolls[el.dataset.id]; if(it&&r){ S.saved.unshift({id:uid(), title:it.title, text:it.title+'\n'+(r.none?'Nothing on the table for '+r.n:(r.die?r.n+': ':'')+r.text), at:Date.now()}); commit(); renderSaved(); toast('Saved to notes.'); } break; }
     case 'cx-day': if(s){ s.cal.day=Math.max(1, s.cal.day+(+el.dataset.v)); commit(); renderCampaign(); } break;
     case 'cx-evadd': { if(!s) break; const inp=$('#cal-ev-'+s.id); const t=inp&&inp.value.trim(); if(!t) break; s.cal.events.push({id:uid(), day:s.cal.day, text:t}); commit(); renderCampaign(); $('#cal-ev-'+s.id)?.focus(); break; }
     case 'cx-evdel': if(s){ s.cal.events=s.cal.events.filter(x=>x.id!==el.dataset.id); commit(); renderCampaign(); } break;
@@ -3687,6 +3945,8 @@ function onClick(e){
   if(act.startsWith('cx-')){ campAct(act, el, e); return; }
   if(act.startsWith('lk-')){ lookAct(act); return; }
   if(act.startsWith('tour-')){ tourAct(act, el); return; }
+  if(act.startsWith('tv-')){ travelAct(act, el); return; }
+  if(act==='tbl-spread'){ const r=spreadTable($('#cd-text').value, +el.dataset.die); if(!r){ toast('Add some entries first, one per line.'); return; } if(r.error){ toast(r.error); return; } $('#cd-text').value=r.text; tableDlgSummary(); return; }
   if(act==='warm-log'||act==='warm-close'){ warmAct(act); return; }
   if(act==='doc-make'){ makeDoc(); return; }
   if(act==='imp-dir'){ impFileDir.click(); return; }

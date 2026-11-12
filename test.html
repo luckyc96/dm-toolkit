@@ -207,6 +207,69 @@ const TESTS=[
    await click('[data-tab=rules]');
    expect(D.querySelectorAll('details.rule.house').length===1, 'House rule not on the Rules tab');
  }],
+ ['Travel: roll a day, log it, new trip', async()=>{
+   app("S.sections.push({id:'tts',type:'tables',title:'Random tables',items:[{id:'enc1',title:'Mountain encounters',entries:'Wolves\\nBandits'}]}); commit(); renderAll();");
+   await click('[data-tab=travel]');
+   const pick=async(k,v)=>{ const x=el(`.tv-set[data-k="${k}"]`); if(x.type==='checkbox') x.checked=v; else x.value=v; x.dispatchEvent(new W.Event('change',{bubbles:true})); await wait(20); };
+   await pick('terrain','Mountain'); await pick('pace','Fast'); await pick('checks','3'); await pick('chance','12'); await pick('table','enc1');
+   expect(D.querySelector('#t-day .tv-warn'), 'No warning that Mountain caps the pace');
+   const real=W.Math.random; W.Math.random=()=>0.99;   // every die rolls high: guaranteed encounters
+   try{ await click('[data-act=tv-roll]'); } finally { W.Math.random=real; }
+   const day=app('S.travel.days[0]');
+   expect(day.n===1 && day.pace==='Slow' && day.miles===18, `Pace or distance wrong: ${day.pace}, ${day.miles} miles`);
+   expect(day.checks.length===3 && day.checks.every(c=>c.hit && c.entry==='Bandits' && c.dist===400), 'Encounter checks didn’t roll on the table');
+   expect(day.weather && /°F/.test(day.weather.text), 'No weather');
+   expect(D.querySelectorAll('.tv-day.latest .tv-chk.hit').length===3, 'Encounters not shown');
+   await click('[data-act=tv-log]');
+   const sess=app('[...S.sessions].sort((a,b)=>b.n-a.n)[0]');
+   expect(/Travel, day 1/.test(sess.text) && /Bandits/.test(sess.text), 'Day wasn’t added to the journal');
+   await click('[data-act=tv-reroll]'); expect(app('S.travel.day')===1 && app('S.travel.days.length')===1, 'Reroll changed the day count');
+   await click('[data-act=tv-roll]'); expect(app('S.travel.day')===2 && D.querySelector('.tv-earlier'), 'Day 2 or the earlier-days list missing');
+   expect(app('normalize(JSON.parse(JSON.stringify(S))).travel.days.length')===2, 'Travel days aren’t kept when the campaign is saved');
+   await click('[data-act=tv-new]'); await click('#cf-actions [data-cf="1"]');
+   expect(app('S.travel.day')===0 && app('S.travel.days.length')===0, 'New trip didn’t reset');
+ }],
+ ['Random tables: numbered ranges and real dice', async()=>{
+   const P=t=>app('parseTable')(t);
+   const road='1-4: Wolves shadow the party\n5-8: A peddler with a limp asks for an escort\n9-12: Heavy rain turns the road to mud\n13-16: A broken cart blocks the way\n17-20: No event';
+   let t=P(road); expect(t.ranged && t.die===20 && t.rows.length===5 && !t.gaps.length, 'Ranged table not read as a d20');
+   expect(app('tableSummary')(P('a\nb\nc\nd\ne'))==='5 entries · picks one evenly', 'A 5-entry table still claims a die');
+   expect(P('a\nb\nc\nd').die===4 && P('a\nb\nc\nd\ne\nf').die===6, 'Plain 4 or 6 entries should roll a d4 or d6');
+   t=P(road.replace('13-16: A broken cart blocks the way\n',''));
+   expect(app('tableWarnings')(t).some(w=>/No result for 13–16/.test(w)), 'Gap 13–16 not flagged');
+   expect(P('1-3: A\n3-6: B').overlaps.join()==='3', 'Overlap not found');
+   expect(P('01-50: A\n51-00: B').die===100, '00 should count as 100');
+   const real=W.Math.random;
+   try{
+     W.Math.random=()=>0.99; let r=app('rollTable')(road); expect(r.n===20 && r.text==='No event', 'Roll of 20 should be No event');
+     W.Math.random=()=>0.0;  r=app('rollTable')(road); expect(r.n===1 && /Wolves/.test(r.text), 'Roll of 1 should be Wolves');
+   } finally { W.Math.random=real; }
+   // Numbering helper in the editor
+   await click('[data-tab=campaign]'); await click('[data-act=cx-edit][data-id="enc1"]');
+   el('#cd-text').value='Wolves\nPeddler\nRain\nCart\nNo event'; el('#cd-text').dispatchEvent(new W.Event('input',{bubbles:true}));
+   expect(/picks one evenly/.test(el('#cd-tbl-sum').textContent), 'Editor summary not shown');
+   await click('[data-act=tbl-spread][data-die="20"]');
+   expect(el('#cd-text').value.split('\n')[0]==='1–4: Wolves' && /17–20: No event$/.test(el('#cd-text').value), 'd20 numbering wrong: '+el('#cd-text').value);
+   expect(/d20/.test(el('#cd-tbl-sum').textContent), 'Summary didn’t update to d20');
+   await click('[data-act=cx-cardsave]');
+   const card=[...D.querySelectorAll('.ccard')].find(c=>/Mountain encounters/.test(c.textContent));
+   expect(/5 results · d20/.test(card.textContent) && card.querySelector('.tbl-ranged'), 'Card doesn’t show the d20 ranges');
+   // Travel: let the table decide
+   await click('[data-tab=travel]');
+   const pick=async(k,v)=>{ const x=el(`.tv-set[data-k="${k}"]`); x.value=v; x.dispatchEvent(new W.Event('change',{bubbles:true})); await wait(20); };
+   await pick('chance','-1'); await pick('table','enc1'); await pick('checks','1');
+   try{ W.Math.random=()=>0.99; await click('[data-act=tv-roll]'); } finally { W.Math.random=real; }
+   let c=app('S.travel.days[0].checks[0]'); expect(c.direct && c.roll===20 && !c.hit, 'No event should be a quiet check');
+   try{ W.Math.random=()=>0.0; await click('[data-act=tv-roll]'); } finally { W.Math.random=real; }
+   c=app('S.travel.days[0].checks[0]'); expect(c.hit && c.entry==='Wolves' && c.dist>0, 'A roll of 1 should be the Wolves encounter');
+   const note=el('#t-day .tv-src').textContent;
+   expect(/Campaign tab/.test(note) && /d20/.test(note), 'No note saying where encounter tables come from: '+note);
+   expect(/Add one/.test(app('travelTableNote')(app('S.travel'), [])), 'No “Add one” link when there are no tables');
+   await click('[data-act=tv-tables]');
+   expect(D.querySelector('[data-tab=campaign]').getAttribute('aria-selected')==='true' && D.querySelector('details[data-csec="tts"]').open, 'Link didn’t open the Random tables section');
+   await click('[data-tab=travel]');
+   await pick('chance','18');
+ }],
  ['Import: the built-in sample document', async()=>{
    await click('[data-tab=campaign]'); await click('.camp-tools [data-act=cx-import]');
    await click('[data-act=imp-guide]'); expect(D.querySelectorAll('.guide h3').length===3, 'Guide didn’t open');
