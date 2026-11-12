@@ -179,6 +179,29 @@ const TESTS=[
    expect(app(`S.npcs.find(n=>n.id==='${id}').attitude`)==='Hostile', 'Attitude didn’t change');
    expect(D.querySelectorAll('tr.known').length===2, 'Party languages not listed');
  }],
+ ['Search everything', async()=>{
+   const find=async term=>{ const q=el('#q'); q.value=term; q.dispatchEvent(new W.Event('input',{bubbles:true})); await wait(30); return [...D.querySelectorAll('#results [data-act=pick-hit]')]; };
+   const ids=list=>list.map(b=>b.dataset.id);
+   // Journal, by a word deep in the session text
+   let r=await find('road');
+   const sid='s:'+app('S.sessions[0].id');
+   expect(ids(r).includes(sid), 'Journal entry not found by its text');
+   const jb=r.find(b=>b.dataset.id===sid); expect(/<mark>road<\/mark>/i.test(jb.innerHTML), 'No highlighted snippet for the match');
+   await click(jb);
+   expect([...D.querySelectorAll('#pins .pin h3')].some(h=>/^Session 1/.test(h.textContent)), 'Picking the journal hit didn’t pin it');
+   // Party, NPCs, rules, monsters
+   const pc=app('S.party[0]');
+   expect(ids(await find(pc.name)).includes('p:'+pc.id), 'Party character not found');
+   expect(ids(await find('Bren')).some(i=>i.startsWith('n:')), 'NPC not found');
+   expect(ids(await find('grappl')).some(i=>!/^[cnspgxm]:/.test(i)), 'Rules no longer found');
+   expect(ids(await find('goblin warrior')).includes('m:Goblin Warrior'), 'Monsters no longer found');
+   // Saved generator results and the Notes drawer
+   app("S.saved.unshift({id:'gt1',title:'Tavern',text:'Tavern\\nThe Gilded Wyrm',at:1}); S.notesHtml='Promised the miller a favor.'; commit();");
+   expect(ids(await find('wyrm')).includes('g:gt1'), 'Saved generator result not found');
+   r=await find('miller'); const nb=r.find(b=>b.dataset.id==='x:notes'); expect(nb, 'Notes drawer text not found');
+   await click(nb); expect(D.querySelector('#notes').classList.contains('open'), 'Picking the notes hit didn’t open the drawer');
+   D.querySelector('#notes').classList.remove('open'); el('#q').value=''; el('#q').dispatchEvent(new W.Event('input',{bubbles:true}));
+ }],
  ['House rules show on the Rules tab', async()=>{
    app("S.sections.push({id:'hrt',type:'cards',title:'House rules',tag:'house rule',items:[{id:'hr1',title:'Potions as a bonus action',text:'Yes.',html:'Yes.'}]}); commit(); renderAll();");
    await click('[data-tab=rules]');

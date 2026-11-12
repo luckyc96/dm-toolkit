@@ -89,6 +89,8 @@ label > input,label > select{color:var(--ink)}
 .results .rt{font-weight:700}
 .results .rc{font-size:.78rem;color:var(--muted);margin-left:.4rem}
 .results .rs{display:block;font-size:.85rem;color:var(--muted)}
+.results mark{background:color-mix(in srgb,var(--brass) 28%,transparent);color:var(--ink);border-radius:2px;padding:0 1px}
+.pc-pin{display:flex;flex-wrap:wrap;gap:.3rem .9rem;margin-bottom:.4rem}
 .tabs{display:flex;gap:.2rem;padding:0 .7rem;overflow-x:auto}
 .tab{background:none;border:none;border-bottom:3px solid transparent;padding:.4rem .7rem .45rem;cursor:pointer;color:var(--muted);font-weight:500}
 .tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--brass);font-weight:700}
@@ -573,7 +575,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
     <button class="camp-btn" id="camp-btn" data-act="camp-menu" aria-haspopup="menu"><span class="camp-name"></span><span aria-hidden="true" class="caret"></span></button>
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="Search rules (press /)" autocomplete="off" aria-label="Search rules" aria-controls="results">
+      <input id="q" type="search" placeholder="Search everything (press /)" autocomplete="off" aria-label="Search everything: rules, monsters, campaign notes, journal, party" aria-controls="results">
       <div id="results" class="results" role="listbox" hidden></div>
     </div>
     <button class="drive-pill" id="drive-pill" data-act="drive-pill" hidden><span class="dot" aria-hidden="true"></span><span class="lbl"></span></button>
@@ -1374,23 +1376,39 @@ function doSearch(){
   const term=q.value.trim().toLowerCase();
   if(!term){ results.hidden=true; hits=[]; return; }
   const words=term.split(/\s+/);
-  hits = RULES.concat(campSearchItems(), SRD_SEARCH).map(r=>{
-    const t=r.t.toLowerCase(), all=(r.t+' '+r.s+' '+strip(r.b)+' '+r.cat).toLowerCase();
+  hits = campSearchItems().concat(RULES, SRD_SEARCH).map(r=>{
+    const body = r.txt!=null ? r.txt : strip(r.b||'');
+    const t=r.t.toLowerCase(), all=(r.t+' '+r.s+' '+body+' '+r.cat).toLowerCase();
     if(!words.every(w=>all.includes(w))) return null;
-    let score = t.startsWith(term)?0 : t.includes(term)?1 : r.s.toLowerCase().includes(term)?2 : 3;
-    return {r,score};
-  }).filter(Boolean).sort((a,b)=>a.score-b.score).slice(0,12).map(x=>x.r);
+    let score = t.startsWith(term)?0 : t.includes(term)?1 : (r.s||'').toLowerCase().includes(term)?2 : 3;
+    return {r, score, mine:r.mine?0:1, snip: score===3 ? snippet(body, words) : ''};
+  }).filter(Boolean).sort((a,b)=>a.score-b.score || a.mine-b.mine).slice(0,20);
   hitIdx=0;
-  results.innerHTML = hits.length ? hits.map((r,i)=>`<button role="option" data-act="pick-hit" data-id="${r.id}" aria-selected="${i===0}"><span class="rt">${esc(r.t)}</span><span class="rc">${esc(r.cat)}</span><span class="rs">${esc(r.s)}</span></button>`).join('')
-    : '<div class="muted small" style="padding:.6rem .7rem">Nothing matches. Try a condition, action, or rule name.</div>';
+  results.innerHTML = hits.length ? hits.map((x,i)=>`<button role="option" data-act="pick-hit" data-id="${esc(x.r.id)}" aria-selected="${i===0}"><span class="rt">${esc(x.r.t)}</span><span class="rc">${esc(x.r.cat)}</span><span class="rs">${x.snip || esc(x.r.s||'')}</span></button>`).join('')
+    : '<div class="muted small" style="padding:.6rem .7rem">Nothing matches. Searches rules, monsters, campaign cards, NPCs, the journal, the party, notes, and saved generator results.</div>';
+  hits = hits.map(x=>x.r);
   results.hidden=false;
+}
+function snippet(text, words){
+  const t=String(text||'').replace(/\s+/g,' ').trim(), lo=t.toLowerCase();
+  let at=-1, w0=''; for(const w of words){ const i=lo.indexOf(w); if(i>=0 && (at<0||i<at)){ at=i; w0=w; } }
+  if(at<0) return '';
+  const a=Math.max(0, at-45), b=Math.min(t.length, at+w0.length+75);
+  let h=esc(t.slice(a,b));
+  const re=new RegExp('('+words.map(w=>esc(w).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','gi');
+  h=h.replace(re,'<mark>$1</mark>');
+  return (a>0?'…':'')+h+(b<t.length?'…':'');
+}
+function openHit(id){
+  if(id==='x:notes'){ $('#notes').classList.add('open'); return; }
+  pinRule(id);
 }
 q.addEventListener('input', doSearch);
 document.addEventListener('input', e=>{ if(e.target.id==='npc-q'){ npcQ=e.target.value; renderNpcList(); } });
 q.addEventListener('focus', ()=>{ if(q.value.trim()) doSearch(); });
 q.addEventListener('keydown', e=>{
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); if(!hits.length) return; hitIdx=(hitIdx+(e.key==='ArrowDown'?1:-1)+hits.length)%hits.length; $$('#results button').forEach((b,i)=>b.setAttribute('aria-selected',i===hitIdx)); }
-  else if(e.key==='Enter'){ if(hits[hitIdx]){ pinRule(hits[hitIdx].id); results.hidden=true; q.select(); } }
+  else if(e.key==='Enter'){ if(hits[hitIdx]){ openHit(hits[hitIdx].id); results.hidden=true; q.select(); } }
   else if(e.key==='Escape'){ results.hidden=true; q.blur(); }
 });
 document.addEventListener('click', e=>{ if(!e.target.closest('.search')) results.hidden=true; });
@@ -2197,13 +2215,27 @@ function getPin(id){
   if(typeof id!=='string') return null;
   if(id.startsWith('c:')){ const cid=id.slice(2); for(const s of S.sections||[]){ const it=(s.items||[]).find(x=>x.id===cid); if(it) return {id, t:it.title||'Untitled', cat:s.title, s:s.type==='tables'?`${String(it.entries||'').split('\n').filter(x=>x.trim()).length} entries`:firstLine(it.text), b:cardBody(s,it)}; } }
   if(id.startsWith('n:')){ const n=S.npcs.find(x=>x.id===id.slice(2)); if(n) return {id, t:n.name, cat:'NPC', s:[n.role,n.attitude].filter(Boolean).join(' · '), b:npcBody(n)}; }
+  if(id.startsWith('s:')){ const x=S.sessions.find(v=>v.id===id.slice(2)); if(x){ const h=sessHtml(x); return {id, t:`Session ${x.n}${x.title?': '+x.title:''}`, cat:'Journal', s:x.date||'', b:(h?linkify(h):'<p class="muted">Nothing written for this session yet.</p>'), txt:x.text||htmlToText(h)}; } }
+  if(id.startsWith('p:')){ const pc=S.party.find(v=>v.id===id.slice(2)); if(pc) return {id, t:pc.name||'Unnamed', cat:'Party', s:[[pc.species,pc.cls].filter(Boolean).join(' '), pc.level&&'level '+pc.level, pc.player&&'played by '+pc.player].filter(Boolean).join(', '), b:pcPinBody(pc), txt:[pc.langs,pc.notes,pc.player,pc.species,pc.cls].filter(Boolean).join(' ')}; }
+  if(id.startsWith('g:')){ const g=(S.saved||[]).find(v=>v.id===id.slice(2)); if(g) return {id, t:g.title||'Saved result', cat:'Saved from generators', s:firstLine(String(g.text||'').split('\n').slice(1).join('\n')), b:'<p>'+nl2br(g.text)+'</p>', txt:g.text||''}; }
   return null;
+}
+function pcPinBody(pc){
+  const row=(l,v)=>has(v)&&v!==''?`<span><span class="muted">${l}</span> <b>${esc(v)}</b></span>`:'';
+  const sv=['str','dex','con','int','wis','cha'].map(a=>has(pc.saves?.[a])?`<span>${cap(a)} <b>${sgn(+pc.saves[a])}</b></span>`:'').join('');
+  return `<div class="pc-pin">${[row('AC',pc.ac),row('HP',pc.maxHp),row('Passive Perception',pc.pp),row('Insight',pc.ins),row('Investigation',pc.inv),row('Spell DC',pc.dc),has(pc.dv)&&+pc.dv?row('Darkvision',pc.dv+' ft'):''].join('')}</div>${sv?`<div class="saves"><span class="muted">Saves</span>${sv}</div>`:''}${pc.langs?`<p><span class="muted">Languages</span> ${esc(pc.langs)}</p>`:''}${pc.notes?`<p><span class="muted">Notes</span> ${nl2br(pc.notes)}</p>`:''}`;
 }
 function campSearchItems(){
   const out=[];
   (S.sections||[]).forEach(s=>(s.items||[]).forEach(it=>{ const p=getPin('c:'+it.id); if(p){ p.s = p.s + (itemTags(s,it).length?' · '+itemTags(s,it).join(', '):''); out.push(p); } }));
   S.npcs.forEach(n=>out.push(getPin('n:'+n.id)));
-  return out;
+  S.sessions.forEach(x=>out.push(getPin('s:'+x.id)));
+  S.party.forEach(pc=>out.push(getPin('p:'+pc.id)));
+  (S.saved||[]).forEach(g=>out.push(getPin('g:'+g.id)));
+  const nt = S.notesHtml!=null ? htmlToText(S.notesHtml) : (S.notes||'');
+  if(nt.trim()) out.push({id:'x:notes', t:'Notes drawer', cat:'Notes', s:firstLine(nt), b:'', txt:nt, mine:true});
+  out.forEach(o=>{ if(o) o.mine=true; });
+  return out.filter(Boolean);
 }
 function itemMatches(s,it){
   if(campTag && !itemTags(s,it).includes(campTag)) return false;
@@ -3670,7 +3702,7 @@ function onClick(e){
     case 'camp-menu': campMenu(el); break;
     case 'drive-pill': drivePill(el); break;
     case 'camp-save': saveCampDlg(); break;
-    case 'pick-hit': pinRule(id); results.hidden=true; break;
+    case 'pick-hit': openHit(id); results.hidden=true; break;
     case 'pin': e.preventDefault(); pinRule(id); break;
     case 'unpin': G.pins=G.pins.filter(x=>x!==id); commit(); renderPins(); break;
     case 'unpin-all': G.pins=[]; commit(); renderPins(); break;
