@@ -54,6 +54,7 @@ iframe{width:100%;height:100%;border:0;background:#fff}
       <li>Connecting Google Drive and seeing a change arrive on another device.</li>
       <li>Choosing files or a folder in Import notes, and the download prompts.</li>
       <li>How things look and feel on your phone and tablet.</li>
+      <li>On the iPad or phone: add the app to the home screen, open it once online, then in airplane mode. Start combat and check the screen doesn’t dim.</li>
     </ul>
   </div>
 </main>
@@ -126,6 +127,26 @@ const TESTS=[
    expect(app(`S.combat.list.find(c=>c.id==='${id}').conditions.some(x=>x.name==='Prone')`), 'Condition wasn’t added');
    await click('[data-act=end]'); await click('#cf-actions [data-cf="2"]');
    expect(app('S.combat.active')===false && app("S.combat.list.every(c=>c.type==='pc')"), 'End combat didn’t keep only the party');
+ }],
+ ['Combat: the screen stays on, then lets go', async()=>{
+   const calls={req:0, rel:0};
+   Object.defineProperty(W.navigator,'wakeLock',{configurable:true, value:{request:async()=>{ calls.req++; const l=new W.EventTarget(); l.release=async()=>{ calls.rel++; l.dispatchEvent(new W.Event('release')); }; return l; }}});
+   const ready=()=>app("S.combat.list.forEach(c=>{c.init=12}); commit(); renderCombat(); S.combat.list.length");
+   expect(ready()>0, 'Need the party in the tracker for this check');
+   await click('[data-act=start]');
+   await waitFor(()=>calls.req===1, 3000, 'the screen to be kept on (keep this tab in front while testing)');
+   await waitFor(()=>D.querySelector('#wake-ind') && !D.querySelector('#wake-ind').hidden, 2000, 'the “Screen stays on” note');
+   await click('[data-act=end]'); await click('#cf-actions [data-cf="2"]');
+   await waitFor(()=>calls.rel===1, 2000, 'the screen to be let go after combat');
+   // Turning it off in Customize
+   await click('[data-act=more]'); await click('[data-menu=look]');
+   el('#lk-wake').checked=false; await click('[data-act=lk-save]');
+   ready(); await click('[data-act=start]'); await wait(200);
+   expect(calls.req===1, 'Kept the screen on even with the setting off');
+   await click('[data-act=end]'); await click('#cf-actions [data-cf="2"]');
+   await click('[data-act=more]'); await click('[data-menu=look]');
+   el('#lk-wake').checked=true; await click('[data-act=lk-save]');
+   expect(app('wakePref')===true, 'Setting didn’t switch back on');
  }],
  ['Campaigns: new, switch, and back', async()=>{
    const first=app('S.id');
@@ -213,6 +234,15 @@ const TESTS=[
    app('importCampaignObject')(JSON.parse(dl.data), dl.filename); await wait(60);
    await click('#cf-actions [data-cf="1"]');
    expect(app('G.campaigns.length')===count+1, 'Opening as a copy didn’t add a campaign');
+ }],
+ ['Offline: app files are in place', async()=>{
+   const get=async f=>{ const r=await fetch(f+'?t='+Date.now(),{cache:'no-store'}); if(!r.ok) throw new Error(`Missing ${f}. Upload it next to index.html.`); return r; };
+   const sw=await (await get('sw.js')).text();
+   expect(/addEventListener\('fetch'/.test(sw) && /index\.html/.test(sw), 'sw.js doesn’t look right');
+   const m=await (await get('manifest.webmanifest')).json();
+   expect(m.start_url && m.icons && m.icons.length>=2, 'manifest.webmanifest is missing its start page or icons');
+   for(const f of ['icon-180.png','icon-192.png','icon-512.png']){ const b=await (await get(f)).blob(); expect(b.size>1000, f+' looks empty'); }
+   expect(D.querySelector('link[rel=manifest]') && D.querySelector('link[rel=apple-touch-icon]'), 'index.html doesn’t point to the manifest and icon');
  }],
  ['Customize and the tour', async()=>{
    await click('[data-act=more]'); await click('[data-menu=look]'); await click('[data-pal=tide]'); await click('[data-act=lk-save]');

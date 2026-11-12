@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Dungeon Master Master Toolkit</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#E9ECE4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#142019" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DM Toolkit">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
@@ -103,6 +112,7 @@ main{padding:.9rem;max-width:1100px}
 
 /* combat */
 .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-bottom:.7rem}
+.wake-ind{align-self:center;white-space:nowrap}
 .round{font-family:var(--font-head);font-weight:700;font-size:1.25rem;margin-right:.4rem;font-variant-numeric:tabular-nums}
 .round span{font-family:var(--font-body);font-weight:500;font-size:.85rem;color:var(--muted);margin-right:.25rem}
 .spacer{flex:1}
@@ -1220,6 +1230,7 @@ dlgLook.innerHTML=`<h2>Customize</h2>
 <fieldset><legend>Fonts</legend><div class="grid2"><label>Headings <select id="lk-head">${HEAD_FONTS.map(f=>`<option value="${f[0]}">${f[0]} · ${f[3]}</option>`).join('')}</select></label><label>Body text <select id="lk-body">${BODY_FONTS.map(f=>`<option value="${f[0]}">${f[0]} · ${f[3]}</option>`).join('')}</select></label><label>Text size <select id="lk-size"><option value="small">Smaller</option><option value="normal">Normal</option><option value="large">Larger</option></select></label></div>
 <div class="font-preview"><div class="fp-h">The Goblin Ambush</div><div class="fp-b">Four goblins burst from the brush. Roll initiative, and mark the green one first.</div></div></fieldset>
 <fieldset><legend>Use this look for</legend><div class="look-row"><label class="row-label"><input type="radio" name="lk-scope" value="all"> All campaigns</label><label class="row-label"><input type="radio" name="lk-scope" value="camp"> Only <b id="lk-camp-name"></b></label></div><p class="muted small" style="margin:.2rem 0 0">A campaign’s own look travels with it, including in its campaign file and through Drive.</p></fieldset>
+<fieldset><legend>On this device</legend><label class="row-label"><input type="checkbox" id="lk-wake"> Keep the screen on during combat</label><p class="muted small" style="margin:.2rem 0 0">Stops your tablet or phone from dimming or locking mid-fight. It lets go when combat ends.</p></fieldset>
 <div class="dlg-actions"><button class="btn quiet" data-act="lk-default" style="margin-right:auto">Back to the default look</button><button class="btn" data-act="lk-cancel">Cancel</button><button class="btn primary" data-act="lk-save">Save</button></div>`;
 document.body.appendChild(dlgLook);
 let lkDraft=null, lkMode='auto', lkSaved=false;
@@ -1243,6 +1254,7 @@ function openLook(){
   lkDraft = lookFor(); lkMode = theme; lkSaved=false;
   $('#lk-camp-name').textContent = S.name;
   $$('input[name=lk-scope]').forEach(r=>r.checked = r.value===(S.look?'camp':'all'));
+  $('#lk-wake').checked = wakePref;
   syncLookForm(); dlgLook.showModal();
 }
 dlgLook.addEventListener('close', ()=>{ if(!lkSaved){ applyTheme(theme); applyLook(); } });
@@ -1262,6 +1274,7 @@ function lookAct(act){
   if(act==='lk-save'){
     const scope=($('input[name=lk-scope]:checked')||{}).value||'all';
     theme=lkMode; try{ localStorage.setItem('dmmt.theme', theme); }catch(e){}
+    wakePref = $('#lk-wake').checked; try{ localStorage.setItem('dmmt.wake', wakePref?'on':'off'); }catch(e){} syncWake();
     const look=Object.assign({}, lkDraft);
     if(scope==='camp'){ S.look=look; }
     else { G.look=look; delete S.look; }
@@ -1562,7 +1575,8 @@ function renderCombat(){
   if(c.active){
     h += `<div class="round"><span>Round</span>${c.round}</div>
       <button class="btn primary" data-act="next-turn">Next turn</button>
-      <button class="btn" data-act="prev-turn" title="Moves the turn marker back without undoing anything">Back</button>`;
+      <button class="btn" data-act="prev-turn" title="Moves the turn marker back without undoing anything">Back</button>
+      <span class="wake-ind muted small" id="wake-ind" hidden title="This screen won’t dim or lock until combat ends. Turn this off in Customize.">☀ Screen stays on</span>`;
   } else {
     h += `<button class="btn primary" data-act="start" ${o.length?'':'disabled'}>Start combat</button>`;
   }
@@ -1587,7 +1601,32 @@ function renderCombat(){
   }
   $('#panel-combat').innerHTML = h;
   renderUndo();
+  syncWake();
 }
+/* ================= keep the screen on during combat ================= */
+let wakePref = true; try{ wakePref = localStorage.getItem('dmmt.wake')!=='off'; }catch(e){}
+let wakeLock = null, wakeBusy = false;
+function wakeWanted(){ return wakePref && !!(S && S.combat && C().active) && document.visibilityState==='visible'; }
+function showWake(){ const i=document.getElementById('wake-ind'); if(i) i.hidden = !wakeLock; }
+async function syncWake(){
+  const wl = navigator.wakeLock;
+  if(!wl || !wl.request){ showWake(); return; }
+  if(wakeWanted()){
+    if(!wakeLock && !wakeBusy){
+      wakeBusy=true;
+      try{
+        const l = await wl.request('screen');
+        wakeLock = l;
+        if(l && l.addEventListener) l.addEventListener('release', ()=>{ if(wakeLock===l){ wakeLock=null; showWake(); } });
+        if(!wakeWanted()) await releaseWake();
+      }catch(e){ wakeLock=null; }
+      wakeBusy=false;
+    }
+  } else if(wakeLock) await releaseWake();
+  showWake();
+}
+async function releaseWake(){ const l=wakeLock; wakeLock=null; try{ if(l) await l.release(); }catch(e){} showWake(); }
+document.addEventListener('visibilitychange', ()=>{ syncWake(); });
 const monNotesOpen=new Set();
 function rowHTML(c){
   const active = C().active && C().turnId===c.id;
@@ -3707,6 +3746,11 @@ document.addEventListener('keydown', e=>{
 
 /* ================= boot ================= */
 if(SANDBOX) document.title='DM Toolkit (test sandbox)';
+/* ================= works offline ================= */
+// sw.js keeps a copy of the app on this device so it opens with no connection. Skipped in the test sandbox and inside Claude.
+if(!SANDBOX && !window.claude && 'serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 const toTop=$('#to-top');
 const updateToTop=()=>{ toTop.hidden = window.scrollY < 500; };
 window.addEventListener('scroll', updateToTop, {passive:true});
