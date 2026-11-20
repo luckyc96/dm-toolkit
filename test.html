@@ -270,6 +270,76 @@ const TESTS=[
    await click('[data-tab=travel]');
    await pick('chance','18');
  }],
+ ['Encounters: build, run, surprise, finish', async()=>{
+   app("clearTracker(); S.party.forEach(p=>p.level=3); S.sections.push({id:'est',type:'encounters',title:'Encounters',tag:'encounter',items:[]}); commit(); renderAll();");
+   await click('[data-tab=campaign]'); await click('[data-act=cx-add][data-sec=est]');
+   el('#enc-title').value='Test crypt';
+   const type=async v=>{ el('#enc-q').value=v; el('#enc-q').dispatchEvent(new W.Event('input',{bubbles:true})); await wait(20); };
+   await type('goblin warrior'); await click('#enc-res [data-act=enc-addsrd][data-v="Goblin Warrior"]');
+   const cnt=el('.enc-count'); cnt.value='3'; cnt.dispatchEvent(new W.Event('change',{bubbles:true}));
+   expect(/Low|Moderate|High/.test(el('#enc-diff').textContent), 'No live difficulty in the editor');
+   await type('Bog Thing'); await click('#enc-res [data-act=enc-newmon]');
+   expect(el('#m-name').value==='Bog Thing', 'Custom monster name not carried over from the search');
+   el('#m-hp').value='20'; el('#m-ac').value='12'; el('#m-init').value='1'; el('#m-cr').value='1';
+   await click('#mon-save-btn');
+   expect(app("S.library.some(m=>m.name==='Bog Thing')"), 'Custom monster not saved to the monster list');
+   expect(app('C().list.length')===0, 'Making a monster for an encounter put it in the tracker');
+   expect(D.querySelectorAll('#enc-mons .enc-row').length===2, 'Custom monster not added to the encounter');
+   await click('[data-act=enc-save]');
+   const it=()=>app("S.sections.find(s=>s.id==='est').items[0]");
+   expect(it().mons.length===2 && it().built && it().built.r!=null, 'Encounter not saved with its rating');
+   const card=()=>D.querySelector('.enc-card');
+   expect(/3× Goblin Warrior/.test(card().textContent) && card().querySelector('.enc-rate'), 'Card doesn’t list monsters and difficulty');
+   // Run it
+   await click('[data-act=enc-run]');
+   const mons=()=>app("C().list.filter(c=>c.type==='monster')");
+   expect(mons().length===4 && app("C().list.filter(c=>c.type==='pc').length")===app('S.party.length'), 'Monsters and party not loaded');
+   expect(mons().every(c=>c.initDice && c.initDice.length===2 && c.init===c.initDice[0]+(+c.initBonus||0)), 'Initiative not rolled with two dice kept');
+   expect(D.querySelector('.surp'), 'No surprise controls before combat');
+   // Hand-typed initiative stays put
+   const g1=mons().find(c=>/Goblin Warrior 1/.test(c.name)); const box=D.querySelector(`[data-field=init][data-id="${g1.id}"]`); box.value='25'; box.dispatchEvent(new W.Event('change',{bubbles:true})); await wait(20);
+   await click('[data-act=surp-all]');
+   expect(mons().every(c=>c.surprised) && mons().filter(c=>!c.initManual).every(c=>c.init===Math.min(...c.initDice)+(+c.initBonus||0)), 'Surprise didn’t switch to the lower die');
+   expect(app(`byId('${g1.id}').init`)===25, 'Surprise overwrote a hand-typed initiative');
+   await click('[data-act=surp-all]');
+   expect(mons().every(c=>!c.surprised && (c.initManual || c.init===c.initDice[0]+(+c.initBonus||0))), 'Turning surprise off didn’t restore the first die');
+   await click('[data-act=surp-g][data-v="Bog Thing"]');
+   expect(mons().filter(c=>c.surprised).length===1, 'Group surprise affected the wrong monsters');
+   app("C().list.filter(c=>c.type==='pc').forEach((c,i)=>c.init=10+i); commit(); renderCombat();");
+   await click('[data-act=start]');
+   expect(!D.querySelector('.surp'), 'Surprise controls still showing after combat started');
+   // Run again mid-fight: add as reinforcements
+   await click('[data-tab=campaign]');
+   expect(/In the combat tracker now/.test(card().textContent), 'Card doesn’t say it’s in the tracker');
+   app("runEncounter(S.sections.find(s=>s.id==='est').items[0].id)"); await wait(30);
+   expect(D.querySelector('#cf-actions [data-cf="0"]').textContent==='Add to it', 'Add isn’t the first choice');
+   await click('#cf-actions [data-cf="0"]');
+   const late=mons().slice(4);
+   expect(mons().length===8 && late.every(c=>!c.initDice && Number.isFinite(c.init)), 'Reinforcements not added with a single roll');
+   // Finish: two goblins down
+   app("C().list.filter(c=>/^Goblin Warrior/.test(c.name)).slice(0,2).forEach(c=>{c.hp=0;c.defeated=true}); commit(); renderCombat();");
+   await click('[data-act=end]'); await click('#cf-actions [data-cf="2"]');
+   expect(it().ran && it().ran.xp===100 && /2 Goblin Warrior/.test(it().ran.down), 'XP or defeated list wrong: '+JSON.stringify(it().ran));
+   await click('[data-tab=campaign]'); await click('[data-act=enc-log]');
+   expect(/Encounter: Test crypt/.test(app('[...S.sessions].sort((a,b)=>b.n-a.n)[0].text')), 'Not added to the journal');
+   // Re-rate after the party levels up
+   app("S.party.forEach(p=>p.level=12); renderCampaign();");
+   expect(card().querySelector('.enc-drift'), 'No note that the rating changed since it was built');
+   app("S.party.forEach(p=>p.level=3); renderCampaign();");
+   // Replace what’s in the tracker
+   app("C().list.push(newCombatant({name:'Stray rat', hp:1, maxHp:1})); commit(); renderCombat();");
+   await click('[data-act=enc-run]'); await click('#cf-actions [data-cf="1"]');
+   expect(!app("C().list.some(c=>c.name==='Stray rat')") && mons().length===4, 'Replace didn’t clear the old monsters');
+   app('clearTracker()');
+   await click('[data-tab=campaign]'); await click('[data-act=enc-unrun]');
+   expect(!it().ran, 'Mark not run didn’t clear it');
+   // Found by search and included in exports
+   el('#q').value='bog thing'; el('#q').dispatchEvent(new W.Event('input',{bubbles:true})); await wait(30);
+   expect([...D.querySelectorAll('#results [data-act=pick-hit]')].some(b=>b.dataset.id==='c:'+it().id), 'Search doesn’t find the encounter by monster');
+   el('#q').value=''; el('#q').dispatchEvent(new W.Event('input',{bubbles:true}));
+   const ex=app("exportModel(()=>true)").find(x=>x.title==='Encounters');
+   expect(ex && /Goblin Warrior/.test(ex.items[0].html), 'Export leaves out the monsters');
+ }],
  ['Import: the built-in sample document', async()=>{
    await click('[data-tab=campaign]'); await click('.camp-tools [data-act=cx-import]');
    await click('[data-act=imp-guide]'); expect(D.querySelectorAll('.guide h3').length===3, 'Guide didn’t open');

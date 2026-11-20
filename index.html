@@ -278,6 +278,30 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .roll-res{font-family:var(--font-head);font-size:1.05rem}
 .roll-res b{color:var(--brass);margin-right:.2rem}
 .tbl-entries summary{cursor:pointer;margin-top:.3rem}
+.enc-mons{list-style:none;padding:0;margin:.3rem 0;font-size:.92rem}
+.enc-mons li{padding:.05rem 0}
+.enc-diff{margin:.35rem 0}
+.enc-diff .enc-top{display:flex;flex-wrap:wrap;gap:.2rem .6rem;align-items:baseline}
+.enc-bar.sm{height:8px;margin:.3rem 0 .1rem}
+.enc-drift{color:var(--blood);margin:.25rem 0 0}
+.enc-ran{margin:.4rem 0 0;padding:.35rem .5rem;border-radius:6px;background:color-mix(in srgb,var(--heal) 12%,transparent)}
+.enc-live{color:var(--brass);font-weight:600}
+.enc-card.ran{opacity:.92}
+.enc-sub{font-weight:700;margin:.7rem 0 .25rem}
+.enc-row{display:flex;gap:.5rem;align-items:center;padding:.2rem 0;border-bottom:1px solid var(--line)}
+.enc-row .enc-count{width:4.2rem}
+.enc-row .enc-nm{flex:1}
+.enc-find{display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap}
+.enc-find input{flex:1;min-width:12rem}
+.enc-res{display:flex;flex-direction:column;max-height:14rem;overflow:auto}
+.enc-res button{text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:.35rem .3rem;color:var(--ink);cursor:pointer;font:inherit}
+.enc-res button:hover,.enc-res button:focus{background:var(--surface)}
+.surp{display:flex;flex-wrap:wrap;gap:.35rem .5rem;align-items:center;margin:.5rem 0;padding:.45rem .6rem;border:1px dashed var(--line);border-radius:8px}
+.surp-k{font-weight:700}
+.surp .btn.on{background:var(--brass);border-color:var(--brass);color:#fff}
+.surp-g[aria-pressed=true]{background:var(--brass);color:#fff;border-color:var(--brass)}
+.surp-help{flex-basis:100%}
+.surp-chip{border-color:var(--brass);color:var(--brass);font-weight:600}
 .tbl-ranged{list-style:none;padding-left:0;font-size:.88rem;margin:.3rem 0}
 .tbl-ranged b{display:inline-block;min-width:3.2rem;font-variant-numeric:tabular-nums}
 .tbl-warn{color:var(--blood);margin-left:.5rem}
@@ -710,6 +734,7 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
   <p class="muted small">Hit dice like <b>7d10+14</b> roll separately for each monster. With an initiative bonus, initiative rolls automatically.</p>
   <label class="row-label" id="m-colors-wrap"><input type="checkbox" id="m-colors"> Give each one a different token color</label>
   <label class="row-label" id="m-save-wrap"><input type="checkbox" id="m-save" checked> Save to my monster list</label>
+  <p class="muted small" id="enc-note-mon" hidden>Saved to this campaign’s monster list and added to the encounter. It isn’t added to the combat tracker.</p>
   <div class="dlg-actions"><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="mon-save" id="mon-save-btn">Add to combat</button></div>
 </dialog>
 
@@ -1323,7 +1348,7 @@ function lookAct(act){
 /* ================= show me around ================= */
 const TOUR=[
  {hi:'.brand', title:'Welcome to the DM Master Toolkit', body:`<p>A digital DM screen for 2024 rules: quick references, a combat tracker, and a notebook for each campaign. This tour flips through each tab. You can close it anytime and reopen it from the ⋯ menu.</p><ul><li><b>Search anything</b> with the box at the top (or press <kbd>/</kbd>). Click a result to pin it as a card above the tabs.</li><li><b>Hover a condition</b> anywhere to see what it does; click it to pin.</li><li><b>Everything saves as you go.</b> There’s no save button.</li></ul>`},
- {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault, Markdown files, or a Word or Google Docs document split by its headings. You review everything before it’s added, and “How to format your notes” in that window has a guide and a sample to try.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
+ {tab:'campaign', hi:'[data-tab=campaign]', title:'Campaign', body:`<p>A notebook that starts empty and grows with your campaign.</p><ul><li><b>Start a new session</b> (top right) opens the next session log entry with a recap: last session’s notes, active quests, and the NPCs met last time.</li><li><b>Encounters</b> let you prep fights ahead of time: pick monsters from the free rules or your own list, see the difficulty for your party, then <b>Run encounter</b> loads everything into the combat tracker with initiative rolled.</li><li><b>Add a section</b> for whatever you need: gods, factions, places, house rules, quests, random tables, a calendar, or your own.</li><li>Link things with the chain button in the toolbar, or type <b>[[</b> and pick from the list. Click a link to pin what it points to.</li><li><b>Import notes</b> brings in an Obsidian vault, Markdown files, or a Word or Google Docs document split by its headings. You review everything before it’s added, and “How to format your notes” in that window has a guide and a sample to try.</li><li>A <b>Journal</b> section shows your whole session log as one story, oldest first, editable right here.</li><li>Every card is <b>tagged</b> with its section. Click a tag to see everything that shares it.</li><li>The <b>NPCs</b> section is the same roster as the Social tab, so add people wherever you are.</li><li>Your cards show up in the main search and can be pinned like rules.</li></ul>`},
  {tab:'party', hi:'[data-tab=party]', title:'Party', body:`<p>Your players’ characters at a glance.</p><ul><li>Enter each character once: species, class, level, AC, HP, passives, saves, and languages.</li><li>The banner shows the party’s best passive Perception, Insight, and Investigation, plus every language they speak.</li><li>Type a DC into <b>Check passives</b> to see who notices something, without anyone rolling.</li></ul>`},
  {tab:'combat', hi:'[data-tab=combat]', title:'Combat', body:`<p>The initiative tracker and bookkeeper.</p><ul><li><b>Add monsters</b> with HP (or dice like 2d6+2), AC, initiative bonus, challenge rating, legendary actions, and recharge abilities. Search 330 monsters from the free rules to fill everything in, stat block included. Tick “different token color” to tell four goblins apart, and add notes for attacks or tactics; they open on the monster’s turn. <b>D&amp;D Beyond monsters</b> opens the stat block site in a new tab.</li><li><b>Add party</b> brings in your characters from the Party tab. Type their initiative rolls, then <b>Start combat</b>.</li><li><b>Damage and Heal</b> use the number box on each row. Shortcut: type the number and press <kbd>Enter</kbd> for damage or <kbd>Shift</kbd>+<kbd>Enter</kbd> to heal.</li><li><b>+ Condition</b> on a row adds a condition to that creature, with how long it lasts: rounds, until a turn ends, or a save each turn. <b>Condition on several</b> does the same for a whole group at once, like everyone caught by Hypnotic Pattern. The tracker removes conditions when they run out and reminds you of saves.</li><li>Concentration, death saves, legendary actions, and recharges are tracked too, with reminders above the list.</li><li><b>Undo</b> reverses the last change (<kbd>Ctrl</kbd>+<kbd>Z</kbd> also works). The encounter bar shows Low, Moderate, or High difficulty once monsters have a challenge rating.</li><li><b>End combat</b> lets you keep fighting, end and keep the party for the next fight, or clear everyone off the tracker.</li></ul>`},
  {tab:'travel', hi:'[data-tab=travel]', title:'Travel', body:`<p>Everything for the road, in one place.</p><ul><li>The travel day roller: pick terrain, pace, and climate, then roll each day’s distance, weather, and encounter checks, and add the day to your session journal.</li><li>Movement basics, travel pace, and the terrain table with foraging, navigation, and search DCs.</li><li>Environmental hazards like extreme cold, heavy rain, and thin ice.</li><li>Traps, food and lodging prices, and how far a noise carries.</li></ul><p>The buttons at the top jump straight to each section.</p>`},
@@ -1720,12 +1745,13 @@ function prevTurn(){
   if(i===0){ if(C().round<=1) return; C().round--; C().turnId=o[o.length-1].id; } else C().turnId=o[i-1].id;
   commit(); renderCombat(); toast('Moved back. Nothing was undone.');
 }
-function clearTracker(){ Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], list:[]}); commit(); renderCombat(); toast('Tracker cleared.'); }
+function clearTracker(){ Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], list:[], encIds:[]}); commit(); renderCombat(); toast('Tracker cleared.'); }
 function endCombat(){
   confirmBox('End combat?', 'Keep the party in the tracker for the next fight, or clear everyone out. Your saved monster list stays either way.', [
     {label:'Keep fighting'},
-    {label:'End and clear everyone', danger:true, fn:clearTracker},
+    {label:'End and clear everyone', danger:true, fn:()=>{ finishEncounters(); clearTracker(); }},
     {label:'End, keep the party', primary:true, fn:()=>{
+      finishEncounters();
       C().list = C().list.filter(c=>c.type==='pc');
       C().list.forEach(c=>{ c.init=''; c.conditions=[]; c.conc=false; c.concSpell=''; c.temp=0; });
       Object.assign(C(), {active:false, round:0, turnId:null, prompts:[]});
@@ -1806,6 +1832,7 @@ function renderCombat(){
         <button class="btn" data-act="open-cond-multi" ${o.length?'':'disabled'}>Condition on several</button>
         ${c.active?'<button class="btn quiet" data-act="end">End combat</button>':(o.length?'<button class="btn danger" data-act="clear">Clear tracker</button>':'')}</div>`;
   h += encounterHTML();
+  h += surpriseHTML();
   if(c.prompts.length){
     h += '<div class="prompts">'+c.prompts.map(p=>{
       let a='';
@@ -1869,6 +1896,7 @@ function rowHTML(c){
   if(c.la && c.la.max) chips.push(`<span class="res">Leg. actions <span class="pips">${Array.from({length:c.la.max},(_,i)=>`<button class="pip ${i>=c.la.left?'used':''}" data-act="la" data-id="${c.id}" data-i="${i}" aria-label="Legendary action ${i+1}"></button>`).join('')}</span></span>`);
   (c.recharge||[]).forEach(r=>chips.push(`<button class="rch ${r.ready?'ready':'spent'}" data-act="rch" data-id="${c.id}" data-r="${r.id}" title="${r.ready?'Click when used':'Click to roll recharge'}">${esc(r.name)} ${r.min===6?'6':r.min+'–6'}</button>`));
   if(c.lair) chips.push('<span class="lair">Lair</span>');
+  if(c.surprised) chips.unshift('<span class="chip surp-chip" data-tip="initiative" tabindex="0">Surprised</span>');
   if(has(c.maxHp) && num(c.maxHp)>0 && has(c.hp) && num(c.hp)>0 && num(c.hp)<=num(c.maxHp)/2 && !c.defeated) chips.unshift('<span class="chip bloodied" data-tip="bloodied" tabindex="0">Bloodied</span>');
   if(c.type==='pc' && has(c.hp) && num(c.hp)===0){
     const ds=c.ds||{s:0,f:0};
@@ -1878,7 +1906,7 @@ function rowHTML(c){
   }
   const dot = c.type==='pc' ? '' : `<button class="cdot ${c.color?'':'none'}" data-act="tok-color" data-id="${c.id}" ${c.color?`style="background:${TOK[c.color]}"`:''} title="Token color" aria-label="Token color for ${esc(c.name)}: ${c.color||'none'}"></button>`;
   return `<div class="cbt ${active?'active':''} ${c.defeated?'defeated':''} ${c.type==='pc'?'pc':''} ${c.color?'tok':''}" ${c.color?`style="--tok:${TOK[c.color]}"`:''} data-row="${c.id}">
-    <div class="cbt-init"><input type="number" value="${esc(c.init)}" data-field="init" data-id="${c.id}" aria-label="Initiative for ${esc(c.name)}" placeholder="–"></div>
+    <div class="cbt-init"><input type="number" value="${esc(c.init)}" data-field="init" data-id="${c.id}" aria-label="Initiative for ${esc(c.name)}" placeholder="–" ${initTitle(c)}></div>
     <div class="cbt-main">
       <div class="cbt-head"><span class="cbt-name">${dot}${esc(c.name)}${c.color?`<span class="tokword">${c.color}</span>`:''}</span>${has(c.ac)?`<span class="ac">AC <b>${esc(c.ac)}</b></span>`:''}${c.cr?`<span class="ac">CR <b>${esc(c.cr)}</b></span>`:''}${hp}</div>
       <div class="cbt-meta">${chips.join('')}${c.notes?`<button class="chip add mn-btn" data-act="mnotes" data-id="${c.id}" aria-expanded="${active !== monNotesOpen.has(c.id)}">${(active !== monNotesOpen.has(c.id))?'Hide notes':'Notes'}</button>`:''}</div>${c.notes && (active !== monNotesOpen.has(c.id)) ? `<div class="mnotes">${esc(c.notes).replace(/\n/g,'<br>')}</div>`:''}
@@ -2023,6 +2051,7 @@ function readMon(){
   };
 }
 function saveMon(){
+  if(monForEnc){ saveMonForEnc(); return; }
   const m=readMon();
   if(editing){
     const c=editing;
@@ -2170,7 +2199,7 @@ function undoLabel(e){
   if(mi && menu._items){ const it=menu._items.find(x=>x.key===mi.dataset.menu); if(it) return it.label || 'Token color'; }
   const el=e.target.closest('[data-act]'); if(!el) return 'Change';
   const c=el.dataset.id?byId(el.dataset.id):null, n=c?c.name:'';
-  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, 'pc-save':'Character changes'})[el.dataset.act] || 'Change';
+  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, 'pc-save':'Character changes', 'surp-all':'Surprise', 'surp-g':`Surprise for ${el.dataset.v||''}`, 'enc-run':'Loaded an encounter'})[el.dataset.act] || 'Change';
 }
 
 /* ================= party ================= */
@@ -2442,9 +2471,247 @@ function tableDlgSummary(){
 }
 document.addEventListener('input', e=>{ if(e.target.id==='cd-text' && !$('#cd-tbl-tools').hidden) tableDlgSummary(); });
 
+
+/* ================= encounter builder ================= */
+const srdTpl = m => ({name:m.n, srd:m.n, hpExpr:String(m.hp), ac:m.ac, initBonus:m.in, cr:m.cr, notes:srdNotes(m), lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:false, recharge:(m.rc||[]).map(([n,min])=>({name:n,min}))});
+function encTpl(m){
+  if(m.srd && SRD_BY[m.srd]) return srdTpl(SRD_BY[m.srd]);
+  if(m.libId){ const l=S.library.find(x=>x.id===m.libId); if(l) return l; }
+  return m.tpl || null;
+}
+const encMonName = m => (encTpl(m)||{}).name || m.name || 'Missing monster';
+const encMonNames = it => (it.mons||[]).map(encMonName).join(' ');
+function findEnc(id){ for(const s of S.sections||[]){ if(s.type!=='encounters') continue; const it=(s.items||[]).find(x=>x.id===id); if(it) return {s,it}; } return null; }
+function partyBudget(){
+  const L=S.party.filter(p=>has(p.level) && +p.level>=1 && +p.level<=20), b=[0,0,0];
+  L.forEach(p=>BUDGET[+p.level].forEach((v,i)=>b[i]+=v));
+  const lv=L.map(p=>+p.level);
+  return {b, n:L.length, total:S.party.length, lvTxt: lv.length ? (Math.min(...lv)===Math.max(...lv) ? `level ${lv[0]}` : `levels ${Math.min(...lv)}–${Math.max(...lv)}`) : ''};
+}
+const RATES=[['Low','lo'],['Moderate','mo'],['High','hi'],['Beyond High','bh']];
+const rateXP = (xp,b) => xp<=b[0]?0 : xp<=b[1]?1 : xp<=b[2]?2 : 3;
+function encStats(src){
+  const mons = Array.isArray(src) ? src : (src.mons||[]);
+  let xp=0, n=0, unrated=0;
+  mons.forEach(m=>{ const t=encTpl(m)||{}, c=Math.max(0,num(m.count,1)); n+=c; if(CR_XP[t.cr]!=null) xp+=CR_XP[t.cr]*c; else unrated+=c; });
+  const pb=partyBudget();
+  return {xp, n, unrated, pb, r: (pb.n && xp) ? rateXP(xp,pb.b) : null};
+}
+function encRateText(st){
+  if(!st.n) return 'No monsters yet.';
+  if(!st.xp) return `${st.n} monster${st.n===1?'':'s'}, none with a challenge rating.`;
+  if(st.r==null) return `${fmt(st.xp)} XP. Add character levels on the Party tab to rate it.`;
+  return `${RATES[st.r][0]}: ${fmt(st.xp)} XP for ${st.pb.n} character${st.pb.n===1?'':'s'} at ${st.pb.lvTxt}`;
+}
+function encSummary(it){ const st=encStats(it); return `${st.n} monster${st.n===1?'':'s'}${st.r!=null?' · '+RATES[st.r][0]:''}${it.ran?' · run':''}`; }
+function encMonListHtml(it){
+  const L=(it.mons||[]); if(!L.length) return '';
+  return `<ul class="enc-mons">${L.map(m=>{ const t=encTpl(m); return `<li><b>${num(m.count,1)}×</b> ${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}</span>`:''}${!t?' <span class="tbl-warn small">removed from your monster list</span>':''}</li>`; }).join('')}</ul>`;
+}
+function encDiffHTML(st, it){
+  if(!st.n) return '<p class="muted small enc-diff">No monsters yet.</p>';
+  let h=`<div class="enc-diff">`;
+  if(st.r!=null){
+    const b=st.pb.b, max=Math.max(b[2]*1.25, st.xp*1.06), pct=v=>(v/max*100).toFixed(2)+'%';
+    h+=`<div class="enc-top"><b class="enc-rate ${RATES[st.r][1]}">${RATES[st.r][0]}</b><span class="small">${fmt(st.xp)} XP <span class="muted">for ${st.pb.n} character${st.pb.n===1?'':'s'} at ${st.pb.lvTxt}</span></span></div>
+      <div class="enc-bar sm" role="img" aria-label="${fmt(st.xp)} XP: ${RATES[st.r][0]}"><i class="z lo" style="width:${pct(b[0])}"></i><i class="z mo" style="width:${pct(b[1]-b[0])}"></i><i class="z hi" style="width:${pct(b[2]-b[1])}"></i><i class="z bh" style="flex:1"></i><span class="enc-mark" style="left:${pct(st.xp)}"></span></div>`;
+    if(it && it.built && it.built.r!=null && it.built.r!==st.r) h+=`<p class="small enc-drift">Built as ${RATES[it.built.r][0]}${it.built.lvTxt?' for '+esc(it.built.lvTxt):''}. The party has changed since.</p>`;
+  } else h+=`<p class="small">${esc(encRateText(st))}</p>`;
+  if(st.unrated) h+=`<p class="muted small">${st.unrated} monster${st.unrated===1?' has':'s have'} no challenge rating and ${st.unrated===1?'isn’t':'aren’t'} counted.</p>`;
+  return h+'</div>';
+}
+function encLive(id){ return (C().encIds||[]).includes(id) && C().list.some(c=>c.encId===id); }
+function encCardHTML(s,it){
+  const tags=itemTags(s,it).map(tagChip).join(''), st=encStats(it);
+  const long = String(it.text||'').length>240 || String(it.text||'').split('\n').length>5, open=expanded.has(it.id);
+  let h=`<div class="ccard enc-card${it.ran?' ran':''}"><div class="ob-head"><h3>${esc(it.title||'Untitled encounter')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>${tags?`<div class="tags">${tags}</div>`:''}`;
+  h+=encMonListHtml(it)+encDiffHTML(st, it);
+  if(it.text||it.html) h+=`<div class="ctext ${long&&!open?'clamp':''}">${linkify(itemHtml(it))}</div>${long?`<button class="linkish" data-act="cx-more" data-id="${it.id}">${open?'Show less':'Show more'}</button>`:''}`;
+  if(it.ran){ const r=it.ran;
+    h+=`<div class="enc-ran small"><b>✓ Run${r.sess?' in Session '+r.sess:''}</b> · ${fmt(r.xp)} XP${r.pcs?` (${fmt(Math.floor(r.xp/r.pcs))} each for ${r.pcs})`:''}${r.xp<r.total?` <span class="muted">of ${fmt(r.total)} possible</span>`:''}${r.down?`<span class="muted"> · defeated: ${esc(r.down)}</span>`:''}</div>`;
+  }
+  h+=`<div class="tv-actions">`;
+  if(encLive(it.id)) h+=`<span class="small enc-live">In the combat tracker now.</span><button class="btn sm" data-act="enc-goto">Go to combat</button>`;
+  else h+=`<button class="btn primary sm" data-act="enc-run" data-id="${it.id}" ${st.n?'':'disabled'}>${it.ran?'Run again':'Run encounter'}</button>`;
+  if(it.ran){ h+= it.ran.logged ? `<span class="muted small">Logged to ${esc(it.ran.logged)}.</span>` : `<button class="btn sm" data-act="enc-log" data-id="${it.id}">Add to the session journal</button>`; h+=`<button class="btn sm quiet" data-act="enc-unrun" data-id="${it.id}">Mark not run</button>`; }
+  return h+`</div></div>`;
+}
+
+/* loading monsters into the tracker */
+function addCopies(t, count, o){
+  const existing=C().list.filter(c=>baseName(c.name)===t.name).length, out=[];
+  for(let i=0;i<count;i++){
+    let name=t.name;
+    if(count>1 || existing>0) name = existing===0 ? `${t.name} ${i+1}` : nextName(t.name);
+    if(existing===1 && i===0){ const solo=C().list.find(c=>c.name===t.name); if(solo) solo.name=t.name+' 1'; name=nextName(t.name); }
+    const hp=rollExpr(t.hpExpr);
+    const c=newCombatant({name, srd:t.srd||null, cr:t.cr, notes:t.notes, color:o.colors?nextColor(t.name):null, hp, maxHp:hp, ac:t.ac, initBonus:t.initBonus,
+      lr:t.lr&&t.lr.max?{max:t.lr.max,used:0}:null, la:t.la&&t.la.max?{max:t.la.max,left:t.la.max}:null, lair:!!t.lair,
+      recharge:(t.recharge||[]).map(r=>({id:uid(), name:r.name, min:r.min, ready:true})), encId:o.encId||null});
+    if(has(t.initBonus)){
+      if(o.twoDice){ c.initDice=[d(20),d(20)]; c.init=c.initDice[0]+num(t.initBonus); }
+      else c.init=d(20)+num(t.initBonus);
+    }
+    C().list.push(c); out.push(c);
+  }
+  return out;
+}
+function runEncounter(id){
+  const f=findEnc(id); if(!f) return; const it=f.it;
+  const mons=(it.mons||[]).filter(m=>encTpl(m) && num(m.count,1)>0);
+  if(!mons.length){ toast('Add some monsters to this encounter first.'); return; }
+  const busy = C().active || C().list.some(c=>c.type==='monster');
+  if(!busy){ loadEncounter(it, mons, 'new'); return; }
+  confirmBox(C().active ? 'A fight is already going' : 'There are monsters in the tracker',
+    C().active ? `Add ${it.title||'this encounter'} to the fight in progress as reinforcements (they roll initiative and join the order), or abandon the current fight and start this one?`
+               : `Add ${it.title||'this encounter'} alongside the monsters already there, or replace them?`,
+    [{label:'Add to it', primary:true, fn:()=>loadEncounter(it, mons, 'add')}, {label:'Replace it', fn:()=>loadEncounter(it, mons, 'replace')}, {label:'Cancel'}]);
+}
+function loadEncounter(it, mons, mode){
+  if(mode==='replace'){
+    C().list = C().list.filter(c=>c.type==='pc');
+    C().list.forEach(c=>{ c.init=''; c.conditions=[]; c.conc=false; c.concSpell=''; c.temp=0; });
+    Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[]});
+  }
+  const live=C().active, added=[];
+  mons.forEach(m=>{ const k=Math.max(1,Math.min(30,num(m.count,1))); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && k>1, twoDice:!live, encId:it.id})); });
+  if(!live) S.party.forEach(p=>{ if(!C().list.some(c=>c.partyId===p.id)) C().list.push(newCombatant({type:'pc', partyId:p.id, name:p.name||'Unnamed', hp:has(p.maxHp)?+p.maxHp:'', maxHp:has(p.maxHp)?+p.maxHp:'', ac:p.ac})); });
+  C().encIds=[...new Set([...(C().encIds||[]), it.id])];
+  const noInit=added.filter(c=>!has(c.init)).map(c=>c.name);
+  if(live) addPrompt('info', `${it.title||'Reinforcements'} joined the fight: ${added.length} monster${added.length===1?'':'s'}, initiative rolled.${noInit.length?' Type initiative for '+noInit.join(', ')+'.':''}`);
+  else if(noInit.length) addPrompt('info', `No initiative bonus for ${noInit.join(', ')}. Type their initiative.`);
+  commit(); renderCombat(); renderCampaign(); setTab('combat'); window.scrollTo && window.scrollTo(0,0);
+  toast(live ? `${it.title||'Encounter'} added to the fight.` : `${it.title||'Encounter'} is ready. Enter the players’ initiative, then start combat.`);
+}
+/* surprise: two dice were rolled; surprised monsters use the lower one */
+function setSurprised(c,on){ c.surprised=!!on; if(c.initDice && !c.initManual) c.init=(on?Math.min(...c.initDice):c.initDice[0])+num(c.initBonus); }
+function surpriseHTML(){
+  if(C().active) return '';
+  const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated); if(!L.length) return '';
+  const groups={}; L.forEach(c=>(groups[baseName(c.name)]=groups[baseName(c.name)]||[]).push(c));
+  const all=L.every(c=>c.surprised), names=Object.keys(groups);
+  return `<div class="surp"><span class="surp-k">Surprised?</span><button class="btn sm ${all?'on':''}" data-act="surp-all" aria-pressed="${all}">${all?'✓ All monsters surprised':'Monsters surprised'}</button>${names.length>1?names.map(n=>`<button class="chip surp-g" data-act="surp-g" data-v="${esc(n)}" aria-pressed="${groups[n].every(c=>c.surprised)}">${esc(n)}${groups[n].length>1?' ×'+groups[n].length:''}</button>`).join(''):''}<span class="muted small surp-help">Surprised monsters use the lower of the two initiative dice already rolled (disadvantage). Locks when combat starts.</span></div>`;
+}
+function initTitle(c){
+  if(!c.initDice) return '';
+  const b=num(c.initBonus), used=c.surprised?Math.min(...c.initDice):c.initDice[0];
+  return `title="${c.initManual?'Typed in by hand. ':''}Rolled ${c.initDice[0]} and ${c.initDice[1]}${c.surprised?', surprised: using the lower':''}: ${used} ${b<0?'−':'+'} ${Math.abs(b)}"`;
+}
+/* after the fight */
+function finishEncounters(){
+  const ids=C().encIds||[]; if(!ids.length) return;
+  const pcs=C().list.filter(c=>c.type==='pc').length || S.party.length;
+  const sess=[...S.sessions].sort((a,b)=>b.n-a.n)[0];
+  ids.forEach(id=>{
+    const f=findEnc(id); if(!f) return;
+    const ms=C().list.filter(c=>c.encId===id), down=ms.filter(c=>c.defeated || (has(c.hp) && num(c.hp)===0));
+    const tally={}; down.forEach(c=>{ const n=baseName(c.name); tally[n]=(tally[n]||0)+1; });
+    f.it.ran={at:Date.now(), xp:down.reduce((t,c)=>t+(CR_XP[c.cr]||0),0), total:ms.reduce((t,c)=>t+(CR_XP[c.cr]||0),0), pcs, sess:sess?sess.n:null,
+      down:Object.entries(tally).map(([n,k])=>k>1?`${k} ${n}`:n).join(', '), logged:''};
+  });
+  C().encIds=[]; renderCampaign();
+}
+function logEncounter(id){
+  const f=findEnc(id); if(!f || !f.it.ran) return; const it=f.it, r=it.ran;
+  const para=`<p><b>Encounter: ${esc(it.title||'Untitled')}.</b> ${r.down?'Defeated: '+esc(r.down)+'. ':'No one was defeated. '}${fmt(r.xp)} XP${r.pcs?` (${fmt(Math.floor(r.xp/r.pcs))} each)`:''}.</p>`;
+  const sess=[...S.sessions].sort((a,b)=>b.n-a.n)[0];
+  if(sess){ const h=sessHtml(sess)+para; sess.html=h; sess.text=htmlToText(h); r.logged='Session '+sess.n; }
+  else { const h=(S.notesHtml || textToHtml(S.notes||''))+para; S.notesHtml=h; S.notes=htmlToText(h); r.logged='the Notes drawer'; renderScratch(); }
+  commit(); renderCampaign(); renderLog(); toast(`Added to ${r.logged}.`);
+}
+
+/* the editor */
+const dlgEnc=document.createElement('dialog'); dlgEnc.id='dlg-enc';
+dlgEnc.innerHTML=`<h2 id="enc-h">Add an encounter</h2><label>Name <input id="enc-title" placeholder="Room 4: The flooded shrine"></label>
+<div class="enc-sub">Monsters</div><div id="enc-mons"></div>
+<div class="enc-find"><input id="enc-q" type="search" placeholder="Search monsters to add" autocomplete="off" aria-label="Find a monster to add"><button type="button" class="btn" data-act="enc-newmon">New custom monster…</button></div>
+<div id="enc-res" class="enc-res"></div>
+<div id="enc-diff"></div>
+<label class="row-label"><input type="checkbox" id="enc-colors"> Give look-alike monsters different token colors</label>
+<div style="margin-top:.6rem"><div class="muted small" style="margin-bottom:.2rem">Notes <span class="muted">· tactics, terrain, treasure. Type [[Name]] to link a room, NPC, or rule</span></div><div id="enc-rte"></div></div>
+<label style="margin-top:.6rem">More tags <input id="enc-tags" placeholder="separate with commas"></label>
+<div class="dlg-actions"><button class="btn quiet dmg" data-act="enc-del" id="enc-delbtn" style="margin-right:auto">Delete</button><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="enc-save">Save</button></div>`;
+document.body.appendChild(dlgEnc);
+let encSec=null, encItem=null, encMons=[];
+function openEnc(s, it){
+  encSec=s; encItem=it||null; encMons=clone((it&&it.mons)||[]);
+  $('#enc-h').textContent=(it?'Edit encounter':'Add an encounter')+' · '+s.title;
+  $('#enc-title').value=it?.title||''; $('#enc-q').value=''; $('#enc-res').innerHTML='';
+  $('#enc-colors').checked = it ? it.colors!==false : true;
+  $('#enc-rte').innerHTML=rteHTML('enc', it?itemHtml(it):'', 'How they fight, the room, what they carry…', 'tall');
+  $('#enc-tags').value=(it?.tags||[]).join(', '); $('#enc-delbtn').hidden=!it;
+  renderEncDlg(); dlgEnc.showModal(); $('#enc-title').focus();
+}
+function renderEncDlg(){
+  $('#enc-mons').innerHTML = encMons.length ? encMons.map(m=>{ const t=encTpl(m); return `<div class="enc-row"><input type="number" min="1" max="30" value="${num(m.count,1)}" class="enc-count" data-k="${m.key}" aria-label="How many ${esc(encMonName(m))}"><span class="enc-nm">${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}${CR_XP[t.cr]!=null?' · '+fmt(CR_XP[t.cr])+' XP':''}</span>`:' <span class="muted small">no CR</span>'}<span class="muted small"> · ${m.srd?'free rules':'your list'}</span></span><button type="button" class="icon-btn" data-act="enc-rm" data-k="${m.key}" aria-label="Remove ${esc(encMonName(m))}">×</button></div>`; }).join('')
+    : '<p class="muted small" style="margin:.2rem 0">None yet. Search below, or make a custom monster.</p>';
+  $('#enc-diff').innerHTML=encDiffHTML(encStats(encMons), encItem);
+}
+function encAddMon(m){
+  const ex=encMons.find(x=>(m.srd && x.srd===m.srd) || (m.libId && x.libId===m.libId));
+  if(ex) ex.count=Math.min(30,num(ex.count,1)+1); else encMons.push(Object.assign({key:uid(), count:1}, m));
+  $('#enc-q').value=''; $('#enc-res').innerHTML=''; renderEncDlg(); $('#enc-q').focus();
+}
+function encSearch(){
+  const q=$('#enc-q').value.trim().toLowerCase(); if(!q){ $('#enc-res').innerHTML=''; return; }
+  const lib=S.library.filter(m=>m.name.toLowerCase().includes(q)).slice(0,6);
+  const srd=SRD_MON.filter(m=>m.n.toLowerCase().includes(q)).sort((a,b)=>(b.n.toLowerCase().startsWith(q))-(a.n.toLowerCase().startsWith(q))).slice(0,8);
+  $('#enc-res').innerHTML = (lib.length||srd.length) ? lib.map(m=>`<button type="button" data-act="enc-addlib" data-id="${m.id}"><b>${esc(m.name)}</b> <span class="muted small">your list${m.cr?' · CR '+esc(m.cr):''}</span></button>`).join('')+srd.map(m=>`<button type="button" data-act="enc-addsrd" data-v="${esc(m.n)}"><b>${esc(m.n)}</b> <span class="muted small">free rules · CR ${esc(m.cr)}</span></button>`).join('')
+    : `<p class="muted small" style="margin:.3rem 0">Nothing matches. <button type="button" class="linkish" data-act="enc-newmon">Make “${esc($('#enc-q').value.trim())}” as a custom monster</button></p>`;
+}
+$('#enc-q').addEventListener('input', encSearch);
+$('#enc-q').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const b=$('#enc-res button[data-act^=enc-add]'); if(b) b.click(); } });
+dlgEnc.addEventListener('change', e=>{ if(e.target.classList.contains('enc-count')){ const m=encMons.find(x=>x.key===e.target.dataset.k); if(m){ m.count=Math.max(1,Math.min(30,num(e.target.value,1))); e.target.value=m.count; $('#enc-diff').innerHTML=encDiffHTML(encStats(encMons), encItem); } } });
+function saveEnc(){
+  const s=encSec; if(!s) return;
+  const title=$('#enc-title').value.trim(); if(!title){ toast('Give the encounter a name.'); $('#enc-title').focus(); return; }
+  const it=encItem||{id:uid()};
+  it.title=title; it.mons=encMons.map(m=>({key:m.key, count:num(m.count,1), srd:m.srd||undefined, libId:m.libId||undefined, tpl:m.srd?undefined:(encTpl(m)?clone(encTpl(m)):m.tpl)}));
+  it.colors=$('#enc-colors').checked; it.tags=parseTags($('#enc-tags').value).filter(t=>t!==s.tag);
+  const body=$('#enc-rte .rte-body'); it.html=cleanHtml(body?body.innerHTML:''); it.text=htmlToText(it.html);
+  const st=encStats(it); it.built={r:st.r, lvTxt:st.pb.lvTxt};
+  if(!encItem) s.items.push(it);
+  dlgEnc.close(); commit(); renderCampaign(); renderPins();
+}
+/* a custom monster made from the encounter editor goes to the monster list too */
+let monForEnc=false;
+function openMonForEnc(){
+  monForEnc=true; openMon();
+  $('#mon-title').textContent='New monster for this encounter'; $('#mon-save-btn').textContent='Save monster';
+  $('#m-count-wrap').hidden=true; $('#m-colors-wrap').hidden=true; $('#m-save-wrap').hidden=true;
+  const q=$('#enc-q').value.trim(); if(q && !SRD_MON.some(m=>m.n.toLowerCase()===q.toLowerCase())) $('#m-name').value=q;
+  $('#enc-note-mon').hidden=false;
+}
+function saveMonForEnc(){
+  const m=readMon(); if(!m.name){ toast('Give the monster a name.'); $('#m-name').focus(); return; }
+  const tpl={id:uid(), name:m.name, srd:srdPicked||null, cr:m.cr, notes:m.notes, hpExpr:m.hpExpr, ac:m.ac, initBonus:m.initBonus, lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:m.lair, recharge:m.recharge};
+  const at=S.library.findIndex(x=>x.name.toLowerCase()===m.name.toLowerCase());
+  if(at>=0){ tpl.id=S.library[at].id; S.library[at]=tpl; } else S.library.push(tpl);
+  S.library.sort((a,b)=>a.name.localeCompare(b.name)); commit();
+  monForEnc=false; dlgMon.close(); encAddMon({libId:tpl.id, tpl:clone(tpl)});
+  toast(`${m.name} saved to your monster list.`);
+}
+dlgMon.addEventListener('close', ()=>{ monForEnc=false; const n=$('#enc-note-mon'); if(n) n.hidden=true; });
+function encAct(act, el){
+  switch(act){
+    case 'enc-run': runEncounter(el.dataset.id); break;
+    case 'enc-goto': setTab('combat'); window.scrollTo && window.scrollTo(0,0); break;
+    case 'enc-log': logEncounter(el.dataset.id); break;
+    case 'enc-unrun': { const f=findEnc(el.dataset.id); if(f){ delete f.it.ran; commit(); renderCampaign(); } break; }
+    case 'enc-addsrd': encAddMon({srd:el.dataset.v}); break;
+    case 'enc-addlib': { const l=S.library.find(x=>x.id===el.dataset.id); if(l) encAddMon({libId:l.id, tpl:clone(l)}); break; }
+    case 'enc-rm': encMons=encMons.filter(x=>x.key!==el.dataset.k); renderEncDlg(); break;
+    case 'enc-newmon': openMonForEnc(); break;
+    case 'enc-save': saveEnc(); break;
+    case 'enc-del': if(encItem && encSec) confirmBox('Delete this encounter?', `“${encItem.title}” will be removed from ${encSec.title}. Monsters in your saved list stay.`, [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ encSec.items=encSec.items.filter(x=>x!==encItem); dlgEnc.close(); commit(); renderCampaign(); renderPins(); }}]); break;
+    case 'surp-all': { const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated), on=!L.every(c=>c.surprised); L.forEach(c=>setSurprised(c,on)); commit(); renderCombat(); break; }
+    case 'surp-g': { const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated && baseName(c.name)===el.dataset.v), on=!L.every(c=>c.surprised); L.forEach(c=>setSurprised(c,on)); commit(); renderCombat(); break; }
+  }
+}
+
 /* ================= campaign tab ================= */
-const SEC_KINDS={cards:'Cards', npcs:'NPCs (shared with the Social tab)', journal:'Journal (your session log, as one story)', quests:'Quests', tables:'Random tables', calendar:'Calendar'};
-const SEC_PRESETS=[['Journal','journal'],['Gods','cards'],['Factions','cards'],['House rules','cards'],['Places','cards'],['Lore','cards'],['Items','cards'],['NPCs','npcs'],['Quests','quests'],['Random tables','tables'],['Calendar','calendar']];
+const SEC_KINDS={cards:'Cards', npcs:'NPCs (shared with the Social tab)', journal:'Journal (your session log, as one story)', quests:'Quests', tables:'Random tables', encounters:'Encounters (ready to run in combat)', calendar:'Calendar'};
+const SEC_PRESETS=[['Journal','journal'],['Gods','cards'],['Factions','cards'],['House rules','cards'],['Places','cards'],['Lore','cards'],['Items','cards'],['NPCs','npcs'],['Quests','quests'],['Random tables','tables'],['Encounters','encounters'],['Calendar','calendar']];
 const singular = t => { const s=String(t||'').trim().toLowerCase(); if(!s) return ''; if(/ies$/.test(s)) return s.replace(/ies$/,'y'); if(/(ss|us|is)$/.test(s)) return s; if(/s$/.test(s)) return s.slice(0,-1); return s; };
 const QSTAT=['Active','On hold','Done','Failed'];
 let campQ='', campTag='', tableRolls={}, expanded=new Set();
@@ -2458,6 +2725,7 @@ function cardBody(s,it){
   if(s.type==='tables') return `<ul>${String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
   let h='';
   if(s.type==='quests') h+=`<p><b>${esc(it.status||'Active')}</b>${it.giver?` · from ${esc(it.giver)}`:''}${it.reward?` · reward: ${esc(it.reward)}`:''}</p>`;
+  if(s.type==='encounters') h+=encMonListHtml(it)+`<p class="small">${esc(encRateText(encStats(it)))}</p>`;
   return h+`<div>${linkify(itemHtml(it))}</div>`;
 }
 function npcBody(n){ return `<p><b>${esc(n.attitude||'Indifferent')}</b>${n.role?' · '+esc(n.role):''}${n.where?' · met at '+esc(n.where):''}</p>${n.notes?`<p>${linkify(nl2br(n.notes))}</p>`:''}`; }
@@ -2469,7 +2737,7 @@ function getPin(id){
   if(RULE[id]) return RULE[id];
   if(typeof id==='string' && id.startsWith('m:')){ const m=SRD_BY[id.slice(2)]; return m ? {id, t:m.n, cat:'Monster', s:`${m.m} · CR ${m.cr}`, b:statBlockHTML(m)} : null; }
   if(typeof id!=='string') return null;
-  if(id.startsWith('c:')){ const cid=id.slice(2); for(const s of S.sections||[]){ const it=(s.items||[]).find(x=>x.id===cid); if(it) return {id, t:it.title||'Untitled', cat:s.title, s:s.type==='tables'?`${String(it.entries||'').split('\n').filter(x=>x.trim()).length} entries`:firstLine(it.text), b:cardBody(s,it)}; } }
+  if(id.startsWith('c:')){ const cid=id.slice(2); for(const s of S.sections||[]){ const it=(s.items||[]).find(x=>x.id===cid); if(it) return {id, t:it.title||'Untitled', cat:s.title, s:s.type==='tables'?`${String(it.entries||'').split('\n').filter(x=>x.trim()).length} entries`:s.type==='encounters'?encSummary(it):firstLine(it.text), b:cardBody(s,it), txt:s.type==='encounters'?encMonNames(it)+' '+(it.text||''):undefined}; } }
   if(id.startsWith('n:')){ const n=S.npcs.find(x=>x.id===id.slice(2)); if(n) return {id, t:n.name, cat:'NPC', s:[n.role,n.attitude].filter(Boolean).join(' · '), b:npcBody(n)}; }
   if(id.startsWith('s:')){ const x=S.sessions.find(v=>v.id===id.slice(2)); if(x){ const h=sessHtml(x); return {id, t:`Session ${x.n}${x.title?': '+x.title:''}`, cat:'Journal', s:x.date||'', b:(h?linkify(h):'<p class="muted">Nothing written for this session yet.</p>'), txt:x.text||htmlToText(h)}; } }
   if(id.startsWith('p:')){ const pc=S.party.find(v=>v.id===id.slice(2)); if(pc) return {id, t:pc.name||'Unnamed', cat:'Party', s:[[pc.species,pc.cls].filter(Boolean).join(' '), pc.level&&'level '+pc.level, pc.player&&'played by '+pc.player].filter(Boolean).join(', '), b:pcPinBody(pc), txt:[pc.langs,pc.notes,pc.player,pc.species,pc.cls].filter(Boolean).join(' ')}; }
@@ -2496,7 +2764,7 @@ function campSearchItems(){
 function itemMatches(s,it){
   if(campTag && !itemTags(s,it).includes(campTag)) return false;
   const q=campQ.trim().toLowerCase(); if(!q) return true;
-  return [it.title,it.text,it.entries,it.giver,it.reward,it.status,...itemTags(s,it)].join(' ').toLowerCase().includes(q);
+  return [it.title,it.text,it.entries,it.giver,it.reward,it.status,s.type==='encounters'?encMonNames(it):'',...itemTags(s,it)].join(' ').toLowerCase().includes(q);
 }
 function npcMatches(n){
   if(campTag && campTag!=='npc') return false;
@@ -2541,6 +2809,7 @@ function secHint(s){
   const n=(s.items||[]).length;
   if(s.type==='quests'){ const a=(s.items||[]).filter(x=>(x.status||'Active')==='Active').length; return `${a} active of ${n}`; }
   if(s.type==='tables') return `${n} table${n===1?'':'s'}`;
+  if(s.type==='encounters'){ const r=(s.items||[]).filter(x=>x.ran).length; return `${n} encounter${n===1?'':'s'}${r?` · ${r} run`:''}`; }
   return `${n} card${n===1?'':'s'}${s.tag?' · tag: '+s.tag:''}`;
 }
 function renderCampaign(){
@@ -2561,9 +2830,9 @@ function renderCampaign(){
     if(s.type==='npcs'){ const L=S.npcs.filter(npcMatches); shown=L.length; inner = L.length ? `<div class="npc-list camp-npcs">${L.map(npcRow).join('')}</div>` : (S.npcs.length?'':'<p class="muted small">No NPCs yet. Anyone added here also appears in the Social tab’s roster.</p>'); }
     else if(s.type==='calendar'){ inner=calendarHTML(s); shown=filtering?0:1; }
     else if(s.type==='journal'){ const r=journalHTML(); inner=r.html; shown=r.shown; }
-    else { const L=(s.items||[]).filter(it=>itemMatches(s,it)); shown=L.length; inner = L.length ? `<div class="card-grid">${L.map(it=>s.type==='tables'?tableHTML(s,it):cardHTML(s,it)).join('')}</div>` : ((s.items||[]).length?'':'<p class="muted small">Nothing here yet.</p>'); }
+    else { const L=(s.items||[]).filter(it=>itemMatches(s,it)); shown=L.length; inner = L.length ? `<div class="card-grid">${L.map(it=>s.type==='tables'?tableHTML(s,it):s.type==='encounters'?encCardHTML(s,it):cardHTML(s,it)).join('')}</div>` : ((s.items||[]).length?'':'<p class="muted small">Nothing here yet.</p>'); }
     if(filtering && !shown) return;
-    const addLbl = s.type==='npcs'?'Add NPC':s.type==='tables'?'Add table':s.type==='quests'?'Add quest':(s.type==='calendar'||s.type==='journal')?'':'Add card';
+    const addLbl = s.type==='npcs'?'Add NPC':s.type==='tables'?'Add table':s.type==='encounters'?'Add encounter':s.type==='quests'?'Add quest':(s.type==='calendar'||s.type==='journal')?'':'Add card';
     const open = filtering || campOpen[s.id]!==false;
     h+=`<section class="tsec csec" id="cs-${s.id}"><details class="fold" data-csec="${s.id}" ${open?'open':''}><summary><h2>${esc(s.title)}</h2><span class="fold-hint">${esc(secHint(s))}</span><span class="sec-actions">${addLbl?`<button class="btn sm" data-act="cx-add" data-sec="${s.id}">${addLbl}</button>`:''}<button class="icon-btn" data-act="cx-secmenu" data-sec="${s.id}" aria-label="Section options for ${esc(s.title)}" style="font-size:1.2rem">⋯</button></span></summary>${inner}</details></section>`;
   });
@@ -2699,8 +2968,8 @@ function campAct(act, el, e){
     case 'cx-session': startSession(); break;
     case 'cx-preset': addPresetSection(+el.dataset.i); break;
     case 'cx-secsave': saveSec(); break;
-    case 'cx-add': if(!s) break; if(s.type==='npcs') openNpc(); else openCard(s); break;
-    case 'cx-edit': if(s && it) openCard(s,it); break;
+    case 'cx-add': if(!s) break; if(s.type==='npcs') openNpc(); else if(s.type==='encounters') openEnc(s); else openCard(s); break;
+    case 'cx-edit': if(s && it){ if(s.type==='encounters') openEnc(s,it); else openCard(s,it); } break;
     case 'cx-cardsave': saveCard(); break;
     case 'cx-carddel': { const sec=cardSec, item=cardItem; if(!sec||!item) break; dlgCard.close(); confirmBox(`Delete ${item.title||'this card'}?`, 'It will be removed from this campaign.', [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ sec.items=sec.items.filter(x=>x.id!==item.id); commit(); renderCampaign(); renderRules(); renderPins(); }}]); break; }
     case 'cx-tag': campTag = el.dataset.v===campTag ? '' : el.dataset.v; renderCampaign(); break;
@@ -2923,7 +3192,7 @@ function rteRefocus(key){
 const rteTimers={};
 function rteSave(el){
   const key=el.dataset.rteKey; const html=cleanHtml(el.innerHTML), text=htmlToText(html);
-  if(key==='card') return;
+  if(key==='card' || key==='enc') return;
   if(key==='scratch'){ if(S.notesHtml===html) return; S.notesHtml=html; S.notes=text; commit(); return; }
   const id=key.split(':')[1]; const s=S.sessions.find(x=>x.id===id); if(!s) return;
   if(s.html===html) return;
@@ -3155,7 +3424,7 @@ async function makeDoc(){
     let body='';
     if(s.type==='calendar'){ const c=s.cal||{day:1,events:[]}; body=`<p class="lead">Day ${c.day}${c.label?' · '+esc(c.label):''}</p>${c.events.length?`<ul>${[...c.events].sort((a,b)=>a.day-b.day).map(ev=>`<li><b>Day ${ev.day}:</b> ${esc(ev.text)}</li>`).join('')}</ul>`:''}`; }
     else if(s.type==='tables') body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3><ol>${String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div>`).join('');
-    else body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3>${itemTags(s,it).length?`<p class="tags">${itemTags(s,it).map(esc).join(' · ')}</p>`:''}${s.type==='quests'?`<p class="meta"><b>${esc(it.status||'Active')}</b>${it.giver?' · given by '+esc(it.giver):''}${it.reward?' · reward: '+esc(it.reward):''}</p>`:''}${(it.html||it.text)?`<div>${unlink(itemHtml(it))}</div>`:''}</div>`).join('');
+    else body=(s.items||[]).map(it=>`<div class="card"><h3>${esc(it.title)}</h3>${itemTags(s,it).length?`<p class="tags">${itemTags(s,it).map(esc).join(' · ')}</p>`:''}${s.type==='quests'?`<p class="meta"><b>${esc(it.status||'Active')}</b>${it.giver?' · given by '+esc(it.giver):''}${it.reward?' · reward: '+esc(it.reward):''}</p>`:''}${s.type==='encounters'?encMonListHtml(it):''}${(it.html||it.text)?`<div>${unlink(itemHtml(it))}</div>`:''}</div>`).join('');
     add('s-'+s.id, s.title, body || '<p class="sub">Nothing here yet.</p>');
   });
   if(on('npcs')) add('npcs','NPCs', ATT.map(a=>{ const L=S.npcs.filter(n=>(n.attitude||'Indifferent')===a); return L.length?`<h3 class="grp">${a}</h3>`+L.map(n=>`<div class="card"><h3>${esc(n.name)}</h3><p class="meta">${esc([n.role, n.where&&'met at '+n.where].filter(Boolean).join(' · '))}</p>${on('npcnotes')&&n.notes?P(n.notes):''}</div>`).join(''):''; }).join(''));
@@ -3526,7 +3795,7 @@ function exportModel(on){
     if(s.type==='calendar'){ const c=s.cal||{day:1,events:[]}; parts.push({title:s.title, items:[{title:'Calendar', tags:[], meta:[['Current day',`Day ${c.day}${c.label?' ('+c.label+')':''}`]], html:c.events.length?'<ul>'+[...c.events].sort((a,b)=>a.day-b.day).map(ev=>`<li><b>Day ${ev.day}:</b> ${esc(ev.text)}</li>`).join('')+'</ul>':''}]}); return; }
     parts.push({title:s.title, items:(s.items||[]).map(it=>({title:it.title||'Untitled', tags:itemTags(s,it),
       meta: s.type==='quests' ? [['Status',it.status||'Active'],['Given by',it.giver],['Reward',it.reward]].filter(x=>x[1]) : [],
-      html: s.type==='tables' ? '<ol>'+String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')+'</ol>' : itemHtml(it)}))});
+      html: s.type==='tables' ? '<ol>'+String(it.entries||'').split('\n').filter(x=>x.trim()).map(x=>`<li>${esc(x)}</li>`).join('')+'</ol>' : (s.type==='encounters'?encMonListHtml(it):'')+itemHtml(it)}))});
   });
   if(on('npcs')) parts.push({title:'NPCs', items:S.npcs.map(n=>({title:n.name||'Unnamed', tags:['npc'], meta:[['Attitude',n.attitude||'Indifferent'],['Role',n.role],['Met at',n.where]].filter(x=>x[1]), html: on('npcnotes')&&n.notes ? textToHtml(n.notes) : ''}))});
   if(on('log')) parts.push({title:'Sessions', items:[...S.sessions].sort((a,b)=>a.n-b.n).map(s=>({title:`Session ${s.n}${s.title?' - '+s.title:''}`, tags:[], meta:[['Date',s.date]].filter(x=>x[1]), html:sessHtml(s)}))});
@@ -3946,6 +4215,7 @@ function onClick(e){
   if(act.startsWith('lk-')){ lookAct(act); return; }
   if(act.startsWith('tour-')){ tourAct(act, el); return; }
   if(act.startsWith('tv-')){ travelAct(act, el); return; }
+  if((act.startsWith('enc-') && act!=='enc-toggle') || act.startsWith('surp-')){ encAct(act, el); return; }
   if(act==='tbl-spread'){ const r=spreadTable($('#cd-text').value, +el.dataset.die); if(!r){ toast('Add some entries first, one per line.'); return; } if(r.error){ toast(r.error); return; } $('#cd-text').value=r.text; tableDlgSummary(); return; }
   if(act==='warm-log'||act==='warm-close'){ warmAct(act); return; }
   if(act==='doc-make'){ makeDoc(); return; }
@@ -4027,7 +4297,7 @@ function onClick(e){
 document.addEventListener('click', e=>{ const u=e.target.closest('[data-act=undo]'); if(u){ doUndo(); return; } withUndo(undoLabel(e), ()=>onClick(e)); });
 document.addEventListener('change', e=>{
   const f=e.target.dataset.field;
-  if(f==='init'){ const c=byId(e.target.dataset.id); if(c){ withUndo('Initiative for '+c.name, ()=>{ c.init = e.target.value==='' ? '' : +e.target.value; if(!C().active && C().prompts.some(p=>p.kind==='block')) blockMissing(); commit(); renderCombat(); }); } }
+  if(f==='init'){ const c=byId(e.target.dataset.id); if(c){ withUndo('Initiative for '+c.name, ()=>{ c.init = e.target.value==='' ? '' : +e.target.value; if(c.initDice) c.initManual=true; if(!C().active && C().prompts.some(p=>p.kind==='block')) blockMissing(); commit(); renderCombat(); }); } }
   if(e.target.id==='party-dc'){ partyDC=e.target.value; renderParty(); $('#party-dc')?.focus(); }
   const o=e.target.dataset.opt; if(o){ genOpts[o]=e.target.value; runGen(); }
 });
