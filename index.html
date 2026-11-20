@@ -289,6 +289,17 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .enc-ran{margin:.4rem 0 0;padding:.35rem .5rem;border-radius:6px;background:color-mix(in srgb,var(--heal) 12%,transparent)}
 .enc-live{color:var(--brass);font-weight:600}
 .enc-card.ran{opacity:.92}
+.enc-wave{margin:.35rem 0;padding:.3rem .5rem;border-left:3px solid var(--line);background:color-mix(in srgb,var(--surface) 60%,transparent);border-radius:4px}
+.enc-wave-top{display:flex;flex-wrap:wrap;gap:.3rem .6rem;align-items:center}
+.enc-wave .enc-mons{margin:.15rem 0}
+.enc-wave-h{margin:.4rem 0 0}
+.enc-wave-xp{margin:.2rem 0}
+.enc-wave-ed{margin:.6rem 0;padding:.4rem .5rem;border:1px dashed var(--line);border-radius:8px}
+.enc-wave-ed .enc-wave-top input[data-wl]{flex:1;min-width:12rem}
+.enc-wave-ed input[data-wr]{width:4.5rem}
+.enc-target-wrap,.enc-wave-top label{display:flex;flex-direction:row;align-items:center;gap:.3rem;margin:0}
+.enc-target-wrap select{width:auto;max-width:14rem}
+.enc-runlink{margin-left:.4rem}
 .enc-sub{font-weight:700;margin:.7rem 0 .25rem}
 .enc-row{display:flex;gap:.5rem;align-items:center;padding:.2rem 0;border-bottom:1px solid var(--line)}
 .enc-row .enc-count{width:4.2rem}
@@ -497,6 +508,8 @@ table.imp-t select{max-width:100%}
 .enc-mark{position:absolute;top:-4px;width:4px;height:18px;margin-left:-2px;background:var(--ink);border-radius:2px;box-shadow:0 0 0 2px var(--surface)}
 .enc-scale{position:relative;height:1.1rem;font-size:.74rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .enc-scale span{position:absolute;transform:translateX(-100%);white-space:nowrap;padding-right:2px}
+.enc-scale.two{height:2.2rem}
+.enc-scale span.alt{top:1.05rem}
 .enc-notes{margin:.35rem 0 0;font-size:.85rem;color:var(--muted)}
 /* notes drawer tabs and session log */
 .ntabs{margin-bottom:.5rem;align-self:flex-start}
@@ -1548,8 +1561,8 @@ function goToTables(){
 function travelCheckHTML(c){
   const tblNote = c.table ? ` <span class="muted small">(${esc(c.table)}${c.tblRoll!=null?`, rolled ${c.tblRoll}${c.die?' on d'+c.die:''}`:''})</span>` : '';
   const where = c.dist ? ` Starts ${c.dist} ft away <span class="muted small">(${esc(c.distExpr)})</span>.` : '';
-  if(c.direct) return `<span class="tv-chk ${c.hit?'hit':''}"><b>${esc(c.label)}</b> rolled ${c.roll}${c.die?' on d'+c.die:''} on ${esc(c.table)}: ${c.hit ? `<span class="tv-entry">${esc(c.entry)}</span>.${where}` : (c.entry ? esc(c.entry)+' <span class="muted small">(quiet)</span>' : 'nothing on the table for that roll (quiet).')}</span>`;
-  return `<span class="tv-chk ${c.hit?'hit':''}"><b>${esc(c.label)}</b> rolled ${c.roll} (needs ${c.need}+): ${c.hit ? `<b>encounter!</b>${c.table ? (c.entry && !isQuiet(c.entry) ? ` <span class="tv-entry">${esc(c.entry)}</span>` : ` <span class="muted small">The table came up empty${c.entry?' ('+esc(c.entry)+')':''}: pick one that fits.</span>`)+tblNote : ` <span class="muted small">Pick one that fits, or roll on a table.</span>`}${where}` : 'quiet.'}</span>`;
+  if(c.direct) return `<span class="tv-chk ${c.hit?'hit':''}"><b>${esc(c.label)}</b> rolled ${c.roll}${c.die?' on d'+c.die:''} on ${esc(c.table)}: ${c.hit ? `<span class="tv-entry">${linkify(esc(c.entry))}</span>.${where} ${encRunBtns(c.entry)}` : (c.entry ? esc(c.entry)+' <span class="muted small">(quiet)</span>' : 'nothing on the table for that roll (quiet).')}</span>`;
+  return `<span class="tv-chk ${c.hit?'hit':''}"><b>${esc(c.label)}</b> rolled ${c.roll} (needs ${c.need}+): ${c.hit ? `<b>encounter!</b>${c.table ? (c.entry && !isQuiet(c.entry) ? ` <span class="tv-entry">${linkify(esc(c.entry))}</span> ${encRunBtns(c.entry)}` : ` <span class="muted small">The table came up empty${c.entry?' ('+esc(c.entry)+')':''}: pick one that fits.</span>`)+tblNote : ` <span class="muted small">Pick one that fits, or roll on a table.</span>`}${where}` : 'quiet.'}</span>`;
 }
 function travelDayCard(day, latest){
   const w=day.weather, pin=(id,l)=>`<button class="wlink" data-act="pin" data-id="${id}">${l}</button>`;
@@ -1717,7 +1730,7 @@ function startCombat(){
   L.forEach(c=>{ if(!has(c.init) && has(c.initBonus)) c.init = d(20)+num(c.initBonus); });
   const o=order().filter(c=>!c.defeated); if(!o.length) return;
   if(blockMissing()){ commit(); renderCombat(); return; }
-  C().active=true; C().round=1; C().prompts=[];
+  C().active=true; C().round=1; C().prompts=[]; dueWaves();
   if(hasLair() && num(o[0].init,0)<20) addPrompt('lair','Initiative 20: lair actions happen now, before anyone else (they lose ties).');
   C().turnId=o[0].id;
   startOfTurn(o[0]);
@@ -1736,7 +1749,7 @@ function nextTurn(){
     const leg = C().list.filter(c=>c.la && c.la.max && c.la.left>0 && !c.defeated && c.id!==cur.id);
     if(leg.length) addPrompt('info', `Legendary actions available after ${cur.name}’s turn: ${leg.map(c=>`${c.name} (${c.la.left}/${c.la.max})`).join(', ')}.`);
   }
-  if(wrapped) C().round++;
+  if(wrapped){ C().round++; dueWaves(); }
   if(hasLair()){
     const ci=num(cur&&cur.init,0), ni=num(next.init,0);
     if((wrapped && (ci>=20 || ni<20)) || (!wrapped && ci>=20 && ni<20)) addPrompt('lair', `Initiative 20${wrapped?', round '+C().round:''}: lair actions (they lose ties).`);
@@ -1753,10 +1766,10 @@ function prevTurn(){
 }
 function removeMonsters(){
   C().list = C().list.filter(c=>c.type==='pc');
-  Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[]});
+  Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[], wavesIn:[]});
   commit(); renderCombat(); renderCampaign(); toast('Monsters removed. The party is still in.');
 }
-function clearTracker(){ Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], list:[], encIds:[]}); commit(); renderCombat(); toast('Tracker cleared.'); }
+function clearTracker(){ Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], list:[], encIds:[], wavesIn:[]}); commit(); renderCombat(); toast('Tracker cleared.'); }
 function endCombat(){
   confirmBox('End combat?', 'Keep the party in the tracker for the next fight, or clear everyone out. Your saved monster list stays either way.', [
     {label:'Keep fighting'},
@@ -1845,11 +1858,13 @@ function renderCombat(){
         ${!c.active && o.length?'<button class="btn danger" data-act="clear">Clear tracker</button>':''}</span></div>`;
   h += encounterHTML();
   h += surpriseHTML();
+  h += waveBarHTML();
   if(c.prompts.length){
     h += '<div class="prompts">'+c.prompts.map(p=>{
       let a='';
       if(p.kind==='save') a=`<button class="btn sm heal" data-act="pr-saved" data-id="${p.id}">Saved, remove it</button><button class="btn sm" data-act="pr-dismiss" data-id="${p.id}">Failed, keep it</button>`;
       else if(p.kind==='conc') a=`<button class="btn sm heal" data-act="pr-dismiss" data-id="${p.id}">Kept it</button><button class="btn sm dmg" data-act="pr-lostconc" data-id="${p.id}">Lost it</button>`;
+      else if(p.kind==='wave') a=`<button class="btn sm primary" data-act="wave-in" data-v="${esc(p.v)}">Bring them in</button><button class="icon-btn" data-act="pr-dismiss" data-id="${p.id}" aria-label="Dismiss">×</button>`;
       else if(p.kind==='expire') a=`<button class="btn sm" data-act="pr-keep" data-id="${p.id}">Keep it on</button><button class="icon-btn" data-act="pr-dismiss" data-id="${p.id}" aria-label="Dismiss">×</button>`;
       else a=`<button class="icon-btn" data-act="pr-dismiss" data-id="${p.id}" aria-label="Dismiss">×</button>`;
       return `<div class="prompt k-${p.kind}"><span class="pt">${esc(p.text)}</span><span class="pa">${a}</span></div>`;
@@ -1863,6 +1878,7 @@ function renderCombat(){
   $('#panel-combat').innerHTML = h;
   renderUndo();
   syncWake();
+  fixScaleLabels();
 }
 /* ================= keep the screen on during combat ================= */
 let wakePref = true; try{ wakePref = localStorage.getItem('dmmt.wake')!=='off'; }catch(e){}
@@ -2212,7 +2228,7 @@ function undoLabel(e){
   if(mi && menu._items){ const it=menu._items.find(x=>x.key===mi.dataset.menu); if(it) return it.label || 'Token color'; }
   const el=e.target.closest('[data-act]'); if(!el) return 'Change';
   const c=el.dataset.id?byId(el.dataset.id):null, n=c?c.name:'';
-  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, 'pc-save':'Character changes', 'surp-all':'Surprise', 'surp-one':`Surprise for ${n}`, 'surp-g':`Surprise for ${el.dataset.v||''}`, 'enc-run':'Loaded an encounter'})[el.dataset.act] || 'Change';
+  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, 'pc-save':'Character changes', 'surp-all':'Surprise', 'wave-in':'Brought in reinforcements', 'surp-one':`Surprise for ${n}`, 'surp-g':`Surprise for ${el.dataset.v||''}`, 'enc-run':'Loaded an encounter'})[el.dataset.act] || 'Change';
 }
 
 /* ================= party ================= */
@@ -2493,7 +2509,9 @@ function encTpl(m){
   return m.tpl || null;
 }
 const encMonName = m => (encTpl(m)||{}).name || m.name || 'Missing monster';
-const encMonNames = it => (it.mons||[]).map(encMonName).join(' ');
+const encWaves = it => (it.waves||[]).filter(w=>(w.mons||[]).length);
+const encMonNames = it => [...(it.mons||[]), ...encWaves(it).flatMap(w=>w.mons)].map(encMonName).join(' ');
+const waveName = (w,i) => (w.label||'').trim() || `Wave ${i+1}`;
 function findEnc(id){ for(const s of S.sections||[]){ if(s.type!=='encounters') continue; const it=(s.items||[]).find(x=>x.id===id); if(it) return {s,it}; } return null; }
 function partyBudget(){
   const L=S.party.filter(p=>has(p.level) && +p.level>=1 && +p.level<=20), b=[0,0,0];
@@ -2516,9 +2534,13 @@ function encRateText(st){
   if(st.r==null) return `${fmt(st.xp)} XP. Add character levels on the Party tab to rate it.`;
   return `${RATES[st.r][0]}: ${fmt(st.xp)} XP for ${st.pb.n} character${st.pb.n===1?'':'s'} at ${st.pb.lvTxt}`;
 }
+function encStatsAll(it){ return encStats([...(it.mons||[]), ...encWaves(it).flatMap(w=>w.mons)]); }
 function encSummary(it){ const st=encStats(it); return `${st.n} monster${st.n===1?'':'s'}${st.r!=null?' · '+RATES[st.r][0]:''}${it.ran?' · run':''}`; }
 function encMonListHtml(it){
-  const L=(it.mons||[]); if(!L.length) return '';
+  return encListOf(it.mons||[]) + encWaves(it).map((w,i)=>`<p class="small enc-wave-h"><b>${esc(waveName(w,i))}</b>${has(w.round)?` · round ${w.round}`:''}</p>${encListOf(w.mons)}`).join('');
+}
+function encListOf(L){
+  if(!L.length) return '';
   return `<ul class="enc-mons">${L.map(m=>{ const t=encTpl(m); return `<li><b>${num(m.count,1)}×</b> ${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}</span>`:''}${!t?' <span class="tbl-warn small">removed from your monster list</span>':''}</li>`; }).join('')}</ul>`;
 }
 function encDiffHTML(st, it){
@@ -2533,12 +2555,46 @@ function encDiffHTML(st, it){
   if(st.unrated) h+=`<p class="muted small">${st.unrated} monster${st.unrated===1?' has':'s have'} no challenge rating and ${st.unrated===1?'isn’t':'aren’t'} counted.</p>`;
   return h+'</div>';
 }
+function waveIn(encId, wk){ return (C().wavesIn||[]).includes(encId+':'+wk); }
+function encWavesCardHTML(it){
+  const W=encWaves(it); if(!W.length) return '';
+  const live=encLive(it.id);
+  return W.map((w,i)=>`<div class="enc-wave"><div class="enc-wave-top"><b>${esc(waveName(w,i))}</b>${has(w.round)?`<span class="muted small">round ${w.round}</span>`:''}${live ? (waveIn(it.id,w.key) ? '<span class="small enc-live">Arrived</span>' : `<button class="btn sm" data-act="wave-in" data-v="${it.id}:${w.key}">Bring in</button>`) : ''}</div>${encListOf(w.mons)}</div>`).join('')
+    + (encWaves(it).length ? `<p class="muted small enc-wave-xp">${esc(encRateText(encStatsAll(it)).replace(/^([A-Za-z ]+):/,'With every wave, $1:'))}</p>` : '');
+}
+function pendingWaves(){
+  const out=[];
+  (C().encIds||[]).forEach(id=>{ const f=findEnc(id); if(!f) return; encWaves(f.it).forEach((w,i)=>{ if(!waveIn(id,w.key)) out.push({id, it:f.it, w, name:waveName(w,i)}); }); });
+  return out;
+}
+const waveCount = w => w.mons.map(m=>`${num(m.count,1)} ${encMonName(m)}`).join(', ');
+function waveBarHTML(){
+  const P=pendingWaves(); if(!P.length) return '';
+  return `<div class="surp waves"><span class="surp-k">In reserve</span>${P.map(x=>`<button class="btn sm" data-act="wave-in" data-v="${x.id}:${x.w.key}" title="${esc(waveCount(x.w))}">Bring in ${esc(x.name)}${has(x.w.round)?` <span class="muted">(round ${x.w.round})</span>`:''}</button>`).join('')}<span class="muted small surp-help">Reinforcement waves from ${[...new Set(P.map(x=>x.it.title||'this encounter'))].map(esc).join(', ')}. They roll initiative when they arrive.</span></div>`;
+}
+function bringWave(v){
+  const [id,wk]=String(v).split(':'), f=findEnc(id); if(!f) return; const it=f.it;
+  const i=encWaves(it).findIndex(w=>w.key===wk), w=encWaves(it)[i]; if(!w || waveIn(id,wk)) return;
+  const added=[];
+  w.mons.filter(m=>encTpl(m)).forEach(m=>{ const k=Math.max(1,Math.min(30,num(m.count,1))); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && (k>1 || C().list.some(c=>baseName(c.name)===encTpl(m).name)), twoDice:false, encId:id, hp:it.hp==='roll'?'roll':'avg'})); });
+  C().wavesIn=[...(C().wavesIn||[]), id+':'+wk];
+  C().prompts=C().prompts.filter(p=>!(p.kind==='wave' && p.v===v));
+  const noInit=added.filter(c=>!has(c.init)).map(c=>c.name);
+  addPrompt('info', `${waveName(w,i)} arrives: ${added.map(c=>c.name).join(', ')}${C().active?', initiative rolled':''}.${noInit.length?' Type initiative for '+noInit.join(', ')+'.':''}`);
+  commit(); renderCombat(); renderCampaign();
+}
+function dueWaves(){ pendingWaves().forEach(x=>{ if(has(x.w.round) && +x.w.round===C().round && !C().prompts.some(p=>p.kind==='wave' && p.v===x.id+':'+x.w.key)) addPrompt('wave', `Round ${C().round}: ${x.name} is due (${waveCount(x.w)}).`, {v:x.id+':'+x.w.key}); }); }
+function encsLinkedIn(text){
+  const out=[]; String(text||'').replace(WL_RE, (m,t)=>{ const id=resolveLink(unesc(t).trim()); if(id && id.startsWith('c:')){ const f=findEnc(id.slice(2)); if(f && !out.some(x=>x.id===f.it.id)) out.push(f.it); } return m; });
+  return out;
+}
+const encRunBtns = text => encsLinkedIn(text).map(it=>`<button class="btn sm primary enc-runlink" data-act="enc-run" data-id="${it.id}">Run ${esc(it.title)}</button>`).join('');
 function encLive(id){ return (C().encIds||[]).includes(id) && C().list.some(c=>c.encId===id); }
 function encCardHTML(s,it){
   const tags=itemTags(s,it).map(tagChip).join(''), st=encStats(it);
   const long = String(it.text||'').length>240 || String(it.text||'').split('\n').length>5, open=expanded.has(it.id);
   let h=`<div class="ccard enc-card${it.ran?' ran':''}"><div class="ob-head"><h3>${esc(it.title||'Untitled encounter')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>${tags?`<div class="tags">${tags}</div>`:''}`;
-  h+=encMonListHtml(it)+`<div class="muted small">Hit points: ${it.hp==='roll'?'rolled':'average'}</div>`+encDiffHTML(st, it);
+  h+=encListOf(it.mons||[])+encDiffHTML(st, it)+encWavesCardHTML(it)+`<div class="muted small">Hit points: ${it.hp==='roll'?'rolled':'average'}</div>`;
   if(it.text||it.html) h+=`<div class="ctext ${long&&!open?'clamp':''}">${linkify(itemHtml(it))}</div>${long?`<button class="linkish" data-act="cx-more" data-id="${it.id}">${open?'Show less':'Show more'}</button>`:''}`;
   if(it.ran){ const r=it.ran;
     h+=`<div class="enc-ran small"><b>✓ Run${r.sess?' in Session '+r.sess:''}</b> · ${fmt(r.xp)} XP${r.pcs?` (${fmt(Math.floor(r.xp/r.pcs))} each for ${r.pcs})`:''}${r.xp<r.total?` <span class="muted">of ${fmt(r.total)} possible</span>`:''}${r.down?`<span class="muted"> · defeated: ${esc(r.down)}</span>`:''}</div>`;
@@ -2590,7 +2646,7 @@ function loadEncounter(it, mons, mode){
   if(mode==='replace'){
     C().list = C().list.filter(c=>c.type==='pc');
     C().list.forEach(c=>{ c.init=''; c.conditions=[]; c.conc=false; c.concSpell=''; c.temp=0; });
-    Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[]});
+    Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[], wavesIn:[]});
   }
   const live=C().active, added=[];
   mons.forEach(m=>{ const k=Math.max(1,Math.min(30,num(m.count,1))); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && k>1, twoDice:!live, encId:it.id, hp:it.hp==='roll'?'roll':'avg'})); });
@@ -2611,6 +2667,11 @@ function surpriseHTML(){
   const all=L.every(c=>c.surprised), names=Object.keys(groups);
   return `<div class="surp"><span class="surp-k">Surprised?</span><button class="btn sm ${all?'on':''}" data-act="surp-all" aria-pressed="${all}">${all?'✓ All monsters surprised':'Monsters surprised'}</button>${names.length>1?names.map(n=>`<button class="chip surp-g" data-act="surp-g" data-v="${esc(n)}" aria-pressed="${groups[n].every(c=>c.surprised)}">${esc(n)}${groups[n].length>1?' ×'+groups[n].length:''}</button>`).join(''):''}<span class="muted small surp-help">Surprised monsters use the lower of the two initiative dice already rolled (disadvantage). Use the toggle on a monster’s row to set just that one. Locks when combat starts.</span></div>`;
 }
+function fixScaleLabels(){
+  $$('.enc-scale').forEach(sc=>{ const L=[...sc.querySelectorAll('span')]; L.forEach(x=>x.classList.remove('alt')); sc.classList.remove('two');
+    let prev=null; L.forEach(x=>{ const r=x.getBoundingClientRect(); if(prev && r.left < prev.right+6){ x.classList.add('alt'); sc.classList.add('two'); } else prev=r; }); });
+}
+window.addEventListener('resize', ()=>{ clearTimeout(fixScaleLabels._t); fixScaleLabels._t=setTimeout(fixScaleLabels,120); });
 function initTitle(c){
   if(!c.initDice) return '';
   const b=num(c.initBonus), used=c.surprised?Math.min(...c.initDice):c.initDice[0];
@@ -2628,7 +2689,7 @@ function finishEncounters(){
     f.it.ran={at:Date.now(), xp:down.reduce((t,c)=>t+(CR_XP[c.cr]||0),0), total:ms.reduce((t,c)=>t+(CR_XP[c.cr]||0),0), pcs, sess:sess?sess.n:null,
       down:Object.entries(tally).map(([n,k])=>k>1?`${k} ${n}`:n).join(', '), logged:''};
   });
-  C().encIds=[]; renderCampaign();
+  C().encIds=[]; C().wavesIn=[]; renderCampaign();
 }
 function logEncounter(id){
   const f=findEnc(id); if(!f || !f.it.ran) return; const it=f.it, r=it.ran;
@@ -2643,8 +2704,10 @@ function logEncounter(id){
 const dlgEnc=document.createElement('dialog'); dlgEnc.id='dlg-enc';
 dlgEnc.innerHTML=`<h2 id="enc-h">Add an encounter</h2><label>Name <input id="enc-title" placeholder="Room 4: The flooded shrine"></label>
 <div class="enc-sub">Monsters</div><div id="enc-mons"></div>
-<div class="enc-find"><input id="enc-q" type="search" placeholder="Search monsters to add" autocomplete="off" aria-label="Find a monster to add"><button type="button" class="btn" data-act="enc-newmon">New custom monster…</button></div>
+<div id="enc-waves"></div>
+<div class="enc-find"><input id="enc-q" type="search" placeholder="Search monsters to add" autocomplete="off" aria-label="Find a monster to add"><label class="enc-target-wrap" id="enc-target-wrap" hidden><span class="muted small">to</span> <select id="enc-target" aria-label="Add to"></select></label><button type="button" class="btn" data-act="enc-newmon">New custom monster…</button></div>
 <div id="enc-res" class="enc-res"></div>
+<button type="button" class="btn sm" data-act="enc-wave" style="margin-top:.4rem">+ Add a reinforcement wave</button>
 <div id="enc-diff"></div>
 <div class="enc-hp" role="radiogroup" aria-label="Hit points"><span class="enc-hp-k">Hit points</span><label class="row-label"><input type="radio" name="enc-hp" value="avg"> Average</label><label class="row-label"><input type="radio" name="enc-hp" value="roll"> Rolled <span class="muted small">(from each stat block’s hit dice)</span></label></div>
 <p class="muted small" id="enc-hpnote" style="margin:.1rem 0 .3rem"></p>
@@ -2653,9 +2716,9 @@ dlgEnc.innerHTML=`<h2 id="enc-h">Add an encounter</h2><label>Name <input id="enc
 <label style="margin-top:.6rem">More tags <input id="enc-tags" placeholder="separate with commas"></label>
 <div class="dlg-actions"><button class="btn quiet dmg" data-act="enc-del" id="enc-delbtn" style="margin-right:auto">Delete</button><button class="btn" data-act="close-dlg">Cancel</button><button class="btn primary" data-act="enc-save">Save</button></div>`;
 document.body.appendChild(dlgEnc);
-let encSec=null, encItem=null, encMons=[];
+let encSec=null, encItem=null, encMons=[], encWavesD=[], encTarget='';
 function openEnc(s, it){
-  encSec=s; encItem=it||null; encMons=clone((it&&it.mons)||[]);
+  encSec=s; encItem=it||null; encMons=clone((it&&it.mons)||[]); encWavesD=clone((it&&it.waves)||[]); encTarget='';
   $('#enc-h').textContent=(it?'Edit encounter':'Add an encounter')+' · '+s.title;
   $('#enc-title').value=it?.title||''; $('#enc-q').value=''; $('#enc-res').innerHTML='';
   $('#enc-colors').checked = it ? it.colors!==false : true;
@@ -2665,16 +2728,32 @@ function openEnc(s, it){
   renderEncDlg(); dlgEnc.showModal(); $('#enc-title').focus();
 }
 const encHpMode = () => { const r=$('input[name=enc-hp]:checked'); return r ? r.value : 'avg'; };
+const encListFor = wk => wk ? ((encWavesD.find(w=>w.key===wk)||{}).mons || encMons) : encMons;
 function renderEncDlg(){
-  $('#enc-mons').innerHTML = encMons.length ? encMons.map(m=>{ const t=encTpl(m); return `<div class="enc-row"><input type="number" min="1" max="30" value="${num(m.count,1)}" class="enc-count" data-k="${m.key}" aria-label="How many ${esc(encMonName(m))}"><span class="enc-nm">${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}${CR_XP[t.cr]!=null?' · '+fmt(CR_XP[t.cr])+' XP':''}</span>`:' <span class="muted small">no CR</span>'}<span class="muted small"> · ${m.srd?'free rules':'your list'}${t && encHpMode()==='roll' && !tplDice(t) ? ' · <span class="tbl-warn">fixed HP</span>' : ''}</span></span><button type="button" class="icon-btn" data-act="enc-rm" data-k="${m.key}" aria-label="Remove ${esc(encMonName(m))}">×</button></div>`; }).join('')
+  $('#enc-waves').innerHTML = encWavesD.map((w,i)=>`<div class="enc-wave-ed"><div class="enc-wave-top"><input data-wl="${w.key}" value="${esc(w.label||'')}" placeholder="Wave ${i+1}: e.g. Guards from the north door" aria-label="Wave name"><label class="muted small">Arrives round <input type="number" min="1" max="99" data-wr="${w.key}" value="${esc(w.round??'')}" placeholder="any" aria-label="Round it arrives (optional)"></label><button type="button" class="icon-btn" data-act="enc-wrm" data-wk="${w.key}" aria-label="Remove this wave">×</button></div>${w.mons.length ? w.mons.map(m=>encRowHTML(m, w.key)).join('') : '<p class="muted small" style="margin:.2rem 0">No monsters in this wave yet. Search below with “to” set to this wave.</p>'}</div>`).join('');
+  $('#enc-target-wrap').hidden = !encWavesD.length;
+  if(encTarget && !encWavesD.some(w=>w.key===encTarget)) encTarget='';
+  $('#enc-target').innerHTML = `<option value="">Main fight</option>`+encWavesD.map((w,i)=>`<option value="${w.key}" ${encTarget===w.key?'selected':''}>${esc(waveName(w,i))}</option>`).join('');
+  $('#enc-mons').innerHTML = encMons.length ? encMons.map(m=>encRowHTML(m,'')).join('')
     : '<p class="muted small" style="margin:.2rem 0">None yet. Search below, or make a custom monster.</p>';
-  $('#enc-diff').innerHTML=encDiffHTML(encStats(encMons), encItem);
-  const fixed = encHpMode()==='roll' && encMons.some(m=>{ const t=encTpl(m); return t && !tplDice(t); });
+  encDlgDiff();
+  const fixed = encHpMode()==='roll' && [...encMons, ...encWavesD.flatMap(w=>w.mons)].some(m=>{ const t=encTpl(m); return t && !tplDice(t); });
   $('#enc-hpnote').innerHTML = fixed ? 'Monsters marked <b>fixed HP</b> were saved with a single number, so there are no dice to roll. To roll them, add the monster again from Combat with dice in the HP box (like 6d8+18) and save it to your list.' : '';
 }
+function encDlgDiff(){
+  let h=encDiffHTML(encStats(encMons), encItem);
+  const all=[...encMons, ...encWavesD.flatMap(w=>w.mons)];
+  if(encWavesD.some(w=>w.mons.length)) h+=`<p class="muted small enc-wave-xp">${esc(encRateText(encStats(all)).replace(/^([A-Za-z ]+):/,'With every wave, $1:'))}</p>`;
+  $('#enc-diff').innerHTML=h;
+}
+function encRowHTML(m, wk){
+  const t=encTpl(m);
+  return `<div class="enc-row"><input type="number" min="1" max="30" value="${num(m.count,1)}" class="enc-count" data-k="${m.key}" data-wk="${wk}" aria-label="How many ${esc(encMonName(m))}"><span class="enc-nm">${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}${CR_XP[t.cr]!=null?' · '+fmt(CR_XP[t.cr])+' XP':''}</span>`:' <span class="muted small">no CR</span>'}<span class="muted small"> · ${m.srd?'free rules':'your list'}${t && encHpMode()==='roll' && !tplDice(t) ? ' · <span class="tbl-warn">fixed HP</span>' : ''}</span></span><button type="button" class="icon-btn" data-act="enc-rm" data-k="${m.key}" data-wk="${wk}" aria-label="Remove ${esc(encMonName(m))}">×</button></div>`;
+}
 function encAddMon(m){
-  const ex=encMons.find(x=>(m.srd && x.srd===m.srd) || (m.libId && x.libId===m.libId));
-  if(ex) ex.count=Math.min(30,num(ex.count,1)+1); else encMons.push(Object.assign({key:uid(), count:1}, m));
+  const L=encListFor(encTarget);
+  const ex=L.find(x=>(m.srd && x.srd===m.srd) || (m.libId && x.libId===m.libId));
+  if(ex) ex.count=Math.min(30,num(ex.count,1)+1); else L.push(Object.assign({key:uid(), count:1}, m));
   $('#enc-q').value=''; $('#enc-res').innerHTML=''; renderEncDlg(); $('#enc-q').focus();
 }
 function encSearch(){
@@ -2686,12 +2765,20 @@ function encSearch(){
 }
 $('#enc-q').addEventListener('input', encSearch);
 $('#enc-q').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const b=$('#enc-res button[data-act^=enc-add]'); if(b) b.click(); } });
-dlgEnc.addEventListener('change', e=>{ if(e.target.name==='enc-hp'){ renderEncDlg(); return; } if(e.target.classList.contains('enc-count')){ const m=encMons.find(x=>x.key===e.target.dataset.k); if(m){ m.count=Math.max(1,Math.min(30,num(e.target.value,1))); e.target.value=m.count; $('#enc-diff').innerHTML=encDiffHTML(encStats(encMons), encItem); } } });
+dlgEnc.addEventListener('change', e=>{ if(e.target.name==='enc-hp'){ renderEncDlg(); return; } if(e.target.classList.contains('enc-count')){ const m=encListFor(e.target.dataset.wk).find(x=>x.key===e.target.dataset.k); if(m){ m.count=Math.max(1,Math.min(30,num(e.target.value,1))); e.target.value=m.count; encDlgDiff(); } return; }
+  if(e.target.id==='enc-target'){ encTarget=e.target.value; return; }
+  if(e.target.dataset.wl){ const w=encWavesD.find(x=>x.key===e.target.dataset.wl); if(w){ w.label=e.target.value.trim(); const i=encWavesD.indexOf(w), o=$(`#enc-target option[value="${w.key}"]`); if(o) o.textContent=waveName(w,i); } return; }
+  if(e.target.dataset.wr){ const w=encWavesD.find(x=>x.key===e.target.dataset.wr); if(w) w.round = e.target.value==='' ? '' : Math.max(1,Math.min(99,num(e.target.value,1))); return; }
+});
 function saveEnc(){
   const s=encSec; if(!s) return;
   const title=$('#enc-title').value.trim(); if(!title){ toast('Give the encounter a name.'); $('#enc-title').focus(); return; }
   const it=encItem||{id:uid()};
-  it.title=title; it.mons=encMons.map(m=>({key:m.key, count:num(m.count,1), srd:m.srd||undefined, libId:m.libId||undefined, tpl:m.srd?undefined:(encTpl(m)?clone(encTpl(m)):m.tpl)}));
+  const keep = m => ({key:m.key, count:num(m.count,1), srd:m.srd||undefined, libId:m.libId||undefined, tpl:m.srd?undefined:(encTpl(m)?clone(encTpl(m)):m.tpl)});
+  it.title=title; it.mons=encMons.map(keep);
+  $$('#enc-waves [data-wl]').forEach(inp=>{ const w=encWavesD.find(x=>x.key===inp.dataset.wl); if(w) w.label=inp.value.trim(); });
+  $$('#enc-waves [data-wr]').forEach(inp=>{ const w=encWavesD.find(x=>x.key===inp.dataset.wr); if(w) w.round = inp.value==='' ? '' : Math.max(1,Math.min(99,num(inp.value,1))); });
+  it.waves=encWavesD.filter(w=>w.mons.length).map(w=>({key:w.key, label:w.label||'', round:w.round??'', mons:w.mons.map(keep)}));
   it.colors=$('#enc-colors').checked; it.hp=encHpMode(); it.tags=parseTags($('#enc-tags').value).filter(t=>t!==s.tag);
   const body=$('#enc-rte .rte-body'); it.html=cleanHtml(body?body.innerHTML:''); it.text=htmlToText(it.html);
   const st=encStats(it); it.built={r:st.r, lvTxt:st.pb.lvTxt};
@@ -2720,16 +2807,19 @@ dlgMon.addEventListener('close', ()=>{ monForEnc=false; const n=$('#enc-note-mon
 function encAct(act, el){
   switch(act){
     case 'enc-run': runEncounter(el.dataset.id); break;
+    case 'enc-wave': { const w={key:uid(), label:'', round:'', mons:[]}; encWavesD.push(w); encTarget=w.key; renderEncDlg(); const inp=$(`#enc-waves [data-wl="${w.key}"]`); if(inp) inp.focus(); break; }
+    case 'enc-wrm': encWavesD=encWavesD.filter(w=>w.key!==el.dataset.wk); if(encTarget===el.dataset.wk) encTarget=''; renderEncDlg(); break;
     case 'enc-goto': setTab('combat'); window.scrollTo && window.scrollTo(0,0); break;
     case 'enc-log': logEncounter(el.dataset.id); break;
     case 'enc-unrun': { const f=findEnc(el.dataset.id); if(f){ delete f.it.ran; commit(); renderCampaign(); } break; }
     case 'enc-addsrd': encAddMon({srd:el.dataset.v}); break;
     case 'enc-addlib': { const l=S.library.find(x=>x.id===el.dataset.id); if(l) encAddMon({libId:l.id, tpl:clone(l)}); break; }
-    case 'enc-rm': encMons=encMons.filter(x=>x.key!==el.dataset.k); renderEncDlg(); break;
+    case 'enc-rm': { const wk=el.dataset.wk; if(wk){ const w=encWavesD.find(x=>x.key===wk); if(w) w.mons=w.mons.filter(x=>x.key!==el.dataset.k); } else encMons=encMons.filter(x=>x.key!==el.dataset.k); renderEncDlg(); break; }
     case 'enc-newmon': openMonForEnc(); break;
     case 'enc-save': saveEnc(); break;
     case 'enc-del': if(encItem && encSec) confirmBox('Delete this encounter?', `“${encItem.title}” will be removed from ${encSec.title}. Monsters in your saved list stay.`, [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ encSec.items=encSec.items.filter(x=>x!==encItem); dlgEnc.close(); commit(); renderCampaign(); renderPins(); }}]); break;
     case 'surp-all': { const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated), on=!L.every(c=>c.surprised); L.forEach(c=>setSurprised(c,on)); commit(); renderCombat(); break; }
+    case 'wave-in': bringWave(el.dataset.v); break;
     case 'surp-one': { const c=byId(el.dataset.id); if(c && !C().active){ setSurprised(c, !c.surprised); commit(); renderCombat(); } break; }
     case 'surp-g': { const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated && baseName(c.name)===el.dataset.v), on=!L.every(c=>c.surprised); L.forEach(c=>setSurprised(c,on)); commit(); renderCombat(); break; }
   }
@@ -2816,8 +2906,8 @@ function tableHTML(s,it){
   const r=tableRolls[it.id];
   return `<div class="ccard"><div class="ob-head"><h3>${esc(it.title||'Untitled table')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>
     <div class="tags">${itemTags(s,it).map(tagChip).join('')}<span class="muted small">${esc(tableSummary(t))}</span>${warn.map(x=>`<span class="tbl-warn small">${esc(x)}</span>`).join('')}</div>
-    <div class="roll-row"><button class="btn primary sm" data-act="cx-roll" data-id="${it.id}" data-sec="${s.id}" ${entries.length?'':'disabled'}>Roll</button>${r?`<span class="roll-res"><b>${r.n}</b>${r.die?`<span class="muted small"> on d${r.die}</span>`:''} ${r.none?'<span class="muted">Nothing on the table for that roll.</span>':esc(r.text)}</span><button class="btn sm quiet" data-act="cx-rollsave" data-id="${it.id}" data-sec="${s.id}">Save to notes</button>`:''}</div>
-    <details class="tbl-entries"><summary class="small muted">Show entries</summary>${t.ranged ? `<ul class="tbl-ranged">${entries.map(x=>`<li><b>${rangeLabel(x)}</b> ${esc(x.text)}</li>`).join('')}</ul>` : `<ol>${entries.map(x=>`<li>${esc(x.text)}</li>`).join('')}</ol>`}</details></div>`;
+    <div class="roll-row"><button class="btn primary sm" data-act="cx-roll" data-id="${it.id}" data-sec="${s.id}" ${entries.length?'':'disabled'}>Roll</button>${r?`<span class="roll-res"><b>${r.n}</b>${r.die?`<span class="muted small"> on d${r.die}</span>`:''} ${r.none?'<span class="muted">Nothing on the table for that roll.</span>':linkify(esc(r.text))}</span>${r.none?'':encRunBtns(r.text)}<button class="btn sm quiet" data-act="cx-rollsave" data-id="${it.id}" data-sec="${s.id}">Save to notes</button>`:''}</div>
+    <details class="tbl-entries"><summary class="small muted">Show entries</summary>${t.ranged ? `<ul class="tbl-ranged">${entries.map(x=>`<li><b>${rangeLabel(x)}</b> ${linkify(esc(x.text))}</li>`).join('')}</ul>` : `<ol>${entries.map(x=>`<li>${linkify(esc(x.text))}</li>`).join('')}</ol>`}</details></div>`;
 }
 function calendarHTML(s){
   const c=s.cal||(s.cal={day:1,label:'',events:[]});
@@ -4241,7 +4331,7 @@ function onClick(e){
   if(act.startsWith('lk-')){ lookAct(act); return; }
   if(act.startsWith('tour-')){ tourAct(act, el); return; }
   if(act.startsWith('tv-')){ travelAct(act, el); return; }
-  if((act.startsWith('enc-') && act!=='enc-toggle') || act.startsWith('surp-')){ encAct(act, el); return; }
+  if((act.startsWith('enc-') && act!=='enc-toggle') || act.startsWith('surp-') || act==='wave-in'){ encAct(act, el); return; }
   if(act==='tbl-spread'){ const r=spreadTable($('#cd-text').value, +el.dataset.die); if(!r){ toast('Add some entries first, one per line.'); return; } if(r.error){ toast(r.error); return; } $('#cd-text').value=r.text; tableDlgSummary(); return; }
   if(act==='warm-log'||act==='warm-close'){ warmAct(act); return; }
   if(act==='doc-make'){ makeDoc(); return; }

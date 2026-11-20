@@ -372,6 +372,55 @@ const TESTS=[
    const ex=app("exportModel(()=>true)").find(x=>x.title==='Encounters');
    expect(ex && /Goblin Warrior/.test(ex.items[0].html), 'Export leaves out the monsters');
  }],
+ ['Encounters: reinforcement waves and table links', async()=>{
+   app(`clearTracker(); S.party.forEach(p=>p.level=3);
+     S.sections.push({id:'wvs',type:'encounters',title:'Wave encounters',tag:'encounter',items:[{id:'wv1',title:'Wave test',hp:'avg',colors:true,mons:[{key:'a1',count:2,srd:'Goblin Warrior'}],waves:[{key:'w1',label:'North door',round:2,mons:[{key:'b1',count:1,srd:'Bugbear Warrior'}]}],text:'',html:''}]});
+     S.sections.push({id:'wvt',type:'tables',title:'Link tables',tag:'random table',items:[{id:'lt1',title:'Lookups',entries:'1-20: The [[Wave test]] fight'}]});
+     commit(); renderAll();`);
+   await click('[data-tab=campaign]');
+   const card=()=>[...D.querySelectorAll('.enc-card')].find(c=>/Wave test/.test(c.textContent));
+   expect(card().querySelector('.enc-wave') && /North door/.test(card().textContent) && /round 2/.test(card().textContent), 'Wave not shown on the card');
+   expect(/With every wave/.test(card().textContent), 'No rating that includes the waves');
+   // Editor round trip
+   await click('[data-act=cx-edit][data-id=wv1]');
+   expect(D.querySelectorAll('#enc-waves .enc-wave-ed').length===1 && el('#enc-target').options.length===2, 'Wave not loaded into the editor');
+   await click('[data-act=enc-wave]'); expect(D.querySelectorAll('#enc-waves .enc-wave-ed').length===2 && el('#enc-target').value!=='', 'Adding a wave didn’t select it as the target');
+   el('#enc-q').value='goblin warrior'; el('#enc-q').dispatchEvent(new W.Event('input',{bubbles:true})); await wait(20);
+   await click('#enc-res [data-act=enc-addsrd][data-v="Goblin Warrior"]');
+   expect(D.querySelectorAll('#enc-waves .enc-wave-ed')[1].querySelectorAll('.enc-row').length===1, 'Monster didn’t go into the chosen wave');
+   await click('#enc-waves .enc-wave-ed:nth-child(2) [data-act=enc-wrm]');
+   await click('[data-act=enc-save]');
+   expect(app("findEnc('wv1').it.waves.length")===1, 'Removed wave came back, or the wave was lost');
+   // Roll the table: the linked encounter gets a Run button
+   await click('[data-act=cx-roll][data-id=lt1]');
+   const runBtn=D.querySelector('.enc-runlink[data-id=wv1]');
+   expect(runBtn && D.querySelector('.roll-res .wlink'), 'No Run button or link on the rolled line');
+   await click(runBtn);
+   const mons=()=>app("C().list.filter(c=>c.type==='monster')");
+   expect(app('tab')==='combat' && mons().length===2, 'Run from the table didn’t load the encounter');
+   expect(D.querySelector('.waves [data-act=wave-in]'), 'No reserve bar for the waiting wave');
+   app("C().list.forEach((c,i)=>{ if(c.type==='pc') c.init=1+i; }); commit(); renderCombat();");
+   await click('[data-act=start]');
+   for(let i=0;i<20 && app('C().round')<2;i++) await click('[data-act=next-turn]');
+   const pr=D.querySelector('.prompt.k-wave [data-act=wave-in]');
+   expect(pr, 'No reminder when the wave’s round came');
+   await click(pr);
+   const bug=mons().find(c=>/Bugbear/.test(c.name));
+   expect(mons().length===3 && bug && Number.isFinite(bug.init) && !bug.initDice && bug.encId==='wv1', 'Wave didn’t arrive with a single initiative roll');
+   expect(!D.querySelector('.waves'), 'Reserve bar still showing after the wave arrived');
+   await click('[data-tab=campaign]'); expect(/Arrived/.test(card().textContent), 'Card doesn’t show the wave arrived');
+   await click('[data-tab=combat]'); await click('[data-act=undo]');
+   expect(mons().length===2 && D.querySelector('.waves'), 'Undo didn’t send the wave back to reserve');
+   await click('[data-act=wave-in]');
+   app("C().list.filter(c=>c.type==='monster').forEach(c=>{c.hp=0;c.defeated=true}); commit(); renderCombat();");
+   await click('[data-act=end]'); await click('#cf-actions [data-cf="2"]');
+   expect(app("findEnc('wv1').it.ran.xp")===300 && !(app('C().wavesIn')||[]).length, 'XP should include the wave (2×50 + 200)');
+   // Travel roller shows the Run button too
+   app("Object.assign(S.travel,{chance:-1, table:'lt1', checks:1}); commit(); renderTravel();");
+   await click('[data-tab=travel]'); await click('[data-act=tv-roll]');
+   expect(D.querySelector('.tv-day.latest .enc-runlink[data-id=wv1]'), 'Travel roller doesn’t offer to run the linked encounter');
+   app("Object.assign(S.travel,{chance:18, table:''}); clearTracker();");
+ }],
  ['Import: the built-in sample document', async()=>{
    await click('[data-tab=campaign]'); await click('.camp-tools [data-act=cx-import]');
    await click('[data-act=imp-guide]'); expect(D.querySelectorAll('.guide h3').length===3, 'Guide didn’t open');
