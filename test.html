@@ -421,6 +421,48 @@ const TESTS=[
    expect(D.querySelector('.tv-day.latest .enc-runlink[data-id=wv1]'), 'Travel roller doesn’t offer to run the linked encounter');
    app("Object.assign(S.travel,{chance:18, table:''}); clearTracker();");
  }],
+ ['Random tables: make encounters from rows', async()=>{
+   const G=t=>app('guessMonsters')(t).map(m=>m.count+'× '+app('encMonName')(m)).join(', ');
+   expect(G('2d4 wolves shadow the party')==='2d4× Wolf', 'Wolves row guessed wrong: '+G('2d4 wolves shadow the party'));
+   expect(G('A goblin boss and 1d6 goblins demand a toll')==='1× Goblin Boss, 1d6× Goblin Warrior', 'Goblin row guessed wrong: '+G('A goblin boss and 1d6 goblins demand a toll'));
+   expect(G('Three bandits and a bandit captain')==='3× Bandit, 1× Bandit Captain', 'Bandit row guessed wrong');
+   expect(G('A peddler with a limp asks for an escort')==='', 'Found monsters where there are none');
+   app(`clearTracker(); S.sections=S.sections.filter(s=>s.type!=='encounters');
+     S.sections.push({id:'rtt',type:'tables',title:'Road encounters',tag:'random table',items:[{id:'rt1',title:'Road encounters',entries:'1-10: A goblin boss and 1d6 goblins demand a toll\\n11-20: No event'}]});
+     commit(); renderAll();`);
+   await click('[data-tab=campaign]');
+   const ents=()=>D.querySelector('.tbl-entries[data-tblopen=rt1]');
+   ents().open=true;
+   expect(ents().querySelectorAll('[data-act=tbl-mkenc]').length===1, 'Make encounter should show on the goblin row only (not on “No event”)');
+   await click(ents().querySelector('[data-act=tbl-mkenc]'));
+   expect(el('#enc-title').value==='A goblin boss and 1d6 goblins demand a toll' && !el('#enc-from').hidden, 'Editor not pre-filled from the row');
+   expect(D.querySelectorAll('#enc-mons .enc-row').length===2 && D.querySelectorAll('#enc-mons .enc-count')[1].value==='1d6', 'Monsters or dice count not pre-filled');
+   const bad=D.querySelectorAll('#enc-mons .enc-count')[0]; bad.value='lots'; bad.dispatchEvent(new W.Event('change',{bubbles:true}));
+   expect(bad.value==='1', 'An invalid count wasn’t put back');
+   await click('[data-act=enc-save]');
+   const sec=()=>app("S.sections.find(s=>s.type==='encounters')"), enc=()=>sec().items[0];
+   expect(sec() && enc().fromTable==='rt1', 'Encounter not created in an Encounters section');
+   expect(/^1-10: \[\[A goblin boss and 1d6 goblins demand a toll\|A goblin boss and 1d6 goblins demand a toll\]\]$/.test(app("findTableItem('rt1').it.entries.split('\\n')[0]")), 'Row not linked to the encounter');
+   expect(D.querySelector('.enc-group[data-encgrp=rt1]') && /From\s+Road encounters/.test(D.querySelector('.enc-group summary').textContent), 'Table-made encounter not grouped under its table');
+   expect(ents().open && !ents().querySelector('[data-act=tbl-mkenc]') && ents().querySelector('[data-act=enc-run]'), 'Linked row should offer Run instead of Make');
+   expect(/Low|Moderate|High/.test(app('encRateText')(app('encStats')(enc()))) && app('encStats')(enc()).n===4, 'Dice count not averaged for the rating (1 boss + 3 for 1d6)');
+   // Dice count rolls when it runs
+   const real=W.Math.random; W.Math.random=()=>0.99;
+   try{ await click(ents().querySelector('[data-act=enc-run]')); } finally { W.Math.random=real; }
+   expect(app("C().list.filter(c=>/^Goblin Warrior/.test(c.name)).length")===6, 'A 1d6 count should roll 6 here');
+   app('clearTracker()'); await click('[data-tab=campaign]');
+   // Renaming keeps the link
+   D.querySelector('.enc-group').open=true; await click('.enc-group [data-act=cx-edit]');
+   el('#enc-title').value='Goblin toll'; await click('[data-act=enc-save]');
+   expect(/^1-10: \[\[Goblin toll\|A goblin boss and 1d6 goblins demand a toll\]\]$/.test(app("findTableItem('rt1').it.entries.split('\\n')[0]")), 'Rename didn’t update the table link: '+app("findTableItem('rt1').it.entries.split('\\n')[0]"));
+   // [[ autofill in the table editor
+   await click('[data-act=cx-edit][data-id=rt1]');
+   const ta=el('#cd-text'); ta.focus(); ta.value+='\n21: The [[gob'; ta.setSelectionRange(ta.value.length, ta.value.length); ta.dispatchEvent(new W.Event('input',{bubbles:true})); await wait(30);
+   expect(!D.querySelector('#linkpick').hidden && /Goblin toll/.test(D.querySelector('#lp-list').textContent), 'No [[ suggestions in the table editor');
+   app("lpPick(0)");
+   expect(/\[\[Goblin toll\]\]$/.test(ta.value), 'Picking a suggestion didn’t finish the link: '+ta.value.split('\n').pop());
+   await click('[data-act=close-dlg]');
+ }],
  ['Import: the built-in sample document', async()=>{
    await click('[data-tab=campaign]'); await click('.camp-tools [data-act=cx-import]');
    await click('[data-act=imp-guide]'); expect(D.querySelectorAll('.guide h3').length===3, 'Guide didn’t open');
