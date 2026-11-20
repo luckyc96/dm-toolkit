@@ -114,7 +114,9 @@ main{padding:.9rem;max-width:1100px}
 
 /* combat */
 .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;margin-bottom:.7rem}
-.wake-ind{align-self:center;white-space:nowrap}
+.wake-ind{align-self:center;font-size:1.1rem;line-height:1;color:var(--brass);cursor:help}
+.tb-group{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem}
+a.btn{color:inherit;text-decoration:none}
 .round{font-family:var(--font-head);font-weight:700;font-size:1.25rem;margin-right:.4rem;font-variant-numeric:tabular-nums}
 .round span{font-family:var(--font-body);font-weight:500;font-size:.85rem;color:var(--muted);margin-right:.25rem}
 .spacer{flex:1}
@@ -301,6 +303,9 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .surp .btn.on{background:var(--brass);border-color:var(--brass);color:#fff}
 .surp-g[aria-pressed=true]{background:var(--brass);color:#fff;border-color:var(--brass)}
 .surp-help{flex-basis:100%}
+.surp-tog.on{background:var(--brass);border-color:var(--brass);border-style:solid;color:#fff}
+.enc-hp{display:flex;flex-wrap:wrap;gap:.2rem .9rem;align-items:center;margin:.5rem 0 .1rem}
+.enc-hp-k{font-weight:700}
 .surp-chip{border-color:var(--brass);color:var(--brass);font-weight:600}
 .tbl-ranged{list-style:none;padding-left:0;font-size:.88rem;margin:.3rem 0}
 .tbl-ranged b{display:inline-block;min-width:3.2rem;font-variant-numeric:tabular-nums}
@@ -1745,6 +1750,11 @@ function prevTurn(){
   if(i===0){ if(C().round<=1) return; C().round--; C().turnId=o[o.length-1].id; } else C().turnId=o[i-1].id;
   commit(); renderCombat(); toast('Moved back. Nothing was undone.');
 }
+function removeMonsters(){
+  C().list = C().list.filter(c=>c.type==='pc');
+  Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[]});
+  commit(); renderCombat(); renderCampaign(); toast('Monsters removed. The party is still in.');
+}
 function clearTracker(){ Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], list:[], encIds:[]}); commit(); renderCombat(); toast('Tracker cleared.'); }
 function endCombat(){
   confirmBox('End combat?', 'Keep the party in the tracker for the next fight, or clear everyone out. Your saved monster list stays either way.', [
@@ -1819,18 +1829,19 @@ function addParty(){
 function renderCombat(){
   const c=C(), o=order();
   const pBtn = S.party.length ? `<button class="btn" data-act="add-party">Add party</button>` : '';
-  let h = `<div class="toolbar">`;
+  let h = `<div class="toolbar"><span class="tb-group">`;
   if(c.active){
     h += `<div class="round"><span>Round</span>${c.round}</div>
       <button class="btn primary" data-act="next-turn">Next turn</button>
       <button class="btn" data-act="prev-turn" title="Moves the turn marker back without undoing anything">Back</button>
-      <span class="wake-ind muted small" id="wake-ind" hidden title="This screen won’t dim or lock until combat ends. Turn this off in Customize.">☀ Screen stays on</span>`;
+      <button class="btn" data-act="end">End combat</button>
+      <span class="wake-ind" id="wake-ind" hidden role="img" aria-label="Screen stays on until combat ends" title="Screen stays on: this screen won’t dim or lock until combat ends. Turn this off in Customize.">☀</span>`;
   } else {
     h += `<button class="btn primary" data-act="start" ${o.length?'':'disabled'}>Start combat</button>`;
   }
-  h += `<button class="btn" id="undo-btn" data-act="undo" disabled>Undo<span class="undo-label"></span></button><span class="spacer"></span><button class="btn" data-act="open-mon">Add monsters</button>${pBtn}<a class="btn" href="https://www.dndbeyond.com/monsters" target="_blank" rel="noopener noreferrer" title="Open D&D Beyond’s monster list in a new tab">D&amp;D Beyond monsters ↗</a>
+  h += `<button class="btn" id="undo-btn" data-act="undo" disabled>Undo<span class="undo-label"></span></button></span><span class="spacer"></span><span class="tb-group"><button class="btn" data-act="open-mon">Add monsters</button>${pBtn}<a class="btn" href="https://www.dndbeyond.com/monsters" target="_blank" rel="noopener noreferrer" title="Open D&D Beyond’s monster list in a new tab" aria-label="D&D Beyond monsters (opens a new tab)">D&amp;D Beyond ↗</a>
         <button class="btn" data-act="open-cond-multi" ${o.length?'':'disabled'}>Condition on several</button>
-        ${c.active?'<button class="btn quiet" data-act="end">End combat</button>':(o.length?'<button class="btn danger" data-act="clear">Clear tracker</button>':'')}</div>`;
+        ${!c.active && o.length?'<button class="btn danger" data-act="clear">Clear tracker</button>':''}</span></div>`;
   h += encounterHTML();
   h += surpriseHTML();
   if(c.prompts.length){
@@ -1896,7 +1907,8 @@ function rowHTML(c){
   if(c.la && c.la.max) chips.push(`<span class="res">Leg. actions <span class="pips">${Array.from({length:c.la.max},(_,i)=>`<button class="pip ${i>=c.la.left?'used':''}" data-act="la" data-id="${c.id}" data-i="${i}" aria-label="Legendary action ${i+1}"></button>`).join('')}</span></span>`);
   (c.recharge||[]).forEach(r=>chips.push(`<button class="rch ${r.ready?'ready':'spent'}" data-act="rch" data-id="${c.id}" data-r="${r.id}" title="${r.ready?'Click when used':'Click to roll recharge'}">${esc(r.name)} ${r.min===6?'6':r.min+'–6'}</button>`));
   if(c.lair) chips.push('<span class="lair">Lair</span>');
-  if(c.surprised) chips.unshift('<span class="chip surp-chip" data-tip="initiative" tabindex="0">Surprised</span>');
+  if(c.type==='monster' && c.initDice && !C().active && !c.defeated) chips.push(`<button class="chip add surp-tog ${c.surprised?'on':''}" data-act="surp-one" data-id="${c.id}" aria-pressed="${!!c.surprised}" title="Surprised monsters use the lower of their two initiative dice">${c.surprised?'Surprised ✓':'+ Surprised'}</button>`);
+  else if(c.surprised) chips.unshift('<span class="chip surp-chip" data-tip="initiative" tabindex="0">Surprised</span>');
   if(has(c.maxHp) && num(c.maxHp)>0 && has(c.hp) && num(c.hp)>0 && num(c.hp)<=num(c.maxHp)/2 && !c.defeated) chips.unshift('<span class="chip bloodied" data-tip="bloodied" tabindex="0">Bloodied</span>');
   if(c.type==='pc' && has(c.hp) && num(c.hp)===0){
     const ds=c.ds||{s:0,f:0};
@@ -2199,7 +2211,7 @@ function undoLabel(e){
   if(mi && menu._items){ const it=menu._items.find(x=>x.key===mi.dataset.menu); if(it) return it.label || 'Token color'; }
   const el=e.target.closest('[data-act]'); if(!el) return 'Change';
   const c=el.dataset.id?byId(el.dataset.id):null, n=c?c.name:'';
-  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, 'pc-save':'Character changes', 'surp-all':'Surprise', 'surp-g':`Surprise for ${el.dataset.v||''}`, 'enc-run':'Loaded an encounter'})[el.dataset.act] || 'Change';
+  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, 'pc-save':'Character changes', 'surp-all':'Surprise', 'surp-one':`Surprise for ${n}`, 'surp-g':`Surprise for ${el.dataset.v||''}`, 'enc-run':'Loaded an encounter'})[el.dataset.act] || 'Change';
 }
 
 /* ================= party ================= */
@@ -2473,7 +2485,7 @@ document.addEventListener('input', e=>{ if(e.target.id==='cd-text' && !$('#cd-tb
 
 
 /* ================= encounter builder ================= */
-const srdTpl = m => ({name:m.n, srd:m.n, hpExpr:String(m.hp), ac:m.ac, initBonus:m.in, cr:m.cr, notes:srdNotes(m), lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:false, recharge:(m.rc||[]).map(([n,min])=>({name:n,min}))});
+const srdTpl = m => ({name:m.n, srd:m.n, hpExpr:String(m.hp), hd:m.hd||'', ac:m.ac, initBonus:m.in, cr:m.cr, notes:srdNotes(m), lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:false, recharge:(m.rc||[]).map(([n,min])=>({name:n,min}))});
 function encTpl(m){
   if(m.srd && SRD_BY[m.srd]) return srdTpl(SRD_BY[m.srd]);
   if(m.libId){ const l=S.library.find(x=>x.id===m.libId); if(l) return l; }
@@ -2525,7 +2537,7 @@ function encCardHTML(s,it){
   const tags=itemTags(s,it).map(tagChip).join(''), st=encStats(it);
   const long = String(it.text||'').length>240 || String(it.text||'').split('\n').length>5, open=expanded.has(it.id);
   let h=`<div class="ccard enc-card${it.ran?' ran':''}"><div class="ob-head"><h3>${esc(it.title||'Untitled encounter')}</h3><button class="btn sm quiet" data-act="pin" data-id="c:${it.id}">Pin</button><button class="btn sm quiet" data-act="cx-edit" data-sec="${s.id}" data-id="${it.id}">Edit</button></div>${tags?`<div class="tags">${tags}</div>`:''}`;
-  h+=encMonListHtml(it)+encDiffHTML(st, it);
+  h+=encMonListHtml(it)+`<div class="muted small">Hit points: ${it.hp==='roll'?'rolled':'average'}</div>`+encDiffHTML(st, it);
   if(it.text||it.html) h+=`<div class="ctext ${long&&!open?'clamp':''}">${linkify(itemHtml(it))}</div>${long?`<button class="linkish" data-act="cx-more" data-id="${it.id}">${open?'Show less':'Show more'}</button>`:''}`;
   if(it.ran){ const r=it.ran;
     h+=`<div class="enc-ran small"><b>✓ Run${r.sess?' in Session '+r.sess:''}</b> · ${fmt(r.xp)} XP${r.pcs?` (${fmt(Math.floor(r.xp/r.pcs))} each for ${r.pcs})`:''}${r.xp<r.total?` <span class="muted">of ${fmt(r.total)} possible</span>`:''}${r.down?`<span class="muted"> · defeated: ${esc(r.down)}</span>`:''}</div>`;
@@ -2537,6 +2549,12 @@ function encCardHTML(s,it){
   return h+`</div></div>`;
 }
 
+/* hit points: average or rolled */
+const DICE_RE=/^(\d*)d(\d+)([+-]\d+)?$/i;
+const isDiceExpr = x => DICE_RE.test(String(x||'').replace(/\s/g,''));
+function avgExpr(x){ const m=String(x||'').replace(/\s/g,'').match(DICE_RE); if(!m) return has(x)?+x:''; const n=+(m[1]||1), sd=+m[2]; return Math.max(1, Math.floor(n*(sd+1)/2)+num(m[3])); }
+const tplDice = t => t.hd ? t.hd : (isDiceExpr(t.hpExpr) ? String(t.hpExpr).replace(/\s/g,'') : '');
+function encHp(t, mode){ const dice=tplDice(t); if(mode==='roll' && dice) return rollExpr(dice); if(isDiceExpr(t.hpExpr)) return avgExpr(t.hpExpr); return rollExpr(t.hpExpr); }
 /* loading monsters into the tracker */
 function addCopies(t, count, o){
   const existing=C().list.filter(c=>baseName(c.name)===t.name).length, out=[];
@@ -2544,7 +2562,7 @@ function addCopies(t, count, o){
     let name=t.name;
     if(count>1 || existing>0) name = existing===0 ? `${t.name} ${i+1}` : nextName(t.name);
     if(existing===1 && i===0){ const solo=C().list.find(c=>c.name===t.name); if(solo) solo.name=t.name+' 1'; name=nextName(t.name); }
-    const hp=rollExpr(t.hpExpr);
+    const hp=o.hp ? encHp(t, o.hp) : rollExpr(t.hpExpr);
     const c=newCombatant({name, srd:t.srd||null, cr:t.cr, notes:t.notes, color:o.colors?nextColor(t.name):null, hp, maxHp:hp, ac:t.ac, initBonus:t.initBonus,
       lr:t.lr&&t.lr.max?{max:t.lr.max,used:0}:null, la:t.la&&t.la.max?{max:t.la.max,left:t.la.max}:null, lair:!!t.lair,
       recharge:(t.recharge||[]).map(r=>({id:uid(), name:r.name, min:r.min, ready:true})), encId:o.encId||null});
@@ -2574,7 +2592,7 @@ function loadEncounter(it, mons, mode){
     Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[]});
   }
   const live=C().active, added=[];
-  mons.forEach(m=>{ const k=Math.max(1,Math.min(30,num(m.count,1))); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && k>1, twoDice:!live, encId:it.id})); });
+  mons.forEach(m=>{ const k=Math.max(1,Math.min(30,num(m.count,1))); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && k>1, twoDice:!live, encId:it.id, hp:it.hp==='roll'?'roll':'avg'})); });
   if(!live) S.party.forEach(p=>{ if(!C().list.some(c=>c.partyId===p.id)) C().list.push(newCombatant({type:'pc', partyId:p.id, name:p.name||'Unnamed', hp:has(p.maxHp)?+p.maxHp:'', maxHp:has(p.maxHp)?+p.maxHp:'', ac:p.ac})); });
   C().encIds=[...new Set([...(C().encIds||[]), it.id])];
   const noInit=added.filter(c=>!has(c.init)).map(c=>c.name);
@@ -2590,7 +2608,7 @@ function surpriseHTML(){
   const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated); if(!L.length) return '';
   const groups={}; L.forEach(c=>(groups[baseName(c.name)]=groups[baseName(c.name)]||[]).push(c));
   const all=L.every(c=>c.surprised), names=Object.keys(groups);
-  return `<div class="surp"><span class="surp-k">Surprised?</span><button class="btn sm ${all?'on':''}" data-act="surp-all" aria-pressed="${all}">${all?'✓ All monsters surprised':'Monsters surprised'}</button>${names.length>1?names.map(n=>`<button class="chip surp-g" data-act="surp-g" data-v="${esc(n)}" aria-pressed="${groups[n].every(c=>c.surprised)}">${esc(n)}${groups[n].length>1?' ×'+groups[n].length:''}</button>`).join(''):''}<span class="muted small surp-help">Surprised monsters use the lower of the two initiative dice already rolled (disadvantage). Locks when combat starts.</span></div>`;
+  return `<div class="surp"><span class="surp-k">Surprised?</span><button class="btn sm ${all?'on':''}" data-act="surp-all" aria-pressed="${all}">${all?'✓ All monsters surprised':'Monsters surprised'}</button>${names.length>1?names.map(n=>`<button class="chip surp-g" data-act="surp-g" data-v="${esc(n)}" aria-pressed="${groups[n].every(c=>c.surprised)}">${esc(n)}${groups[n].length>1?' ×'+groups[n].length:''}</button>`).join(''):''}<span class="muted small surp-help">Surprised monsters use the lower of the two initiative dice already rolled (disadvantage). Use the toggle on a monster’s row to set just that one. Locks when combat starts.</span></div>`;
 }
 function initTitle(c){
   if(!c.initDice) return '';
@@ -2627,6 +2645,8 @@ dlgEnc.innerHTML=`<h2 id="enc-h">Add an encounter</h2><label>Name <input id="enc
 <div class="enc-find"><input id="enc-q" type="search" placeholder="Search monsters to add" autocomplete="off" aria-label="Find a monster to add"><button type="button" class="btn" data-act="enc-newmon">New custom monster…</button></div>
 <div id="enc-res" class="enc-res"></div>
 <div id="enc-diff"></div>
+<div class="enc-hp" role="radiogroup" aria-label="Hit points"><span class="enc-hp-k">Hit points</span><label class="row-label"><input type="radio" name="enc-hp" value="avg"> Average</label><label class="row-label"><input type="radio" name="enc-hp" value="roll"> Rolled <span class="muted small">(from each stat block’s hit dice)</span></label></div>
+<p class="muted small" id="enc-hpnote" style="margin:.1rem 0 .3rem"></p>
 <label class="row-label"><input type="checkbox" id="enc-colors"> Give look-alike monsters different token colors</label>
 <div style="margin-top:.6rem"><div class="muted small" style="margin-bottom:.2rem">Notes <span class="muted">· tactics, terrain, treasure. Type [[Name]] to link a room, NPC, or rule</span></div><div id="enc-rte"></div></div>
 <label style="margin-top:.6rem">More tags <input id="enc-tags" placeholder="separate with commas"></label>
@@ -2638,14 +2658,18 @@ function openEnc(s, it){
   $('#enc-h').textContent=(it?'Edit encounter':'Add an encounter')+' · '+s.title;
   $('#enc-title').value=it?.title||''; $('#enc-q').value=''; $('#enc-res').innerHTML='';
   $('#enc-colors').checked = it ? it.colors!==false : true;
+  const hpm = it && it.hp==='roll' ? 'roll' : 'avg'; $$('input[name=enc-hp]').forEach(r=>r.checked = r.value===hpm);
   $('#enc-rte').innerHTML=rteHTML('enc', it?itemHtml(it):'', 'How they fight, the room, what they carry…', 'tall');
   $('#enc-tags').value=(it?.tags||[]).join(', '); $('#enc-delbtn').hidden=!it;
   renderEncDlg(); dlgEnc.showModal(); $('#enc-title').focus();
 }
+const encHpMode = () => { const r=$('input[name=enc-hp]:checked'); return r ? r.value : 'avg'; };
 function renderEncDlg(){
-  $('#enc-mons').innerHTML = encMons.length ? encMons.map(m=>{ const t=encTpl(m); return `<div class="enc-row"><input type="number" min="1" max="30" value="${num(m.count,1)}" class="enc-count" data-k="${m.key}" aria-label="How many ${esc(encMonName(m))}"><span class="enc-nm">${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}${CR_XP[t.cr]!=null?' · '+fmt(CR_XP[t.cr])+' XP':''}</span>`:' <span class="muted small">no CR</span>'}<span class="muted small"> · ${m.srd?'free rules':'your list'}</span></span><button type="button" class="icon-btn" data-act="enc-rm" data-k="${m.key}" aria-label="Remove ${esc(encMonName(m))}">×</button></div>`; }).join('')
+  $('#enc-mons').innerHTML = encMons.length ? encMons.map(m=>{ const t=encTpl(m); return `<div class="enc-row"><input type="number" min="1" max="30" value="${num(m.count,1)}" class="enc-count" data-k="${m.key}" aria-label="How many ${esc(encMonName(m))}"><span class="enc-nm">${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}${CR_XP[t.cr]!=null?' · '+fmt(CR_XP[t.cr])+' XP':''}</span>`:' <span class="muted small">no CR</span>'}<span class="muted small"> · ${m.srd?'free rules':'your list'}${t && encHpMode()==='roll' && !tplDice(t) ? ' · <span class="tbl-warn">fixed HP</span>' : ''}</span></span><button type="button" class="icon-btn" data-act="enc-rm" data-k="${m.key}" aria-label="Remove ${esc(encMonName(m))}">×</button></div>`; }).join('')
     : '<p class="muted small" style="margin:.2rem 0">None yet. Search below, or make a custom monster.</p>';
   $('#enc-diff').innerHTML=encDiffHTML(encStats(encMons), encItem);
+  const fixed = encHpMode()==='roll' && encMons.some(m=>{ const t=encTpl(m); return t && !tplDice(t); });
+  $('#enc-hpnote').innerHTML = fixed ? 'Monsters marked <b>fixed HP</b> were saved with a single number, so there are no dice to roll. To roll them, add the monster again from Combat with dice in the HP box (like 6d8+18) and save it to your list.' : '';
 }
 function encAddMon(m){
   const ex=encMons.find(x=>(m.srd && x.srd===m.srd) || (m.libId && x.libId===m.libId));
@@ -2661,13 +2685,13 @@ function encSearch(){
 }
 $('#enc-q').addEventListener('input', encSearch);
 $('#enc-q').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const b=$('#enc-res button[data-act^=enc-add]'); if(b) b.click(); } });
-dlgEnc.addEventListener('change', e=>{ if(e.target.classList.contains('enc-count')){ const m=encMons.find(x=>x.key===e.target.dataset.k); if(m){ m.count=Math.max(1,Math.min(30,num(e.target.value,1))); e.target.value=m.count; $('#enc-diff').innerHTML=encDiffHTML(encStats(encMons), encItem); } } });
+dlgEnc.addEventListener('change', e=>{ if(e.target.name==='enc-hp'){ renderEncDlg(); return; } if(e.target.classList.contains('enc-count')){ const m=encMons.find(x=>x.key===e.target.dataset.k); if(m){ m.count=Math.max(1,Math.min(30,num(e.target.value,1))); e.target.value=m.count; $('#enc-diff').innerHTML=encDiffHTML(encStats(encMons), encItem); } } });
 function saveEnc(){
   const s=encSec; if(!s) return;
   const title=$('#enc-title').value.trim(); if(!title){ toast('Give the encounter a name.'); $('#enc-title').focus(); return; }
   const it=encItem||{id:uid()};
   it.title=title; it.mons=encMons.map(m=>({key:m.key, count:num(m.count,1), srd:m.srd||undefined, libId:m.libId||undefined, tpl:m.srd?undefined:(encTpl(m)?clone(encTpl(m)):m.tpl)}));
-  it.colors=$('#enc-colors').checked; it.tags=parseTags($('#enc-tags').value).filter(t=>t!==s.tag);
+  it.colors=$('#enc-colors').checked; it.hp=encHpMode(); it.tags=parseTags($('#enc-tags').value).filter(t=>t!==s.tag);
   const body=$('#enc-rte .rte-body'); it.html=cleanHtml(body?body.innerHTML:''); it.text=htmlToText(it.html);
   const st=encStats(it); it.built={r:st.r, lvTxt:st.pb.lvTxt};
   if(!encItem) s.items.push(it);
@@ -2705,6 +2729,7 @@ function encAct(act, el){
     case 'enc-save': saveEnc(); break;
     case 'enc-del': if(encItem && encSec) confirmBox('Delete this encounter?', `“${encItem.title}” will be removed from ${encSec.title}. Monsters in your saved list stay.`, [{label:'Cancel'},{label:'Delete', danger:true, fn:()=>{ encSec.items=encSec.items.filter(x=>x!==encItem); dlgEnc.close(); commit(); renderCampaign(); renderPins(); }}]); break;
     case 'surp-all': { const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated), on=!L.every(c=>c.surprised); L.forEach(c=>setSurprised(c,on)); commit(); renderCombat(); break; }
+    case 'surp-one': { const c=byId(el.dataset.id); if(c && !C().active){ setSurprised(c, !c.surprised); commit(); renderCombat(); } break; }
     case 'surp-g': { const L=C().list.filter(c=>c.type==='monster' && c.initDice && !c.defeated && baseName(c.name)===el.dataset.v), on=!L.every(c=>c.surprised); L.forEach(c=>setSurprised(c,on)); commit(); renderCombat(); break; }
   }
 }
@@ -4240,7 +4265,8 @@ function onClick(e){
     case 'next-turn': nextTurn(); break;
     case 'prev-turn': prevTurn(); break;
     case 'end': endCombat(); break;
-    case 'clear': confirmBox('Clear the entire tracker?', 'This removes every combatant, including the party, and resets the round counter. Undo can bring it back right after. Your saved monster list, party, and notes aren’t affected.', [{label:'Cancel'},{label:'Clear everything', danger:true, fn:clearTracker}]); break;
+    case 'clear': if(C().list.some(c=>c.type==='pc') && C().list.some(c=>c.type!=='pc')){ confirmBox('Clear the tracker?', 'Remove just the monsters and keep the party (with any initiative already typed in), or clear everyone. Undo can bring it back right after.', [{label:'Remove monsters, keep the party', primary:true, fn:removeMonsters},{label:'Clear everyone', danger:true, fn:clearTracker},{label:'Cancel'}]); break; }
+      confirmBox('Clear the entire tracker?', 'This removes every combatant, including the party, and resets the round counter. Undo can bring it back right after. Your saved monster list, party, and notes aren’t affected.', [{label:'Cancel'},{label:'Clear everything', danger:true, fn:clearTracker}]); break;
     case 'add-party': addParty(); break;
     case 'open-mon': openMon(); break;
     case 'open-cond': openCond([id]); break;

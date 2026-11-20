@@ -305,9 +305,16 @@ const TESTS=[
    expect(mons().every(c=>!c.surprised && (c.initManual || c.init===c.initDice[0]+(+c.initBonus||0))), 'Turning surprise off didn’t restore the first die');
    await click('[data-act=surp-g][data-v="Bog Thing"]');
    expect(mons().filter(c=>c.surprised).length===1, 'Group surprise affected the wrong monsters');
+   const g2=mons().find(c=>/Goblin Warrior 2/.test(c.name));
+   await click(`[data-act=surp-one][data-id="${g2.id}"]`);
+   expect(app(`byId('${g2.id}').surprised`) && mons().filter(c=>c.surprised).length===2, 'Row toggle didn’t surprise just that monster');
+   expect(app(`byId('${g2.id}').init`)===Math.min(...g2.initDice)+(+g2.initBonus||0), 'Row toggle didn’t use the lower die');
+   expect(mons().filter(c=>/Goblin Warrior/.test(c.name)).every(c=>c.hp===app("SRD_BY['Goblin Warrior'].hp")), 'Average hit points not used by default');
    app("C().list.filter(c=>c.type==='pc').forEach((c,i)=>c.init=10+i); commit(); renderCombat();");
    await click('[data-act=start]');
-   expect(!D.querySelector('.surp'), 'Surprise controls still showing after combat started');
+   expect(!D.querySelector('.surp') && !D.querySelector('[data-act=surp-one]'), 'Surprise controls still showing after combat started');
+   const endBtn=D.querySelector('.toolbar .tb-group [data-act=end]');
+   expect(endBtn && !endBtn.classList.contains('quiet') && endBtn.parentElement.querySelector('[data-act=next-turn]'), 'End combat isn’t an outlined button next to Next turn');
    // Run again mid-fight: add as reinforcements
    await click('[data-tab=campaign]');
    expect(/In the combat tracker now/.test(card().textContent), 'Card doesn’t say it’s in the tracker');
@@ -330,6 +337,21 @@ const TESTS=[
    app("C().list.push(newCombatant({name:'Stray rat', hp:1, maxHp:1})); commit(); renderCombat();");
    await click('[data-act=enc-run]'); await click('#cf-actions [data-cf="1"]');
    expect(!app("C().list.some(c=>c.name==='Stray rat')") && mons().length===4, 'Replace didn’t clear the old monsters');
+   await click('[data-act=clear]');
+   expect(/keep the party/.test(D.querySelector('#cf-actions [data-cf="0"]').textContent), 'Clear tracker doesn’t offer to keep the party first');
+   await click('#cf-actions [data-cf="0"]');
+   expect(mons().length===0 && app("C().list.filter(c=>c.type==='pc').length")===app('S.party.length'), 'Removing monsters also removed the party');
+   // Rolled hit points
+   await click('[data-tab=campaign]'); await click('[data-act=cx-edit][data-sec=est]');
+   const roll=D.querySelector('input[name=enc-hp][value=roll]'); roll.checked=true; roll.dispatchEvent(new W.Event('change',{bubbles:true})); await wait(20);
+   expect(/fixed HP/.test(el('#enc-mons').textContent) && el('#enc-hpnote').textContent, 'Bog Thing not flagged as fixed HP');
+   await click('[data-act=enc-save]');
+   expect(it().hp==='roll' && /rolled/.test(card().textContent), 'Rolled hit points not saved or shown');
+   const real=W.Math.random; let k=0; W.Math.random=()=>[0.05,0.95,0.5,0.7][k++%4];
+   try{ await click('[data-act=enc-run]'); } finally { W.Math.random=real; }
+   const hps=mons().filter(c=>/Goblin Warrior/.test(c.name)).map(c=>c.hp);
+   expect(new Set(hps).size>1 && hps.every(h=>h>=3 && h<=18), 'Goblin hit points not rolled from 3d6: '+hps);
+   expect(mons().find(c=>c.name==='Bog Thing').hp===20, 'Fixed-HP monster changed');
    app('clearTracker()');
    await click('[data-tab=campaign]'); await click('[data-act=enc-unrun]');
    expect(!it().ran, 'Mark not run didn’t clear it');
