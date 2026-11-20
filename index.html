@@ -166,6 +166,11 @@ a.btn{color:inherit;text-decoration:none}
 .pips{display:inline-flex;gap:3px}
 .pip{width:12px;height:12px;transform:rotate(45deg);border:1.5px solid var(--brass);background:var(--brass);cursor:pointer;padding:0;border-radius:2px}
 .pip.used{background:transparent}
+@media (pointer:coarse){ .pip{width:17px;height:17px} .pips{gap:7px} }
+.day-res{flex-wrap:wrap;gap:.15rem .7rem;flex-basis:100%;margin-left:0}
+.day-it{display:inline-flex;align-items:center;gap:.25rem;color:var(--ink)}
+.day-it.spent{color:var(--muted);text-decoration:line-through}
+.day-row .day-n{flex:0 0 3.6rem;width:3.6rem}
 .rch{border:1px solid var(--line);background:var(--surface-2);border-radius:4px;font-size:.8rem;padding:.05rem .45rem;cursor:pointer}
 .rch.spent{text-decoration:line-through;color:var(--muted);background:transparent}
 .rch.ready{border-color:var(--heal);color:var(--heal)}
@@ -752,6 +757,12 @@ legend{font-size:.9rem;color:var(--muted);padding:0 .3rem}
     <legend>Recharge abilities</legend>
     <div class="rch-rows" id="m-rch"></div>
     <button class="btn sm" data-act="add-rch-row" style="margin-top:.4rem">Add a recharge ability</button>
+  </fieldset>
+  <fieldset>
+    <legend>Uses per day</legend>
+    <p class="muted small" style="margin:.1rem 0 .2rem">Spells or abilities like “Fireball (1/Day)”. Filled in automatically for monsters from the free rules.</p>
+    <div class="rch-rows" id="m-day"></div>
+    <button class="btn sm" data-act="add-day-row" style="margin-top:.4rem">Add a per-day use</button>
   </fieldset>
   <label style="margin-top:.6rem">Notes <textarea id="m-notes" rows="3" placeholder="Scimitar +4 to hit, 1d6+2 slashing. Nimble Escape: Disengage or Hide as a bonus action."></textarea></label>
   <p class="muted small">Hit dice like <b>7d10+14</b> roll separately for each monster. With an initiative bonus, initiative rolls automatically.</p>
@@ -1415,6 +1426,7 @@ document.addEventListener('keydown', e=>{
 let tab='campaign';
 function setTab(t){
   tab=t;
+  if(t==='campaign' && typeof renderCampaign==='function') renderCampaign();   // its cards show live combat state
   $$('.tab').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===t));
   $$('.panel').forEach(p=>p.hidden = p.id!=='panel-'+t);
 }
@@ -1927,6 +1939,7 @@ function rowHTML(c){
   chips.push(`<button class="chip add" data-act="open-cond" data-id="${c.id}">+ Condition</button>`);
   if(c.lr && c.lr.max) chips.push(`<span class="res">Leg. resist <span class="pips">${Array.from({length:c.lr.max},(_,i)=>`<button class="pip ${i<c.lr.used?'used':''}" data-act="lr" data-id="${c.id}" data-i="${i}" aria-label="Legendary resistance ${i+1}${i<c.lr.used?' used':''}"></button>`).join('')}</span></span>`);
   if(c.la && c.la.max) chips.push(`<span class="res">Leg. actions <span class="pips">${Array.from({length:c.la.max},(_,i)=>`<button class="pip ${i>=c.la.left?'used':''}" data-act="la" data-id="${c.id}" data-i="${i}" aria-label="Legendary action ${i+1}"></button>`).join('')}</span></span>`);
+  if(c.day && c.day.length) chips.push(`<span class="res day-res" title="Uses per day: tap a diamond to mark one used">${c.day.map(r=>`<span class="day-it ${r.used>=r.max?'spent':''}">${esc(r.name)} <span class="pips">${Array.from({length:r.max},(_,i)=>`<button class="pip ${i<r.used?'used':''}" data-act="day" data-id="${c.id}" data-r="${r.id}" data-i="${i}" aria-label="${esc(r.name)} use ${i+1} of ${r.max}${i<r.used?', used':''}"></button>`).join('')}</span></span>`).join('')}</span>`);
   (c.recharge||[]).forEach(r=>chips.push(`<button class="rch ${r.ready?'ready':'spent'}" data-act="rch" data-id="${c.id}" data-r="${r.id}" title="${r.ready?'Click when used':'Click to roll recharge'}">${esc(r.name)} ${r.min===6?'6':r.min+'–6'}</button>`));
   if(c.lair) chips.push('<span class="lair">Lair</span>');
   if(c.type==='monster' && c.initDice && !C().active && !c.defeated) chips.push(`<button class="chip add surp-tog ${c.surprised?'on':''}" data-act="surp-one" data-id="${c.id}" aria-pressed="${!!c.surprised}" title="Surprised monsters use the lower of their two initiative dice">${c.surprised?'Surprised ✓':'+ Surprised'}</button>`);
@@ -2055,6 +2068,7 @@ function saveCond(){
 
 /* monster dialog */
 const dlgMon=$('#dlg-mon'); let editing=null;
+function dayRow(name='', max=1){ return `<div class="rch-row day-row"><input placeholder="Fireball" value="${esc(name)}" aria-label="Spell or ability"><input type="number" class="day-n" min="1" max="9" value="${esc(max)}" aria-label="Uses per day"><span class="muted small">/ day</span><button class="icon-btn" data-act="rm-day-row" aria-label="Remove">×</button></div>`; }
 function rchRow(name='', min=5){ return `<div class="rch-row"><input placeholder="Fire Breath" value="${esc(name)}" aria-label="Ability name"><select aria-label="Recharge on"><option value="4" ${min==4?'selected':''}>Recharge 4–6</option><option value="5" ${min==5?'selected':''}>Recharge 5–6</option><option value="6" ${min==6?'selected':''}>Recharge 6</option></select><button class="icon-btn" data-act="rm-rch-row" aria-label="Remove">×</button></div>`; }
 function renderLib(){
   $('#lib-wrap').hidden = !S.library.length || !!editing;
@@ -2064,6 +2078,7 @@ function fillMon(m){
   $('#m-name').value=m.name||''; $('#m-hp').value=m.hpExpr ?? m.maxHp ?? ''; $('#m-ac').value=m.ac??''; $('#m-init').value=m.initBonus??''; $('#m-cr').value=m.cr??''; $('#m-notes').value=m.notes||'';
   $('#m-lr').value=m.lr?.max||''; $('#m-la').value=m.la?.max||''; $('#m-lair').checked=!!m.lair;
   $('#m-rch').innerHTML=(m.recharge||[]).map(r=>rchRow(r.name,r.min)).join('');
+  $('#m-day').innerHTML=(m.day||[]).map(r=>dayRow(r.name,r.max)).join('');
   if('srd' in m) srdPicked=m.srd||null;
 }
 function openMon(c){
@@ -2081,7 +2096,8 @@ function readMon(){
     hpExpr: $('#m-hp').value.trim(),
     ac: $('#m-ac').value, initBonus: $('#m-init').value, cr: $('#m-cr').value, notes: $('#m-notes').value.trim(),
     lr: num($('#m-lr').value), la: num($('#m-la').value), lair: $('#m-lair').checked,
-    recharge: $$('#m-rch .rch-row').map(r=>({name:r.querySelector('input').value.trim(), min:+r.querySelector('select').value})).filter(r=>r.name)
+    recharge: $$('#m-rch .rch-row').map(r=>({name:r.querySelector('input').value.trim(), min:+r.querySelector('select').value})).filter(r=>r.name),
+    day: $$('#m-day .day-row').map(r=>({name:r.querySelector('input').value.trim(), max:Math.max(1,Math.min(9,num(r.querySelector('.day-n').value,1)))})).filter(r=>r.name)
   };
 }
 function saveMon(){
@@ -2094,6 +2110,7 @@ function saveMon(){
     c.lr = m.lr ? {max:m.lr, used:Math.min(c.lr?.used||0,m.lr)} : null;
     c.la = m.la ? {max:m.la, left:Math.min(c.la?.left??m.la,m.la)} : null;
     c.recharge = m.recharge.map(r=>{ const old=(c.recharge||[]).find(o=>o.name===r.name); return {id:old?.id||uid(), name:r.name, min:r.min, ready:old?old.ready:true}; });
+    c.day = m.day.map(r=>{ const old=(c.day||[]).find(o=>o.name===r.name); return {id:old?.id||uid(), name:r.name, max:r.max, used:Math.min(old?.used||0, r.max)}; });
     dlgMon.close(); commit(); renderCombat(); return;
   }
   if(!m.name){ toast('Give the monster a name.'); $('#m-name').focus(); return; }
@@ -2107,10 +2124,10 @@ function saveMon(){
     C().list.push(newCombatant({name, srd:srdPicked||null, cr:m.cr, notes:m.notes, color: $('#m-colors').checked ? nextColor(m.name) : null, hp, maxHp:hp, ac:m.ac, initBonus:m.initBonus,
       init: C().active && has(m.initBonus) ? d(20)+num(m.initBonus) : '',
       lr: m.lr?{max:m.lr,used:0}:null, la: m.la?{max:m.la,left:m.la}:null, lair:m.lair,
-      recharge: m.recharge.map(r=>({id:uid(), name:r.name, min:r.min, ready:true}))}));
+      recharge: m.recharge.map(r=>({id:uid(), name:r.name, min:r.min, ready:true})), day: m.day.map(r=>({id:uid(), name:r.name, max:r.max, used:0}))}));
   }
   if($('#m-save').checked){
-    const tpl={id:uid(), name:m.name, srd:srdPicked||null, cr:m.cr, notes:m.notes, hpExpr:m.hpExpr, ac:m.ac, initBonus:m.initBonus, lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:m.lair, recharge:m.recharge};
+    const tpl={id:uid(), name:m.name, srd:srdPicked||null, cr:m.cr, notes:m.notes, hpExpr:m.hpExpr, ac:m.ac, initBonus:m.initBonus, lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:m.lair, recharge:m.recharge, day:m.day};
     const at=S.library.findIndex(x=>x.name.toLowerCase()===m.name.toLowerCase());
     if(at>=0){ tpl.id=S.library[at].id; S.library[at]=tpl; } else S.library.push(tpl);
     S.library.sort((a,b)=>a.name.localeCompare(b.name));
@@ -2140,6 +2157,16 @@ function statBlockHTML(m){
   (m.s||[]).forEach(([t,intro,en])=>{ h+=`<h4>${esc(t)}</h4>${intro?`<p class="sb-intro">${mdi(intro)}</p>`:''}${en.map(([n,x])=>`<p><b><i>${esc(n)}.</i></b> ${mdi(x)}</p>`).join('')}`; });
   return h+`<p class="small muted">From the System Reference Document 5.2.1 (CC BY 4.0).</p></div>`;
 }
+/* uses per day, read from the stat block: "Misty Step (3/Day)" and "**2/Day Each:** _Fly_, _Lightning Bolt_" */
+function srdPerDay(m){
+  const out=[], add=(name,max)=>{ name=String(name).replace(/_/g,'').replace(/\s*\([^)]*\)/g,'').replace(/\s+/g,' ').trim(); if(name && max>0 && !out.some(x=>x.name.toLowerCase()===name.toLowerCase())) out.push({name, max}); };
+  (m.s||[]).forEach(([t,intro,en])=>(en||[]).forEach(([n,x])=>{
+    const h=String(n).match(/^(.*?)\s*\((\d+)\/Day\b[^)]*\)\s*$/i);
+    if(h && !/^legendary resistance$/i.test(h[1].trim())) add(h[1], +h[2]);
+    String(x||'').split('\n').forEach(line=>{ const g=line.match(/^\*\*(\d+)\/Day(?: Each)?:\*\*\s*(.*)$/i); if(g) g[2].replace(/\([^)]*\)/g,'').replace(/_/g,'').split(',').forEach(sp=>add(sp, +g[1])); });
+  }));
+  return out;
+}
 function srdNotes(m){
   const out=[];
   (m.s||[]).filter(s=>s[0]!=='Traits').forEach(([t,intro,en])=>en.forEach(([n,x])=>{
@@ -2161,7 +2188,7 @@ function srdResults(){
 function pickSrd(name){
   const m=SRD_BY[name]; if(!m) return;
   srdPicked=m.n;
-  fillMon({name:m.n, hpExpr:String(m.hp), ac:m.ac, initBonus:m.in, cr:m.cr, notes:srdNotes(m), lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:false, recharge:(m.rc||[]).map(([n,min])=>({name:n,min}))});
+  fillMon({name:m.n, day:srdPerDay(m), hpExpr:String(m.hp), ac:m.ac, initBonus:m.in, cr:m.cr, notes:srdNotes(m), lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:false, recharge:(m.rc||[]).map(([n,min])=>({name:n,min}))});
   srdPicked=m.n;
   $('#srd-res').innerHTML=''; $('#srd-q').value='';
   const pk=$('#srd-picked'); pk.hidden=false;
@@ -2221,7 +2248,7 @@ function withUndo(label, fn){
 }
 function doUndo(){
   const u=undoStack.pop(); if(!u){ toast('Nothing to undo.'); return; }
-  S.combat=JSON.parse(u.before); commit(); renderCombat(); toast('Undid: '+u.label);
+  S.combat=JSON.parse(u.before); commit(); renderCombat(); renderCampaign(); toast('Undid: '+u.label);
 }
 function renderUndo(){
   const b=$('#undo-btn'); if(!b) return; const u=undoStack[undoStack.length-1];
@@ -2233,7 +2260,7 @@ function undoLabel(e){
   if(mi && menu._items){ const it=menu._items.find(x=>x.key===mi.dataset.menu); if(it) return it.label || 'Token color'; }
   const el=e.target.closest('[data-act]'); if(!el) return 'Change';
   const c=el.dataset.id?byId(el.dataset.id):null, n=c?c.name:'';
-  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, 'pc-save':'Character changes', 'surp-all':'Surprise', 'wave-in':'Brought in reinforcements', 'surp-one':`Surprise for ${n}`, 'surp-g':`Surprise for ${el.dataset.v||''}`, 'enc-run':'Loaded an encounter'})[el.dataset.act] || 'Change';
+  return ({dmg:`Damage to ${n}`, heal:`Healing on ${n}`, 'next-turn':'Next turn', 'prev-turn':'Back a turn', start:'Start combat', 'cond-save':'Added condition', 'rm-cond':`Condition removed from ${n}`, 'rm-conc':`Concentration ended for ${n}`, lr:`Legendary resistance on ${n}`, la:`Legendary action on ${n}`, rch:`Recharge on ${n}`, 'mon-save':'Monster changes', 'add-party':'Added the party', 'pr-saved':'Save result', 'pr-lostconc':'Lost concentration', 'pr-keep':'Kept a condition', 'pr-dismiss':'Dismissed a reminder', ds:`Death save for ${n}`, day:`Per-day use for ${n}`, 'pc-save':'Character changes', 'surp-all':'Surprise', 'wave-in':'Brought in reinforcements', 'surp-one':`Surprise for ${n}`, 'surp-g':`Surprise for ${el.dataset.v||''}`, 'enc-run':'Loaded an encounter'})[el.dataset.act] || 'Change';
 }
 
 /* ================= party ================= */
@@ -2507,7 +2534,7 @@ document.addEventListener('input', e=>{ if(e.target.id==='cd-text' && !$('#cd-tb
 
 
 /* ================= encounter builder ================= */
-const srdTpl = m => ({name:m.n, srd:m.n, hpExpr:String(m.hp), hd:m.hd||'', ac:m.ac, initBonus:m.in, cr:m.cr, notes:srdNotes(m), lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:false, recharge:(m.rc||[]).map(([n,min])=>({name:n,min}))});
+const srdTpl = m => ({name:m.n, srd:m.n, day:srdPerDay(m), hpExpr:String(m.hp), hd:m.hd||'', ac:m.ac, initBonus:m.in, cr:m.cr, notes:srdNotes(m), lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:false, recharge:(m.rc||[]).map(([n,min])=>({name:n,min}))});
 function encTpl(m){
   if(m.srd && SRD_BY[m.srd]) return srdTpl(SRD_BY[m.srd]);
   if(m.libId){ const l=S.library.find(x=>x.id===m.libId); if(l) return l; }
@@ -2634,7 +2661,7 @@ function addCopies(t, count, o){
     const hp=o.hp ? encHp(t, o.hp) : rollExpr(t.hpExpr);
     const c=newCombatant({name, srd:t.srd||null, cr:t.cr, notes:t.notes, color:o.colors?nextColor(t.name):null, hp, maxHp:hp, ac:t.ac, initBonus:t.initBonus,
       lr:t.lr&&t.lr.max?{max:t.lr.max,used:0}:null, la:t.la&&t.la.max?{max:t.la.max,left:t.la.max}:null, lair:!!t.lair,
-      recharge:(t.recharge||[]).map(r=>({id:uid(), name:r.name, min:r.min, ready:true})), encId:o.encId||null});
+      recharge:(t.recharge||[]).map(r=>({id:uid(), name:r.name, min:r.min, ready:true})), day:(t.day||[]).map(r=>({id:uid(), name:r.name, max:r.max, used:0})), encId:o.encId||null});
     if(has(t.initBonus)){
       if(o.twoDice){ c.initDice=[d(20),d(20)]; c.init=c.initDice[0]+num(t.initBonus); }
       else c.init=d(20)+num(t.initBonus);
@@ -2823,7 +2850,7 @@ function openMonForEnc(){
 }
 function saveMonForEnc(){
   const m=readMon(); if(!m.name){ toast('Give the monster a name.'); $('#m-name').focus(); return; }
-  const tpl={id:uid(), name:m.name, srd:srdPicked||null, cr:m.cr, notes:m.notes, hpExpr:m.hpExpr, ac:m.ac, initBonus:m.initBonus, lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:m.lair, recharge:m.recharge};
+  const tpl={id:uid(), name:m.name, srd:srdPicked||null, cr:m.cr, notes:m.notes, hpExpr:m.hpExpr, ac:m.ac, initBonus:m.initBonus, lr:m.lr?{max:m.lr}:null, la:m.la?{max:m.la}:null, lair:m.lair, recharge:m.recharge, day:m.day};
   const at=S.library.findIndex(x=>x.name.toLowerCase()===m.name.toLowerCase());
   if(at>=0){ tpl.id=S.library[at].id; S.library[at]=tpl; } else S.library.push(tpl);
   S.library.sort((a,b)=>a.name.localeCompare(b.name)); commit();
@@ -4517,6 +4544,9 @@ function onClick(e){
       act==='dmg'?applyDamage(c,n):applyHeal(c,n); commit(); renderCombat(); break; }
     case 'rm-cond': c.conditions=c.conditions.filter(x=>x.id!==el.dataset.cond); commit(); renderCombat(); hideTip(); break;
     case 'rm-conc': c.conc=false; c.concSpell=''; commit(); renderCombat(); hideTip(); break;
+    case 'day': { const r=(c&&c.day||[]).find(x=>x.id===el.dataset.r); if(r){ const i=+el.dataset.i; r.used = i<r.used ? i : i+1; if(r.used>=r.max) toast(`${c.name}: no uses of ${r.name} left today.`); commit(); renderCombat(); } break; }
+    case 'add-day-row': $('#m-day').insertAdjacentHTML('beforeend', dayRow()); $('#m-day .day-row:last-child input').focus(); break;
+    case 'rm-day-row': el.closest('.day-row').remove(); break;
     case 'lr': { const i=+el.dataset.i; c.lr.used = i<c.lr.used ? i : i+1; commit(); renderCombat(); break; }
     case 'la': { const i=+el.dataset.i; c.la.left = i>=c.la.left ? i+1 : i; commit(); renderCombat(); break; }
     case 'rch': { const r=c.recharge.find(x=>x.id===el.dataset.r); if(r.ready) r.ready=false; else { const x=d(6); if(x>=r.min){ r.ready=true; toast(`${r.name}: rolled ${x}, recharged.`);} else toast(`${r.name}: rolled ${x}, still spent.`); } commit(); renderCombat(); break; }

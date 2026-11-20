@@ -128,6 +128,36 @@ const TESTS=[
    await click('[data-act=end]'); await click('#cf-actions [data-cf="2"]');
    expect(app('S.combat.active')===false && app("S.combat.list.every(c=>c.type==='pc')"), 'End combat didn’t keep only the party');
  }],
+ ['Combat: uses per day', async()=>{
+   const P=n=>app(`srdPerDay(SRD_BY[${JSON.stringify(n)}]).map(x=>x.name+' '+x.max).join(', ')`);
+   expect(P('Archmage')==='Fly 2, Lightning Bolt 2, Cone of Cold 1, Mind Blank 1, Scrying 1, Teleport 1, Misty Step 3, Protective Magic 3', 'Archmage read wrong: '+P('Archmage'));
+   expect(P('Ancient Copper Dragon')==='Greater Restoration 1, Major Image 1, Project Image 1', 'Spell list in one italic run read wrong: '+P('Ancient Copper Dragon'));
+   expect(P('Balor')==='', 'Legendary Resistance should not be counted twice');
+   app('clearTracker()'); await click('[data-tab=combat]'); await click('[data-act=open-mon]');
+   app("pickSrd('Archmage')"); el('#m-save').checked=false;
+   expect(D.querySelectorAll('#m-day .day-row').length===8, 'Per-day rows not filled in from the stat block');
+   await click('#mon-save-btn');
+   const mage=()=>app("C().list.find(c=>c.name==='Archmage')"), row=()=>D.querySelector(`[data-row="${mage().id}"]`);
+   expect(row().querySelectorAll('.day-it').length===8, 'Per-day uses not shown on the row');
+   const pip=(name,i)=>{ const r=mage().day.find(x=>x.name===name); return row().querySelector(`[data-act=day][data-r="${r.id}"][data-i="${i}"]`); };
+   await click(pip('Fly',0)); expect(mage().day.find(x=>x.name==='Fly').used===1, 'Tapping a diamond didn’t use one');
+   await click(pip('Fly',0)); expect(mage().day.find(x=>x.name==='Fly').used===0, 'Tapping a used diamond didn’t give it back');
+   await click(pip('Cone of Cold',0));
+   expect([...row().querySelectorAll('.day-it.spent')].some(e=>/Cone of Cold/.test(e.textContent)), 'Used-up spell not marked spent');
+   await click('[data-act=undo]'); expect(mage().day.find(x=>x.name==='Cone of Cold').used===0, 'Undo didn’t restore the use');
+   await click(pip('Misty Step',1)); expect(mage().day.find(x=>x.name==='Misty Step').used===2, 'Third diamond should mark two used');
+   // Editing keeps what’s been used
+   app(`openMon(byId('${mage().id}'))`);
+   const fly=[...D.querySelectorAll('#m-day .day-row')].find(r=>r.querySelector('input').value==='Fly'); fly.querySelector('.day-n').value='3';
+   await click('[data-act=add-day-row]'); const nr=[...D.querySelectorAll('#m-day .day-row')].pop(); nr.querySelector('input').value='Wish'; nr.querySelector('.day-n').value='1';
+   await click('#mon-save-btn');
+   expect(mage().day.find(x=>x.name==='Fly').max===3 && mage().day.find(x=>x.name==='Misty Step').used===2 && mage().day.some(x=>x.name==='Wish'), 'Editing lost uses, or didn’t add the new one');
+   // Encounters bring them along
+   app(`clearTracker(); S.sections.push({id:'pde',type:'encounters',title:'PD enc',tag:'encounter',items:[{id:'pd1',title:'Lich lair',mons:[{key:'l1',count:1,srd:'Lich'}],text:'',html:''}]}); commit(); renderAll();`);
+   app("runEncounter('pd1')");
+   expect((app("C().list.find(c=>c.name==='Lich')").day||[]).length===7, 'Encounter monster has no per-day uses');
+   app("clearTracker(); S.sections=S.sections.filter(s=>s.id!=='pde'); commit(); renderAll(); addParty();");
+ }],
  ['Combat: the screen stays on, then lets go', async()=>{
    const calls={req:0, rel:0};
    Object.defineProperty(W.navigator,'wakeLock',{configurable:true, value:{request:async()=>{ calls.req++; const l=new W.EventTarget(); l.release=async()=>{ calls.rel++; l.dispatchEvent(new W.Event('release')); }; return l; }}});
@@ -399,6 +429,12 @@ const TESTS=[
    const mons=()=>app("C().list.filter(c=>c.type==='monster')");
    expect(app('tab')==='combat' && mons().length===2, 'Run from the table didn’t load the encounter');
    expect(D.querySelector('.waves [data-act=wave-in]'), 'No reserve bar for the waiting wave');
+   await click('[data-act=undo]');
+   expect(mons().length===0, 'Undo didn’t remove the loaded encounter');
+   await click('[data-tab=campaign]');
+   expect(!/In the combat tracker now/.test(card().textContent) && card().querySelector('[data-act=enc-run]'), 'Card still says it’s in the tracker after undoing the load');
+   await click(card().querySelector('[data-act=enc-run]'));
+   expect(mons().length===2, 'Couldn’t run it again after undo');
    app("C().list.forEach((c,i)=>{ if(c.type==='pc') c.init=1+i; }); commit(); renderCombat();");
    await click('[data-act=start]');
    for(let i=0;i<20 && app('C().round')<2;i++) await click('[data-act=next-turn]');
