@@ -313,6 +313,16 @@ const TESTS=[
    app("C().list.filter(c=>c.type==='pc').forEach((c,i)=>c.init=10+i); commit(); renderCombat();");
    await click('[data-act=start]');
    expect(!D.querySelector('.surp') && !D.querySelector('[data-act=surp-one]'), 'Surprise controls still showing after combat started');
+   // The Surprised tag clears at the end of that monster's first turn; its initiative stays
+   const sup=app('order().find(c=>c.surprised)'), supInit=sup.init;
+   expect(D.querySelector(`[data-row="${sup.id}"] .surp-chip`), 'No Surprised tag during combat');
+   for(let i=0;i<20 && app('C().turnId')!==sup.id;i++) await click('[data-act=next-turn]');
+   expect(app(`byId('${sup.id}').surprised`), 'Surprised cleared before its turn ended');
+   await click('[data-act=next-turn]');
+   expect(!app(`byId('${sup.id}').surprised`) && !D.querySelector(`[data-row="${sup.id}"] .surp-chip`) && app(`byId('${sup.id}').init`)===supInit, 'Surprised tag didn’t clear after its turn, or initiative changed');
+   expect(mons().filter(c=>c.surprised).length===1, 'Another monster’s Surprised tag cleared too early');
+   await click('[data-act=undo]');
+   expect(app(`byId('${sup.id}').surprised`), 'Undo didn’t bring the tag back');
    const endBtn=D.querySelector('.toolbar .tb-group [data-act=end]');
    expect(endBtn && !endBtn.classList.contains('quiet') && endBtn.parentElement.querySelector('[data-act=next-turn]'), 'End combat isn’t an outlined button next to Next turn');
    // Run again mid-fight: add as reinforcements

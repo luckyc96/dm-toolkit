@@ -1696,6 +1696,7 @@ function startOfTurn(n){
   if(n.type==='pc' && has(n.maxHp) && num(n.hp)===0 && !n.defeated && !n.stable && !n.dead) addPrompt('down', `${n.name} is at 0 HP: roll a death saving throw (DC 10, no modifiers) and mark it on their row.`);
 }
 function endOfTurn(cur){
+  if(cur.surprised) cur.surprised=false;
   C().list.forEach(c=>{
     [...c.conditions].forEach(cd=>{
       if(cd.mode==='next' && cd.timing==='end' && cd.anchor===cur.id){ if(cd.skip>0) cd.skip--; else expire(c,cd); }
