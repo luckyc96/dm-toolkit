@@ -457,6 +457,25 @@ const TESTS=[
    expect(D.querySelector('.tv-day.latest .enc-runlink[data-id=wv1]'), 'Travel roller doesn’t offer to run the linked encounter');
    app("Object.assign(S.travel,{chance:18, table:''}); clearTracker();");
  }],
+ ['Encounters: notes show in the combat tracker', async()=>{
+   app(`clearTracker(); S.sections.push({id:'ens',type:'encounters',title:'Note encs',tag:'encounter',items:[{id:'en1',title:'Watchtower',mons:[{key:'n1',count:1,srd:'Bandit Captain'},{key:'n2',count:2,srd:'Bandit'}],waves:[{key:'nw',label:'Archers',round:'',mons:[{key:'n3',count:1,srd:'Bandit',note:'Shoots from the roof'}]}],html:'<p>The captain holds the stairs.</p>',text:'The captain holds the stairs.'}]}); commit(); renderAll();`);
+   await click('[data-tab=campaign]'); await click('[data-act=cx-edit][data-id=en1]');
+   const notes=D.querySelectorAll('#dlg-enc .enc-note');
+   expect(notes.length===3, 'Each monster line should have a note box');
+   notes[0].value='Reskin: Orc war chief';   // typed, then Save without leaving the box
+   await click('[data-act=enc-save]');
+   expect(app("findEnc('en1').it.mons[0].note")==='Reskin: Orc war chief' && app("findEnc('en1').it.waves[0].mons[0].note")==='Shoots from the roof', 'Monster notes not saved');
+   expect(/— Reskin: Orc war chief/.test([...D.querySelectorAll('.enc-card')].find(c=>/Watchtower/.test(c.textContent)).textContent), 'Note not shown on the card');
+   await click('[data-act=enc-run][data-id=en1]');
+   const row=n=>D.querySelector(`[data-row="${app(`C().list.find(c=>c.name===${JSON.stringify(n)}).id`)}"]`);
+   expect(row('Bandit Captain').querySelector('.cbt-enote').textContent==='Reskin: Orc war chief' && !row('Bandit 1').querySelector('.cbt-enote'), 'Monster note not on the right rows');
+   const panel=D.querySelector('.enc-npanel');
+   expect(panel && panel.open && /holds the stairs/.test(panel.textContent) && /Watchtower/.test(panel.textContent), 'Encounter notes panel missing');
+   await click('[data-act=wave-in]');
+   expect(row('Bandit 3').querySelector('.cbt-enote').textContent==='Shoots from the roof', 'Wave monster’s note missing');
+   app('clearTracker()'); expect(!D.querySelector('.enc-npanel'), 'Panel still showing after clearing');
+   app("S.sections=S.sections.filter(s=>s.id!=='ens'); commit(); renderAll(); addParty();");
+ }],
  ['Random tables: make encounters from rows', async()=>{
    const G=t=>app('guessMonsters')(t).map(m=>m.count+'× '+app('encMonName')(m)).join(', ');
    expect(G('2d4 wolves shadow the party')==='2d4× Wolf', 'Wolves row guessed wrong: '+G('2d4 wolves shadow the party'));
@@ -535,6 +554,7 @@ const TESTS=[
    const hag=app("S.library.find(m=>m.name==='Mire Hag')");
    expect(hag && hag.hpExpr==='6d8+18' && hag.ac===15 && hag.initBonus===2 && hag.cr==='3' && hag.recharge[0].min===5 && hag.day.length===2 && /Claws/.test(hag.notes), 'Custom monster not imported right: '+JSON.stringify(hag));
    const enc=app("S.sections.find(s=>s.type==='encounters').items[0]");
+   expect(enc.mons[0].note==='hides behind the barricade' && enc.mons[1].note==='target whoever looks richest', 'Monster notes not imported: '+JSON.stringify(enc.mons));
    expect(enc.title==='Goblin toll' && enc.mons.length===2 && enc.mons[1].count==='1d6' && enc.waves.length===1 && enc.waves[0].round===3 && enc.hp==='roll', 'Encounter not imported right: '+JSON.stringify(enc));
    expect(enc.fromTable && enc.fromTable===app("S.sections.find(s=>s.type==='tables').items[0].id"), 'Encounter not grouped under the table that links to it');
    const bren=app("S.npcs.find(n=>n.name==='Bren')");
@@ -544,7 +564,8 @@ const TESTS=[
    expect(app("S.sections.find(s=>s.title==='Places').items[0].tags.includes('river')"), 'Tags not read');
    expect(!/DM TOOLKIT IMPORT TEMPLATE|How this file works/.test(JSON.stringify(app('S'))), 'Template guidance comments were imported');
    // Unrecognized monster names are kept, and re-importing an unchanged file changes nothing
-   const md2=md.replace('Monsters: 1 Goblin Boss, 1d6 Goblin Warrior','Monsters: 1 Goblin Boss, 1d6 Goblin Warrior, 2 Swamp Thing');
+   const md2=md.replace('1d6 Goblin Warrior (target whoever looks richest)','1d6 Goblin Warrior (target whoever looks richest), 2 Swamp Thing');
+   expect(md2!==md, 'Template example changed; update this test');
    await click('.camp-tools [data-act=cx-import]'); await app('impLoad')([new W.File([md2], 'Spine.md')]);
    const sum2=await waitFor(()=>D.querySelector('.imp-sum'), 5000, 'the second review');
    expect(/1 updated/.test(sum2.textContent) && /6 unchanged/.test(sum2.textContent), 'Re-import should update only the encounter: '+sum2.textContent);

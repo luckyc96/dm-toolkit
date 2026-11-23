@@ -310,6 +310,16 @@ table.ref th,table.ref td{border-bottom:1px solid var(--line);padding:.18rem .55
 .enc-group .card-grid{margin-top:.3rem}
 .enc-from{background:color-mix(in srgb,var(--brass) 12%,transparent);border-radius:6px;padding:.4rem .55rem;margin:.2rem 0 .5rem}
 .tbl-mk{margin-left:.3rem;padding:.05rem .4rem;font-size:.8rem}
+.enc-mon{border-bottom:1px solid var(--line);padding-bottom:.3rem}
+.enc-mon .enc-row{border-bottom:0}
+.enc-note{width:100%;font-size:.85rem;padding:.25rem .45rem;margin-top:.1rem}
+.enc-mnote{color:var(--brass);font-size:.88rem}
+.cbt-enote{font-size:.88rem;color:var(--brass);font-weight:600;margin:.1rem 0 .15rem}
+.enc-npanel{margin:.5rem 0;border:1px solid var(--line);border-left:4px solid var(--brass);border-radius:8px;background:var(--surface);padding:.35rem .7rem}
+.enc-npanel>summary{cursor:pointer;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.enc-npanel>summary .btn{margin-left:auto}
+.enc-nbody{font-size:.92rem;margin:.3rem 0 .2rem;max-height:14rem;overflow:auto}
+.enc-nbody p{margin:.25rem 0}
 .enc-sub{font-weight:700;margin:.7rem 0 .25rem}
 .enc-row{display:flex;gap:.5rem;align-items:center;padding:.2rem 0;border-bottom:1px solid var(--line)}
 .enc-row .enc-count{width:4.6rem;text-align:center}
@@ -1879,6 +1889,7 @@ function renderCombat(){
         ${!c.active && o.length?'<button class="btn danger" data-act="clear">Clear tracker</button>':''}</span></div>`;
   h += encounterHTML();
   h += surpriseHTML();
+  h += encNotesHTML();
   h += waveBarHTML();
   if(c.prompts.length){
     h += '<div class="prompts">'+c.prompts.map(p=>{
@@ -1960,7 +1971,7 @@ function rowHTML(c){
     <div class="cbt-init"><input type="number" value="${esc(c.init)}" data-field="init" data-id="${c.id}" aria-label="Initiative for ${esc(c.name)}" placeholder="–" ${initTitle(c)}></div>
     <div class="cbt-main">
       <div class="cbt-head"><span class="cbt-name">${dot}${esc(c.name)}${c.color?`<span class="tokword">${c.color}</span>`:''}</span>${has(c.ac)?`<span class="ac">AC <b>${esc(c.ac)}</b></span>`:''}${c.cr?`<span class="ac">CR <b>${esc(c.cr)}</b></span>`:''}${hp}</div>
-      <div class="cbt-meta">${chips.join('')}${c.notes?`<button class="chip add mn-btn" data-act="mnotes" data-id="${c.id}" aria-expanded="${active !== monNotesOpen.has(c.id)}">${(active !== monNotesOpen.has(c.id))?'Hide notes':'Notes'}</button>`:''}</div>${c.notes && (active !== monNotesOpen.has(c.id)) ? `<div class="mnotes">${esc(c.notes).replace(/\n/g,'<br>')}</div>`:''}
+      ${c.encNote?`<div class="cbt-enote">${esc(c.encNote)}</div>`:''}<div class="cbt-meta">${chips.join('')}${c.notes?`<button class="chip add mn-btn" data-act="mnotes" data-id="${c.id}" aria-expanded="${active !== monNotesOpen.has(c.id)}">${(active !== monNotesOpen.has(c.id))?'Hide notes':'Notes'}</button>`:''}</div>${c.notes && (active !== monNotesOpen.has(c.id)) ? `<div class="mnotes">${esc(c.notes).replace(/\n/g,'<br>')}</div>`:''}
     </div>
     <div class="cbt-ctl">
       <input type="number" min="0" class="amt" data-id="${c.id}" aria-label="Amount" placeholder="0">
@@ -2584,7 +2595,7 @@ function encMonListHtml(it){
 }
 function encListOf(L){
   if(!L.length) return '';
-  return `<ul class="enc-mons">${L.map(m=>{ const t=encTpl(m); return `<li><b>${esc(cntLabel(m.count))}×</b> ${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}</span>`:''}${!t?' <span class="tbl-warn small">removed from your monster list</span>':''}</li>`; }).join('')}</ul>`;
+  return `<ul class="enc-mons">${L.map(m=>{ const t=encTpl(m); return `<li><b>${esc(cntLabel(m.count))}×</b> ${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}</span>`:''}${!t?' <span class="tbl-warn small">removed from your monster list</span>':''}${m.note?` <span class="enc-mnote">— ${esc(m.note)}</span>`:''}</li>`; }).join('')}</ul>`;
 }
 function encDiffHTML(st, it){
   if(!st.n) return '<p class="muted small enc-diff">No monsters yet.</p>';
@@ -2597,6 +2608,14 @@ function encDiffHTML(st, it){
   } else h+=`<p class="small">${esc(encRateText(st))}</p>`;
   if(st.unrated) h+=`<p class="muted small">${st.unrated} monster${st.unrated===1?' has':'s have'} no challenge rating and ${st.unrated===1?'isn’t':'aren’t'} counted.</p>`;
   return h+'</div>';
+}
+const encNotesShut=new Set();
+document.addEventListener('toggle', e=>{ const t=e.target; if(t.dataset && t.dataset.encnotes){ t.open?encNotesShut.delete(t.dataset.encnotes):encNotesShut.add(t.dataset.encnotes); } }, true);
+function encNotesHTML(){
+  return (C().encIds||[]).map(id=>{ const f=findEnc(id); if(!f || !encLive(id)) return ''; const it=f.it, body=itemHtml(it);
+    if(!htmlToText(body).trim()) return '';
+    return `<details class="enc-npanel" data-encnotes="${id}" ${encNotesShut.has(id)?'':'open'}><summary><b>${esc(it.title||'Encounter')}</b> <span class="muted small">encounter notes</span><button class="btn sm quiet" data-act="pin" data-id="c:${id}" title="Pin the encounter card">Pin</button></summary><div class="enc-nbody">${linkify(body)}</div></details>`;
+  }).join('');
 }
 function waveIn(encId, wk){ return (C().wavesIn||[]).includes(encId+':'+wk); }
 function encWavesCardHTML(it){
@@ -2619,7 +2638,7 @@ function bringWave(v){
   const [id,wk]=String(v).split(':'), f=findEnc(id); if(!f) return; const it=f.it;
   const i=encWaves(it).findIndex(w=>w.key===wk), w=encWaves(it)[i]; if(!w || waveIn(id,wk)) return;
   const added=[];
-  w.mons.filter(m=>encTpl(m)).forEach(m=>{ const k=cntRoll(m.count); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && (k>1 || C().list.some(c=>baseName(c.name)===encTpl(m).name)), twoDice:false, encId:id, hp:it.hp==='roll'?'roll':'avg'})); });
+  w.mons.filter(m=>encTpl(m)).forEach(m=>{ const k=cntRoll(m.count); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && (k>1 || C().list.some(c=>baseName(c.name)===encTpl(m).name)), twoDice:false, encId:id, hp:it.hp==='roll'?'roll':'avg', note:(m.note||'').trim()})); });
   C().wavesIn=[...(C().wavesIn||[]), id+':'+wk];
   C().prompts=C().prompts.filter(p=>!(p.kind==='wave' && p.v===v));
   const noInit=added.filter(c=>!has(c.init)).map(c=>c.name);
@@ -2665,7 +2684,7 @@ function addCopies(t, count, o){
     const hp=o.hp ? encHp(t, o.hp) : rollExpr(t.hpExpr);
     const c=newCombatant({name, srd:t.srd||null, cr:t.cr, notes:t.notes, color:o.colors?nextColor(t.name):null, hp, maxHp:hp, ac:t.ac, initBonus:t.initBonus,
       lr:t.lr&&t.lr.max?{max:t.lr.max,used:0}:null, la:t.la&&t.la.max?{max:t.la.max,left:t.la.max}:null, lair:!!t.lair,
-      recharge:(t.recharge||[]).map(r=>({id:uid(), name:r.name, min:r.min, ready:true})), day:(t.day||[]).map(r=>({id:uid(), name:r.name, max:r.max, used:0})), encId:o.encId||null});
+      recharge:(t.recharge||[]).map(r=>({id:uid(), name:r.name, min:r.min, ready:true})), day:(t.day||[]).map(r=>({id:uid(), name:r.name, max:r.max, used:0})), encId:o.encId||null, encNote:o.note||''});
     if(has(t.initBonus)){
       if(o.twoDice){ c.initDice=[d(20),d(20)]; c.init=c.initDice[0]+num(t.initBonus); }
       else c.init=d(20)+num(t.initBonus);
@@ -2692,7 +2711,7 @@ function loadEncounter(it, mons, mode){
     Object.assign(C(), {active:false, round:0, turnId:null, prompts:[], encIds:[], wavesIn:[]});
   }
   const live=C().active, added=[];
-  mons.forEach(m=>{ const k=cntRoll(m.count); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && k>1, twoDice:!live, encId:it.id, hp:it.hp==='roll'?'roll':'avg'})); });
+  mons.forEach(m=>{ const k=cntRoll(m.count); added.push(...addCopies(encTpl(m), k, {colors:it.colors!==false && k>1, twoDice:!live, encId:it.id, hp:it.hp==='roll'?'roll':'avg', note:(m.note||'').trim()})); });
   if(!live) S.party.forEach(p=>{ if(!C().list.some(c=>c.partyId===p.id)) C().list.push(newCombatant({type:'pc', partyId:p.id, name:p.name||'Unnamed', hp:has(p.maxHp)?+p.maxHp:'', maxHp:has(p.maxHp)?+p.maxHp:'', ac:p.ac})); });
   C().encIds=[...new Set([...(C().encIds||[]), it.id])];
   const noInit=added.filter(c=>!has(c.init)).map(c=>c.name);
@@ -2803,7 +2822,7 @@ function encDlgDiff(){
 }
 function encRowHTML(m, wk){
   const t=encTpl(m);
-  return `<div class="enc-row"><input type="text" inputmode="text" value="${esc(cntLabel(m.count))}" class="enc-count" data-k="${m.key}" data-wk="${wk}" title="A number (3) or dice (2d4), rolled when the encounter runs" aria-label="How many ${esc(encMonName(m))}: a number or dice like 2d4"><span class="enc-nm">${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}${CR_XP[t.cr]!=null?' · '+fmt(CR_XP[t.cr])+' XP':''}</span>`:' <span class="muted small">no CR</span>'}<span class="muted small"> · ${m.srd?'free rules':'your list'}${t && encHpMode()==='roll' && !tplDice(t) ? ' · <span class="tbl-warn">fixed HP</span>' : ''}</span></span><button type="button" class="icon-btn" data-act="enc-rm" data-k="${m.key}" data-wk="${wk}" aria-label="Remove ${esc(encMonName(m))}">×</button></div>`;
+  return `<div class="enc-mon"><div class="enc-row"><input type="text" inputmode="text" value="${esc(cntLabel(m.count))}" class="enc-count" data-k="${m.key}" data-wk="${wk}" title="A number (3) or dice (2d4), rolled when the encounter runs" aria-label="How many ${esc(encMonName(m))}: a number or dice like 2d4"><span class="enc-nm">${esc(encMonName(m))}${t&&t.cr!=null&&t.cr!==''?` <span class="muted small">CR ${esc(t.cr)}${CR_XP[t.cr]!=null?' · '+fmt(CR_XP[t.cr])+' XP':''}</span>`:' <span class="muted small">no CR</span>'}<span class="muted small"> · ${m.srd?'free rules':'your list'}${t && encHpMode()==='roll' && !tplDice(t) ? ' · <span class="tbl-warn">fixed HP</span>' : ''}</span></span><button type="button" class="icon-btn" data-act="enc-rm" data-k="${m.key}" data-wk="${wk}" aria-label="Remove ${esc(encMonName(m))}">×</button></div><input class="enc-note" data-nk="${m.key}" data-wk="${wk}" value="${esc(m.note||'')}" placeholder="Note for ${esc(encMonName(m))} (optional): a reskin, tactics, who it targets" aria-label="Note for ${esc(encMonName(m))}"></div>`;
 }
 function encAddMon(m){
   const L=encListFor(encTarget);
@@ -2822,6 +2841,7 @@ $('#enc-q').addEventListener('input', encSearch);
 $('#enc-q').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); const b=$('#enc-res button[data-act^=enc-add]'); if(b) b.click(); } });
 dlgEnc.addEventListener('change', e=>{ if(e.target.name==='enc-hp'){ renderEncDlg(); return; } if(e.target.classList.contains('enc-count')){ const m=encListFor(e.target.dataset.wk).find(x=>x.key===e.target.dataset.k); if(m){ const v=cntNorm(e.target.value); if(cntValid(v)) m.count = /^\d+$/.test(v) ? +v : v; else toast('Use a number from 1 to 30, or dice like 2d4 or 1d6+2.'); e.target.value=cntLabel(m.count); encDlgDiff(); } return; }
   if(e.target.id==='enc-target'){ encTarget=e.target.value; return; }
+  if(e.target.dataset.nk){ const m=encListFor(e.target.dataset.wk).find(x=>x.key===e.target.dataset.nk); if(m) m.note=e.target.value.trim(); return; }
   if(e.target.dataset.wl){ const w=encWavesD.find(x=>x.key===e.target.dataset.wl); if(w){ w.label=e.target.value.trim(); const i=encWavesD.indexOf(w), o=$(`#enc-target option[value="${w.key}"]`); if(o) o.textContent=waveName(w,i); } return; }
   if(e.target.dataset.wr){ const w=encWavesD.find(x=>x.key===e.target.dataset.wr); if(w) w.round = e.target.value==='' ? '' : Math.max(1,Math.min(99,num(e.target.value,1))); return; }
 });
@@ -2829,7 +2849,8 @@ function saveEnc(){
   const s=encSec; if(!s) return;
   const title=$('#enc-title').value.trim(); if(!title){ toast('Give the encounter a name.'); $('#enc-title').focus(); return; }
   const it=encItem||{id:uid()};
-  const keep = m => ({key:m.key, count:(CNT_DICE.test(cntNorm(m.count)) ? cntNorm(m.count) : num(m.count,1)), srd:m.srd||undefined, libId:m.libId||undefined, tpl:m.srd?undefined:(encTpl(m)?clone(encTpl(m)):m.tpl)});
+  const keep = m => ({key:m.key, note:(m.note||'').trim()||undefined, count:(CNT_DICE.test(cntNorm(m.count)) ? cntNorm(m.count) : num(m.count,1)), srd:m.srd||undefined, libId:m.libId||undefined, tpl:m.srd?undefined:(encTpl(m)?clone(encTpl(m)):m.tpl)});
+  $$('#dlg-enc .enc-note').forEach(inp=>{ const m=encListFor(inp.dataset.wk).find(x=>x.key===inp.dataset.nk); if(m) m.note=inp.value.trim(); });
   it.title=title; it.mons=encMons.map(keep);
   $$('#enc-waves [data-wl]').forEach(inp=>{ const w=encWavesD.find(x=>x.key===inp.dataset.wl); if(w) w.label=inp.value.trim(); });
   $$('#enc-waves [data-wr]').forEach(inp=>{ const w=encWavesD.find(x=>x.key===inp.dataset.wr); if(w) w.round = inp.value==='' ? '' : Math.max(1,Math.min(99,num(inp.value,1))); });
@@ -3969,10 +3990,11 @@ function parseMonList(str){
   String(str||'').split(/\s*[,;]\s*|\s+and\s+/i).forEach(part=>{
     const m=part.trim().match(/^(\d+d\d+(?:\s*[+-]\s*\d+)?|\d+)?\s*(?:[x×]\s*)?(.+?)\s*(?:\s[x×]\s*(\d+))?$/i); if(!m || !m[2]) return;
     let cnt=m[1] ? m[1].replace(/\s/g,'').toLowerCase() : (m[3] || '1');
-    const ref=resolveMonName(m[2].replace(/^(an?|the)\s+/i,''));
+    let nm=m[2], note=''; const pn=nm.match(/^(.*?)\s*\(([^()]*)\)\s*$/); if(pn){ nm=pn[1]; note=pn[2].trim(); }
+    const ref=resolveMonName(nm.replace(/^(an?|the)\s+/i,''));
     if(!ref){ missing.push(part.trim()); return; }
     const count = CNT_DICE.test(cnt) ? cnt : Math.max(1, Math.min(30, +cnt||1));
-    mons.push(Object.assign({key:uid(), count}, ref));
+    mons.push(Object.assign({key:uid(), count}, ref, note?{note}:{}));
   });
   return {mons, missing};
 }
@@ -4299,7 +4321,7 @@ const SAMPLE_PARTS=[
 ];
 const sampleDocx = () => buildDocx('My Campaign Notes (sample)', SAMPLE_PARTS);
 /* the fill-in template: a Markdown file that imports as-is; its guidance is in comments the importer skips */
-const IMPORT_TEMPLATE = "# My Campaign\n\n<!--\nDM TOOLKIT IMPORT TEMPLATE\n\nHow this file works\n- Save it as a Markdown file (ending in .md). Any plain text editor works.\n- In the app: Campaign tab > Import notes > pick this one file.\n  You'll see a review screen first, and nothing is added until you click Import.\n- \"# Heading\" starts a section. \"## Heading\" starts one entry in that section.\n  The single \"# My Campaign\" line at the very top is just the document's title.\n- Anything between these comment marks is guidance only. It is never imported,\n  so you can leave it in, edit it, or delete it.\n- Delete the example entries and sections you don't need, and copy an example\n  entry to add more of the same kind.\n\nLabels\n- Lines like \"Role: Miller\" right under a \"##\" heading fill in details.\n  Keep labels together on the lines directly after the heading, one per line,\n  then leave a blank line before the description.\n- \"Tags:\" works on any entry: separate tags with commas.\n- Labels are optional. An entry can be just a heading and a description.\n\nLinks\n- Write [[Exact Name]] to link to another entry, NPC, rule, or monster.\n- [[Exact Name|other words]] shows \"other words\" but links to Exact Name.\n\nSection names the app recognizes\n- Places, Locations, Regions, Cities, Towns\n- Factions, Organizations, Guilds\n- NPCs, Characters, People (these go to the NPC roster)\n- Monsters, Creatures, Bestiary (these go to your monster list)\n- Encounters (ready to run in the combat tracker)\n- Quests, Plot hooks\n- Random tables, Random encounters\n- Gods, Deities, Lore, History, Items, House rules\n- Player Characters, Party (these go to the Party tab)\nAny other section name becomes a section of plain cards with that name.\n\nImporting again later\n- Import an updated copy of this file any time. Entries are matched by name:\n  changed ones are updated, unchanged ones are left alone, and things you only\n  changed in the app (like NPC attitudes or quest status) are kept.\n\nUsing an AI assistant to fill this in\n- Give it this file and your notes, and ask it to return the same format:\n  keep the section and label names exactly as shown, use only the labels\n  listed for each section, and reply with the finished file in Markdown.\n-->\n\n# Places\n\n<!--\nLabels: Tags\n-->\n\n## Ashford\nTags: town, river\n\nA river town of about 900 people, built around [[Bren]]'s mill. The [[Gravel Lanterns]] run smuggled goods through its docks.\n\n# Factions\n\n<!--\nLabels: Tags\n-->\n\n## Gravel Lanterns\nTags: criminal\n\nA smuggling ring working the river docks. They owe [[Bren]] a favor and resent it.\n\n# NPCs\n\n<!--\nLabels:\n- Role: what they do (Miller, Guard captain)\n- Attitude: Friendly, Indifferent, or Hostile\n- Met at: where the party met them\n- Tags\n-->\n\n## Bren\nRole: Miller\nAttitude: Friendly\nMet at: Ashford\n\nRuns the mill in [[Ashford]]. Owes the guild more than he lets on.\n\n# Monsters\n\n<!--\nYour own creatures. Each one is saved to the app's monster list, so\nencounters can use it. Monsters from the free 2024 rules (Goblin Warrior,\nWolf, Ogre...) are built in, so don't add those here.\n\nLabels (all optional):\n- HP: a number (45) or hit dice (6d8+18)\n- AC: a number\n- Initiative: the bonus, like +2\n- CR: challenge rating, like 3 or 1/4\n- Legendary resistance: uses per day, like 3\n- Legendary actions: per round, like 3\n- Lair: yes, if it has lair actions\n- Recharge: ability and number, separated by semicolons (Fire Breath 5; Tail Swipe 6)\n- Per day: spell or ability and uses, separated by semicolons (Fireball 1; Misty Step 3)\nThe description below the labels becomes the monster's notes in combat.\n-->\n\n## Mire Hag\nHP: 6d8+18\nAC: 15\nInitiative: +2\nCR: 3\nRecharge: Choking Fog 5\nPer day: Hold Person 1; Fog Cloud 2\n\nClaws: +5 to hit, 2d6+3 slashing.\nChoking Fog: 20-foot sphere, Con save DC 13 or Poisoned until the end of its next turn.\n\n# Encounters\n\n<!--\nFights you've prepared, ready to load into the combat tracker.\n\nLabels:\n- Monsters: count and name, separated by commas.\n  Counts can be dice: 1 Goblin Boss, 1d6 Goblin Warrior, 2 Mire Hag\n  Names can be from the free rules or your Monsters section above.\n- Wave: reinforcements that arrive later, one line per wave.\n  Name (round N): monsters, like\n  Wave: Guards from the north door (round 3): 2 Goblin Warrior\n  The round is optional.\n- Hit points: average (the default) or rolled\n- Tags\nThe description becomes the encounter's notes (tactics, terrain, treasure).\nNames the app doesn't recognize are listed at the top of the encounter's\nnotes so nothing is lost.\n-->\n\n## Goblin toll\nMonsters: 1 Goblin Boss, 1d6 Goblin Warrior\nWave: Guards from the north door (round 3): 2 Goblin Warrior\nHit points: rolled\n\nThe goblins block the bridge and demand a toll of 10 gp per head. The boss hides behind the barricade.\n\n# Quests\n\n<!--\nLabels:\n- Status: Active, On hold, Done, or Failed\n- Given by: who offered it\n- Reward: what's promised\n- Tags\n-->\n\n## Find the lost caravan\nStatus: Active\nGiven by: Bren\nReward: 50 gp\n\nA grain caravan vanished on the north road three days ago.\n\n# Random tables\n\n<!--\nEach \"##\" is one table. List its entries with \"-\".\n- Numbers in front set the odds: \"1-4: Wolves\" covers rolls 1 to 4.\n  The highest number decides the die (20 means a d20).\n- Without numbers, every entry is equally likely.\n- Link an entry to a prepared encounter with [[Encounter name]] and it\n  gets a Run button when it's rolled. To keep the table's own wording on\n  screen, use [[Encounter name|the table's wording]].\n- Write \"No event\" for a quiet result.\n-->\n\n## Road encounters\n- 1-4: 2d4 wolves shadow the party\n- 5-8: [[Goblin toll|A goblin boss and 1d6 goblins demand a toll]]\n- 9-12: Heavy rain turns the road to mud\n- 13-16: A peddler with a limp asks for an escort\n- 17-20: No event\n";
+const IMPORT_TEMPLATE = "# My Campaign\n\n<!--\nDM TOOLKIT IMPORT TEMPLATE\n\nHow this file works\n- Save it as a Markdown file (ending in .md). Any plain text editor works.\n- In the app: Campaign tab > Import notes > pick this one file.\n  You'll see a review screen first, and nothing is added until you click Import.\n- \"# Heading\" starts a section. \"## Heading\" starts one entry in that section.\n  The single \"# My Campaign\" line at the very top is just the document's title.\n- Anything between these comment marks is guidance only. It is never imported,\n  so you can leave it in, edit it, or delete it.\n- Delete the example entries and sections you don't need, and copy an example\n  entry to add more of the same kind.\n\nLabels\n- Lines like \"Role: Miller\" right under a \"##\" heading fill in details.\n  Keep labels together on the lines directly after the heading, one per line,\n  then leave a blank line before the description.\n- \"Tags:\" works on any entry: separate tags with commas.\n- Labels are optional. An entry can be just a heading and a description.\n\nLinks\n- Write [[Exact Name]] to link to another entry, NPC, rule, or monster.\n- [[Exact Name|other words]] shows \"other words\" but links to Exact Name.\n\nSection names the app recognizes\n- Places, Locations, Regions, Cities, Towns\n- Factions, Organizations, Guilds\n- NPCs, Characters, People (these go to the NPC roster)\n- Monsters, Creatures, Bestiary (these go to your monster list)\n- Encounters (ready to run in the combat tracker)\n- Quests, Plot hooks\n- Random tables, Random encounters\n- Gods, Deities, Lore, History, Items, House rules\n- Player Characters, Party (these go to the Party tab)\nAny other section name becomes a section of plain cards with that name.\n\nImporting again later\n- Import an updated copy of this file any time. Entries are matched by name:\n  changed ones are updated, unchanged ones are left alone, and things you only\n  changed in the app (like NPC attitudes or quest status) are kept.\n\nUsing an AI assistant to fill this in\n- Give it this file and your notes, and ask it to return the same format:\n  keep the section and label names exactly as shown, use only the labels\n  listed for each section, and reply with the finished file in Markdown.\n-->\n\n# Places\n\n<!--\nLabels: Tags\n-->\n\n## Ashford\nTags: town, river\n\nA river town of about 900 people, built around [[Bren]]'s mill. The [[Gravel Lanterns]] run smuggled goods through its docks.\n\n# Factions\n\n<!--\nLabels: Tags\n-->\n\n## Gravel Lanterns\nTags: criminal\n\nA smuggling ring working the river docks. They owe [[Bren]] a favor and resent it.\n\n# NPCs\n\n<!--\nLabels:\n- Role: what they do (Miller, Guard captain)\n- Attitude: Friendly, Indifferent, or Hostile\n- Met at: where the party met them\n- Tags\n-->\n\n## Bren\nRole: Miller\nAttitude: Friendly\nMet at: Ashford\n\nRuns the mill in [[Ashford]]. Owes the guild more than he lets on.\n\n# Monsters\n\n<!--\nYour own creatures. Each one is saved to the app's monster list, so\nencounters can use it. Monsters from the free 2024 rules (Goblin Warrior,\nWolf, Ogre...) are built in, so don't add those here.\n\nLabels (all optional):\n- HP: a number (45) or hit dice (6d8+18)\n- AC: a number\n- Initiative: the bonus, like +2\n- CR: challenge rating, like 3 or 1/4\n- Legendary resistance: uses per day, like 3\n- Legendary actions: per round, like 3\n- Lair: yes, if it has lair actions\n- Recharge: ability and number, separated by semicolons (Fire Breath 5; Tail Swipe 6)\n- Per day: spell or ability and uses, separated by semicolons (Fireball 1; Misty Step 3)\nThe description below the labels becomes the monster's notes in combat.\n-->\n\n## Mire Hag\nHP: 6d8+18\nAC: 15\nInitiative: +2\nCR: 3\nRecharge: Choking Fog 5\nPer day: Hold Person 1; Fog Cloud 2\n\nClaws: +5 to hit, 2d6+3 slashing.\nChoking Fog: 20-foot sphere, Con save DC 13 or Poisoned until the end of its next turn.\n\n# Encounters\n\n<!--\nFights you've prepared, ready to load into the combat tracker.\n\nLabels:\n- Monsters: count and name, separated by commas.\n  Counts can be dice: 1 Goblin Boss, 1d6 Goblin Warrior, 2 Mire Hag\n  Names can be from the free rules or your Monsters section above.\n  Add a short note in parentheses after a name and it shows on that\n  monster's row in the combat tracker: a reskin, how it fights, or who it\n  targets. For example: 1 Bandit Captain (reskin: Orc war chief)\n- Wave: reinforcements that arrive later, one line per wave.\n  Name (round N): monsters, like\n  Wave: Guards from the north door (round 3): 2 Goblin Warrior\n  The round is optional.\n- Hit points: average (the default) or rolled\n- Tags\nThe description becomes the encounter's notes (tactics, terrain, treasure).\nIt shows above the combat tracker while the encounter is running.\nNames the app doesn't recognize are listed at the top of the encounter's\nnotes so nothing is lost.\n-->\n\n## Goblin toll\nMonsters: 1 Goblin Boss (hides behind the barricade), 1d6 Goblin Warrior (target whoever looks richest)\nWave: Guards from the north door (round 3): 2 Goblin Warrior\nHit points: rolled\n\nThe goblins block the bridge and demand a toll of 10 gp per head. The boss hides behind the barricade.\n\n# Quests\n\n<!--\nLabels:\n- Status: Active, On hold, Done, or Failed\n- Given by: who offered it\n- Reward: what's promised\n- Tags\n-->\n\n## Find the lost caravan\nStatus: Active\nGiven by: Bren\nReward: 50 gp\n\nA grain caravan vanished on the north road three days ago.\n\n# Random tables\n\n<!--\nEach \"##\" is one table. List its entries with \"-\".\n- Numbers in front set the odds: \"1-4: Wolves\" covers rolls 1 to 4.\n  The highest number decides the die (20 means a d20).\n- Without numbers, every entry is equally likely.\n- Link an entry to a prepared encounter with [[Encounter name]] and it\n  gets a Run button when it's rolled. To keep the table's own wording on\n  screen, use [[Encounter name|the table's wording]].\n- Write \"No event\" for a quiet result.\n-->\n\n## Road encounters\n- 1-4: 2d4 wolves shadow the party\n- 5-8: [[Goblin toll|A goblin boss and 1d6 goblins demand a toll]]\n- 9-12: Heavy rain turns the road to mud\n- 13-16: A peddler with a limp asks for an escort\n- 17-20: No event\n";
 function openImportGuide(){
   dlgImp.innerHTML=`<h2>How to format your notes</h2>
   <div class="guide">
