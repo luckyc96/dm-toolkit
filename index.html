@@ -479,6 +479,9 @@ table.imp-t select{max-width:100%}
 #lk-accent{width:2.4rem;height:1.8rem;padding:0;border-radius:4px;cursor:pointer}
 /* drive pill */
 .drive-pill{display:inline-flex;align-items:center;gap:.4rem;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.2rem .7rem;cursor:pointer;font-size:.85rem;white-space:nowrap}
+.bak-list{list-style:none;padding:0;margin:.6rem 0}
+.bak-list li{display:flex;gap:.6rem;align-items:center;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid var(--line)}
+.bak-btns{display:flex;gap:.3rem;flex:none}
 .drive-pill .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
 .drive-pill.s-synced .dot{background:var(--heal)}
 .drive-pill.s-saving .dot,.drive-pill.s-syncing .dot{background:var(--brass)}
@@ -1175,6 +1178,7 @@ function campMenu(btn){
     {key:'cp-import', label:'Import notes (Obsidian, Markdown, Word)…', fn:openImport},
     {key:'cp-rename', label:'Rename this campaign…', fn:()=>openCampDlg(true)},
     {key:'cp-close', label:'Close this campaign…', danger:true, fn:closeCampaign},
+    ...(bakList().length ? [{key:'cp-bak', label:`Recently replaced (${bakList().length})…`, fn:openBak}] : []),
     {note:'Campaign files open on any device, in any copy of the toolkit.'});
   showMenu(btn, items);
   menu.style.left = Math.max(8, Math.min(btn.getBoundingClientRect().left, window.innerWidth-menu.offsetWidth-8))+'px';
@@ -1243,7 +1247,7 @@ function importCampaignObject(o, filename){
     confirmBox(`${existing.name} is already open`, `Replace it with the version in this file${when}, or open the file as a separate copy?`, [
       {label:'Cancel'},
       {label:'Open as a copy', fn:()=>{ camp.id=uid(); camp.name+=' (copy)'; camp.createdAt=Date.now(); open(camp); }},
-      {label:'Replace', primary:true, fn:()=>open(camp)}
+      {label:'Replace', primary:true, fn:()=>{ bakSave(campGet(existing.id), 'Replaced by an opened campaign file'); open(camp); }}
     ]);
   } else open(camp);
 }
@@ -3754,7 +3758,8 @@ const IMP_GUESS=[
   [/^(lore|history|histories|legends?|myths?)$/i, 'cards','Lore'],
   [/^(house ?rules?|homebrew( rules)?|rules|variant rules)$/i, 'cards','House rules'],
   [/^(sessions?|session ?notes|recaps?|session ?logs?|journal|logs?)$/i, 'log','Session log'],
-  [/^(monsters?|creatures?|bestiary|enemies)$/i, 'cards','Monsters'],
+  [/^(monsters?|creatures?|bestiary|enemies|custom monsters?|homebrew monsters?|stat ?blocks?)$/i, 'library','Monster list'],
+  [/^(encounters?|combat encounters?|prepared encounters?|planned encounters?|battles?|fights?|combats?)$/i, 'encounters','Encounters'],
   [/^((random |rollable )?tables?|random encounters?)$/i, 'tables','Random tables']
 ];
 let IMP=null; // {notes:[...], folders:{name:{dest, count}}}
@@ -3815,8 +3820,9 @@ function guessDest(folder){
   return 'new:cards:'+f;
 }
 function impDestFor(type,title){
-  if(type==='npcs') return 'npcs'; if(type==='party') return 'party'; if(type==='log') return 'log';
-  const ex=(S.sections||[]).find(s=>(type==='quests'||type==='tables'?s.type===type:s.type==='cards') && s.title.toLowerCase()===title.toLowerCase());
+  if(type==='npcs') return 'npcs'; if(type==='party') return 'party'; if(type==='log') return 'log'; if(type==='library') return 'library';
+  const ex=(S.sections||[]).find(s=>(['quests','tables','encounters'].includes(type)?s.type===type:s.type==='cards') && s.title.toLowerCase()===title.toLowerCase())
+    || (type==='encounters' ? (S.sections||[]).find(s=>s.type==='encounters') : null);
   return ex ? 'sec:'+ex.id : `new:${type}:${title}`;
 }
 
@@ -3835,7 +3841,7 @@ function blocksToHtml(parts){
   }).join(''));
 }
 
-const META_KEYS={'tags':'tags','status':'status','given by':'giver','giver':'giver','reward':'reward','attitude':'attitude','role':'role','met at':'where','date':'date','species':'species','class':'cls','level':'level','player':'player','ac':'ac','max hp':'maxHp','passive perception':'pp','passive insight':'ins','passive investigation':'inv','languages':'langs'};
+const META_KEYS={'tags':'tags','status':'status','given by':'giver','giver':'giver','reward':'reward','attitude':'attitude','role':'role','met at':'where','date':'date','species':'species','class':'cls','level':'level','player':'player','ac':'ac','max hp':'maxHp','passive perception':'pp','passive insight':'ins','passive investigation':'inv','languages':'langs','monsters':'mons','wave':'wave','hp':'hpx','hit points':'hpx','armor class':'ac','initiative':'initb','initiative bonus':'initb','cr':'cr','challenge':'cr','challenge rating':'cr','legendary resistance':'lres','legendary resistances':'lres','legendary actions':'lact','lair':'lair','lair actions':'lair','recharge':'rch','per day':'perday','uses per day':'perday'};
 const metaKey = k => META_KEYS[String(k||'').toLowerCase().replace(/_/g,' ').trim()];
 function peelMeta(parts){
   const meta={lines:[]}; let i=0;
@@ -3846,6 +3852,7 @@ function peelMeta(parts){
     meta[k] = k==='tags' ? m[2].split(',').map(x=>x.trim().toLowerCase()).filter(Boolean) : m[2].trim();
     if(k!=='tags') meta.lines.push([m[1].trim(), k, m[2].trim()]);
   }
+  while(i<parts.length && parts[i].tagName==='BR') i++;   // the blank line between labels and the description
   return {meta, rest:parts.slice(i)};
 }
 
@@ -3909,6 +3916,25 @@ async function parseDocx(file){
   return docHtmlToNotes(res.value, file.name.replace(/\.docx$/i,''));
 }
 
+function isMdDocument(text){
+  const t=String(text||'').replace(/<!--[\s\S]*?-->/g,'').replace(/```[\s\S]*?```/g,'');
+  const h1=(t.match(/^#\s+\S/gm)||[]).length, h2=(t.match(/^##\s+\S/gm)||[]).length;
+  return (h1>=1 && h2>=1) || h1>=2;
+}
+function mdDocToHtml(md){
+  let t=String(md||'').replace(/^\uFEFF/,'').replace(/\r/g,'').replace(/<!--[\s\S]*?-->/g,'');
+  t=t.replace(/^---\s*\n[\s\S]*?\n---\s*(\n|$)/,'');
+  const out=[]; let chunk=[], inCode=false;
+  const flush=()=>{ if(chunk.length){ const h=mdToHtml(chunk.join('\n')); if(h) out.push(h); chunk=[]; } };
+  t.split('\n').forEach(line=>{
+    if(/^\s*```/.test(line)) inCode=!inCode;
+    const m=!inCode && line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if(m){ flush(); out.push(`<h${m[1].length}>${mdInline(m[2])}</h${m[1].length}>`); }
+    else chunk.push(line);
+  });
+  flush();
+  return out.join('');
+}
 async function readImportFiles(fileList){
   const files=[...fileList].filter(f=>/\.(md|markdown|txt)$/i.test(f.name));
   const paths=files.map(f=>(f.webkitRelativePath||f.name).replace(/\\/g,'/'));
@@ -3923,9 +3949,51 @@ async function readImportFiles(fileList){
   for(let i=0;i<files.length;i++){
     let p=paths[i]; if(hidden(p)) continue;
     if(rootStrip) p=p.split('/').slice(1).join('/');
-    notes.push(parseNote(p, await readText(files[i])));
+    const text=await readText(files[i]);
+    // a single Markdown file picked on its own with # and ## headings is a whole document, split like a Word file
+    if(!files[i].webkitRelativePath && isMdDocument(text)) notes.push(...docHtmlToNotes(mdDocToHtml(text), files[i].name.replace(/\.(md|markdown|txt)$/i,'')));
+    else notes.push(parseNote(p, text));
   }
   return notes;
+}
+/* monster list and encounter entries carry their details in labels, so compare those too */
+function impSigKind(dest){ if(dest==='library') return 'library'; const t = dest.startsWith('sec:') ? (secOf(dest.slice(4))||{}).type : dest.startsWith('new:') ? dest.split(':')[1] : ''; return t==='encounters' ? 'encounters' : ''; }
+const impSig = n => n.text+'\n'+((n.meta||{}).lines||[]).map(l=>l[1]+'='+l[2]).join('\n')+'\n'+((n.meta||{}).tags||[]).join(',');
+function resolveMonName(name){
+  const n=String(name||'').trim().toLowerCase().replace(/\s+/g,' '); if(!n) return null;
+  for(const c of monsterCandidates()){ if(pluralForms(c.name).includes(n)) return clone(c.ref); }
+  return null;
+}
+function parseMonList(str){
+  const mons=[], missing=[];
+  String(str||'').split(/\s*[,;]\s*|\s+and\s+/i).forEach(part=>{
+    const m=part.trim().match(/^(\d+d\d+(?:\s*[+-]\s*\d+)?|\d+)?\s*(?:[x×]\s*)?(.+?)\s*(?:\s[x×]\s*(\d+))?$/i); if(!m || !m[2]) return;
+    let cnt=m[1] ? m[1].replace(/\s/g,'').toLowerCase() : (m[3] || '1');
+    const ref=resolveMonName(m[2].replace(/^(an?|the)\s+/i,''));
+    if(!ref){ missing.push(part.trim()); return; }
+    const count = CNT_DICE.test(cnt) ? cnt : Math.max(1, Math.min(30, +cnt||1));
+    mons.push(Object.assign({key:uid(), count}, ref));
+  });
+  return {mons, missing};
+}
+function listPairs(str, numRe){
+  return String(str||'').split(/\s*[;,]\s*/).map(x=>x.trim()).filter(Boolean).map(x=>{ const m=x.match(numRe); return m ? {name:x.slice(0, m.index).replace(/[\s(:–-]+$/,'').trim(), n:+m[1]} : null; }).filter(x=>x && x.name);
+}
+function tplFromNote(n){
+  const mt=n.meta||{}, crRaw=String(mt.cr||'').replace(/\s*\(.*$/,'').trim();
+  const recharge=listPairs(mt.rch, /\(?\s*(?:recharge\s*)?([4-6])\s*(?:[-–]\s*6)?\s*\)?\s*$/i).map(r=>({name:r.name, min:Math.max(4,Math.min(6,r.n))}));
+  const day=listPairs(mt.perday, /\(?\s*(\d+)\s*(?:\/\s*day)?\s*\)?\s*$/i).map(r=>({name:r.name, max:Math.max(1,Math.min(9,r.n))}));
+  const extra=metaLeft(n,'library').map(([l,,v])=>`${l}: ${v}`);
+  return {name:n.title, srd:null, cr:CR_LIST.includes(crRaw)?crRaw:'', notes:extra.concat(n.text?[n.text]:[]).join('\n').trim(), hpExpr:String(mt.hpx||'').replace(/\s*\(.*$/,'').replace(/\s/g,''),
+    ac:has(parseInt(mt.ac))?parseInt(mt.ac):'', initBonus:has(parseInt(String(mt.initb||'').replace('+','')))?parseInt(String(mt.initb).replace('+','')):'',
+    lr:num(parseInt(mt.lres),0)?{max:parseInt(mt.lres)}:null, la:num(parseInt(mt.lact),0)?{max:parseInt(mt.lact)}:null, lair:/^(y|yes|true|has)/i.test(String(mt.lair||'')), recharge, day};
+}
+function encFromNote(n){
+  const mt=n.meta||{}, main=parseMonList(mt.mons), missing=[...main.missing];
+  const waves=((mt.lines)||[]).filter(l=>l[1]==='wave').map(l=>{ const w=l[2].match(/^(.*?)(?:\s*\(\s*round\s*(\d+)\s*\))?\s*:\s*(.+)$/i); const name=w?w[1].trim():'', round=w&&w[2]?+w[2]:'', list=parseMonList(w?w[3]:l[2]); missing.push(...list.missing); return {key:uid(), label:name, round, mons:list.mons}; }).filter(w=>w.mons.length);
+  let html=n.html;
+  if(missing.length) html=cleanHtml(`<div><b>Not found in the monster list or free rules:</b> ${esc(missing.join(', '))}</div>`+html);
+  return {mons:main.mons, waves, hp:/roll/i.test(String(mt.hpx||''))?'roll':'avg', html, missing};
 }
 function impPlan(){
   const plan=[];
@@ -3934,6 +4002,7 @@ function impPlan(){
     let match=null, how='';
     if(dest==='npcs'){ match=S.npcs.find(x=>x.src===n.path); how=match?'src':''; if(!match){ match=S.npcs.find(x=>(x.name||'').toLowerCase()===n.title.toLowerCase()); how=match?'name':''; } }
     else if(dest==='party'){ match=S.party.find(x=>x.src===n.path); how=match?'src':''; if(!match){ match=S.party.find(x=>(x.name||'').toLowerCase()===n.title.toLowerCase()); how=match?'name':''; } }
+    else if(dest==='library'){ match=S.library.find(x=>(x.name||'').toLowerCase()===n.title.toLowerCase()); how=match?(match.srcText!=null?'src':'name'):''; }
     else if(dest==='log'){ match=S.sessions.find(x=>x.src===n.path); how=match?'src':''; if(!match){ match=S.sessions.find(x=>(x.title||'').toLowerCase()===n.title.toLowerCase()); how=match?'name':''; } }
     else {
       for(const s of S.sections||[]){ const it=(s.items||[]).find(x=>x.src===n.path); if(it){ match=it; how='src'; break; } }
@@ -3941,8 +4010,9 @@ function impPlan(){
     }
     let status='new', choice='add';
     if(match){
-      const cur = dest==='npcs' ? (match.notes||'') : dest==='party' ? (match.notes||'') : (match.text||'');
-      const incoming = dest==='party' ? n.text.split('\n')[0].slice(0,200) : n.text;
+      const sigKind = impSigKind(dest);
+      const cur = sigKind ? (match.srcText||'') : dest==='npcs' ? (match.notes||'') : dest==='party' ? (match.notes||'') : (match.text||'');
+      const incoming = sigKind ? impSig(n) : dest==='party' ? n.text.split('\n')[0].slice(0,200) : n.text;
       const noteSame = incoming===(match.srcText!=null?match.srcText:null);
       const appEdited = match.srcText!=null && cur!==match.srcText;
       if(how==='name'){ status='name'; choice='update'; }
@@ -3989,8 +4059,9 @@ function destOptions(cur, folder){
   const guess=guessDest(folder);
   const newVal = cur.startsWith('new:') ? cur : (guess.startsWith('new:')?guess:`new:cards:${folder||'Notes'}`);
   opts.push([newVal, `New section: ${newVal.split(':').slice(2).join(':')}`]);
-  (S.sections||[]).filter(s=>s.type==='cards'||s.type==='quests'||s.type==='tables').forEach(s=>opts.push(['sec:'+s.id, `Existing section: ${s.title}`]));
-  opts.push(['npcs','NPC roster (also on the Social tab)'],['party','Party tab (player characters)'],['log','Session log and Journal'],['skip','Don’t import']);
+  (S.sections||[]).filter(s=>['cards','quests','tables','encounters'].includes(s.type)).forEach(s=>opts.push(['sec:'+s.id, `Existing section: ${s.title}`]));
+  if(!(S.sections||[]).some(s=>s.type==='encounters') && !cur.startsWith('new:encounters')) opts.push(['new:encounters:Encounters','New section: Encounters (ready to run)']);
+  opts.push(['library','Monster list (for combat and encounters)'],['npcs','NPC roster (also on the Social tab)'],['party','Party tab (player characters)'],['log','Session log and Journal'],['skip','Don’t import']);
   return opts.map(([v,l])=>`<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(l)}</option>`).join('');
 }
 function impRender(){
@@ -3998,13 +4069,13 @@ function impRender(){
   const c=k=>plan.filter(p=>p.status===k).length;
   const asks=plan.filter(p=>p.status==='conflict'||p.status==='name');
   const fRows=Object.entries(IMP.folders).sort((a,b)=>a[0].localeCompare(b[0])).map(([f,o])=>`<tr><td><b>${esc(f||'(top level)')}</b> <span class="muted small">${o.count} note${o.count===1?'':'s'}</span></td><td><select data-impf="${esc(f)}">${destOptions(o.dest,f)}</select></td></tr>`).join('');
-  const destLbl = p => p.dest==='npcs'?'NPC roster':p.dest==='party'?'Party':p.dest==='log'?'Session log':p.dest.startsWith('sec:')?(secOf(p.dest.slice(4))||{}).title:p.dest.split(':').slice(2).join(':');
+  const destLbl = p => p.dest==='library'?'Monster list':p.dest==='npcs'?'NPC roster':p.dest==='party'?'Party':p.dest==='log'?'Session log':p.dest.startsWith('sec:')?(secOf(p.dest.slice(4))||{}).title:p.dest.split(':').slice(2).join(':');
   const askRows=asks.map((p,i)=>{ const idx=plan.indexOf(p);
     const opts = p.status==='name' ? [['update','Update the existing one'],['add','Add as a new card']] : [['note','Use the note’s version'],['keep','Keep the app’s version'],['both','Keep both']];
     return `<tr><td><b>${esc(p.n.title)}</b><br><span class="muted small">${p.status==='name'?`Same name as an existing ${p.dest==='npcs'?'NPC':p.dest==='party'?'character':p.dest==='log'?'session':'card'} in ${esc(destLbl(p))}`:'Changed in both the note and the app since the last import'}</span></td><td><select data-impc="${idx}">${opts.map(([v,l])=>`<option value="${v}" ${p.choice===v?'selected':''}>${l}</option>`).join('')}</select></td></tr>`; }).join('');
   dlgImp.innerHTML=`<h2>Review the import</h2>
   <p class="imp-sum"><b>${plan.length}</b> note${plan.length===1?'':'s'}: <span class="ok">${c('new')} new</span> · ${c('update')} updated · ${c('same')} unchanged${asks.length?` · <span class="warn">${asks.length} need${asks.length===1?'s':''} your call</span>`:''}</p>
-  <h3>Where each folder goes</h3><div class="scroll-x"><table class="imp-t">${fRows}</table></div>
+  <h3>Where each section goes</h3><div class="scroll-x"><table class="imp-t">${fRows}</table></div>
   ${asks.length?`<h3>Needs your call</h3><div class="scroll-x imp-asks"><table class="imp-t">${askRows}</table></div>`:''}
   <details class="imp-more"><summary class="muted small">See every note</summary><ul>${plan.map(p=>`<li>${esc(p.n.title)} <span class="muted small">→ ${esc(destLbl(p))} · ${{new:'new',update:'update',same:'unchanged',conflict:'your call',name:'your call'}[p.status]}</span></li>`).join('')}</ul></details>
   <p class="muted small">App-only details stay put on updates: NPC attitudes, quest status, and tags you added in the app.</p>
@@ -4014,10 +4085,10 @@ dlgImp.addEventListener('change', e=>{
   const f=e.target.dataset.impf; if(f!==undefined && IMP){ IMP.folders[f].dest=e.target.value; impRender(); return; }
   const c=e.target.dataset.impc; if(c!==undefined && IMP){ IMP.plan[+c].choice=e.target.value; }
 });
-const META_USED={npcs:['attitude','role','where'], party:['species','cls','level','player','ac','maxHp','pp','ins','inv','langs'], log:['date'], quests:['status','giver','reward'], cards:[]};
+const META_USED={library:['ac','hpx','initb','cr','lres','lact','lair','rch','perday'], encounters:['mons','wave','hpx'], npcs:['attitude','role','where'], party:['species','cls','level','player','ac','maxHp','pp','ins','inv','langs'], log:['date'], quests:['status','giver','reward'], cards:[]};
 function metaLeft(n, kind){ const used=META_USED[kind]||[]; return ((n.meta||{}).lines||[]).filter(([,k])=>!used.includes(k)); }
 function impApply(){
-  const plan=IMP.plan; const made={}; let added=0, updated=0;
+  const plan=[...IMP.plan].sort((a,b)=>(b.dest==='library')-(a.dest==='library')); const made={}; let added=0, updated=0, missingAll=[], madeEnc=[];
   const secFor = dest => {
     if(dest.startsWith('sec:')) return secOf(dest.slice(4));
     if(made[dest]) return made[dest];
@@ -4031,6 +4102,13 @@ function impApply(){
     if(p.status==='update') ch='update';
     if(ch==='keep') return;
     const fresh = p.status==='new' || ch==='add' || ch==='both';
+    if(p.dest==='library'){
+      const tpl=tplFromNote(n); tpl.srcText=impSig(n);
+      if(p.match && ch!=='both' && ch!=='add'){ tpl.id=p.match.id; Object.assign(p.match, tpl); updated++; }
+      else { tpl.id=uid(); if(ch==='both'||(ch==='add'&&p.match)) tpl.name+=' (imported)'; S.library.push(tpl); added++; }
+      S.library.sort((a,b)=>a.name.localeCompare(b.name));
+      return;
+    }
     if(p.dest==='npcs'){
       const mt=n.meta||{};
       const npcNotes=metaLeft(n,'npcs').map(([l,,v])=>`${l}: ${v}`).concat(n.text?[n.text]:[]).join('\n');
@@ -4046,6 +4124,11 @@ function impApply(){
       else { Object.assign(p.match, {html:n.html, text:n.text, src:n.path, srcText:n.text}); updated++; }
     } else {
       const s=secFor(p.dest);
+      if(s.type==='encounters'){ const e=encFromNote(n); missingAll.push(...e.missing.map(x=>`${x} (${n.title})`));
+        const body={title:n.title+(fresh&&ch==='both'?' (imported)':''), mons:e.mons, waves:e.waves, hp:e.hp, html:e.html, text:htmlToText(e.html), src:ch==='both'?null:n.path, srcText:impSig(n)};
+        if(fresh){ const it=Object.assign({id:uid(), colors:true, tags:extraTags(n,s)}, body); const st=encStats(it); it.built={r:st.r, lvTxt:st.pb.lvTxt}; s.items.push(it); madeEnc.push(it); added++; }
+        else { Object.assign(p.match, body, {tags:[...new Set((p.match.tags||[]).concat(extraTags(n,s)))]}); madeEnc.push(p.match); updated++; }
+        return; }
       if(s.type==='tables'){ const entries=n.text.split('\n').map(x=>x.replace(/^\s*(•|\d+[.)])\s*/,'').trim()).filter(Boolean).join('\n');
         if(fresh){ s.items.push({id:uid(), title:n.title+(ch==='both'?' (imported)':''), entries, tags:extraTags(n,s), src:ch==='both'?null:n.path, srcText:n.text}); added++; }
         else { Object.assign(p.match,{title:n.title, entries, src:n.path, srcText:n.text}); updated++; }
@@ -4055,9 +4138,11 @@ function impApply(){
       else { const keepTags=p.match.tags||[]; Object.assign(p.match, {title:n.title, html:n.html, text:n.text, tags:[...new Set(keepTags.concat(extraTags(n,s)))], src:n.path, srcText:n.text}); updated++; }
     }
   });
+  // an imported encounter linked from exactly one table row is grouped under that table
+  madeEnc.forEach(it=>{ if(it.fromTable) return; const re=new RegExp('\\[\\[\\s*'+it.title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*(\\||\\]\\])','i'); const T=[]; (S.sections||[]).forEach(sc=>{ if(sc.type==='tables') (sc.items||[]).forEach(tb=>{ if(re.test(tb.entries||'')) T.push(tb.id); }); }); if(T.length===1) it.fromTable=T[0]; });
   dlgImp.close(); IMP=null;
   commit(); renderAll(); setTab('campaign');
-  toast(`Imported: ${added} new, ${updated} updated.`);
+  toast(`Imported: ${added} new, ${updated} updated.${missingAll.length?` ${missingAll.length} monster name${missingAll.length===1?'':'s'} weren’t recognized; they’re noted on the encounter.`:''}`);
 }
 
 
@@ -4213,9 +4298,18 @@ const SAMPLE_PARTS=[
     {title:'Road events', tags:[], meta:[], html:'<ol><li>Wolves shadow the party</li><li>A peddler with a limp asks for an escort</li><li>Heavy rain turns the road to mud</li><li>A broken cart blocks the way</li></ol>'}]}
 ];
 const sampleDocx = () => buildDocx('My Campaign Notes (sample)', SAMPLE_PARTS);
+/* the fill-in template: a Markdown file that imports as-is; its guidance is in comments the importer skips */
+const IMPORT_TEMPLATE = "# My Campaign\n\n<!--\nDM TOOLKIT IMPORT TEMPLATE\n\nHow this file works\n- Save it as a Markdown file (ending in .md). Any plain text editor works.\n- In the app: Campaign tab > Import notes > pick this one file.\n  You'll see a review screen first, and nothing is added until you click Import.\n- \"# Heading\" starts a section. \"## Heading\" starts one entry in that section.\n  The single \"# My Campaign\" line at the very top is just the document's title.\n- Anything between these comment marks is guidance only. It is never imported,\n  so you can leave it in, edit it, or delete it.\n- Delete the example entries and sections you don't need, and copy an example\n  entry to add more of the same kind.\n\nLabels\n- Lines like \"Role: Miller\" right under a \"##\" heading fill in details.\n  Keep labels together on the lines directly after the heading, one per line,\n  then leave a blank line before the description.\n- \"Tags:\" works on any entry: separate tags with commas.\n- Labels are optional. An entry can be just a heading and a description.\n\nLinks\n- Write [[Exact Name]] to link to another entry, NPC, rule, or monster.\n- [[Exact Name|other words]] shows \"other words\" but links to Exact Name.\n\nSection names the app recognizes\n- Places, Locations, Regions, Cities, Towns\n- Factions, Organizations, Guilds\n- NPCs, Characters, People (these go to the NPC roster)\n- Monsters, Creatures, Bestiary (these go to your monster list)\n- Encounters (ready to run in the combat tracker)\n- Quests, Plot hooks\n- Random tables, Random encounters\n- Gods, Deities, Lore, History, Items, House rules\n- Player Characters, Party (these go to the Party tab)\nAny other section name becomes a section of plain cards with that name.\n\nImporting again later\n- Import an updated copy of this file any time. Entries are matched by name:\n  changed ones are updated, unchanged ones are left alone, and things you only\n  changed in the app (like NPC attitudes or quest status) are kept.\n\nUsing an AI assistant to fill this in\n- Give it this file and your notes, and ask it to return the same format:\n  keep the section and label names exactly as shown, use only the labels\n  listed for each section, and reply with the finished file in Markdown.\n-->\n\n# Places\n\n<!--\nLabels: Tags\n-->\n\n## Ashford\nTags: town, river\n\nA river town of about 900 people, built around [[Bren]]'s mill. The [[Gravel Lanterns]] run smuggled goods through its docks.\n\n# Factions\n\n<!--\nLabels: Tags\n-->\n\n## Gravel Lanterns\nTags: criminal\n\nA smuggling ring working the river docks. They owe [[Bren]] a favor and resent it.\n\n# NPCs\n\n<!--\nLabels:\n- Role: what they do (Miller, Guard captain)\n- Attitude: Friendly, Indifferent, or Hostile\n- Met at: where the party met them\n- Tags\n-->\n\n## Bren\nRole: Miller\nAttitude: Friendly\nMet at: Ashford\n\nRuns the mill in [[Ashford]]. Owes the guild more than he lets on.\n\n# Monsters\n\n<!--\nYour own creatures. Each one is saved to the app's monster list, so\nencounters can use it. Monsters from the free 2024 rules (Goblin Warrior,\nWolf, Ogre...) are built in, so don't add those here.\n\nLabels (all optional):\n- HP: a number (45) or hit dice (6d8+18)\n- AC: a number\n- Initiative: the bonus, like +2\n- CR: challenge rating, like 3 or 1/4\n- Legendary resistance: uses per day, like 3\n- Legendary actions: per round, like 3\n- Lair: yes, if it has lair actions\n- Recharge: ability and number, separated by semicolons (Fire Breath 5; Tail Swipe 6)\n- Per day: spell or ability and uses, separated by semicolons (Fireball 1; Misty Step 3)\nThe description below the labels becomes the monster's notes in combat.\n-->\n\n## Mire Hag\nHP: 6d8+18\nAC: 15\nInitiative: +2\nCR: 3\nRecharge: Choking Fog 5\nPer day: Hold Person 1; Fog Cloud 2\n\nClaws: +5 to hit, 2d6+3 slashing.\nChoking Fog: 20-foot sphere, Con save DC 13 or Poisoned until the end of its next turn.\n\n# Encounters\n\n<!--\nFights you've prepared, ready to load into the combat tracker.\n\nLabels:\n- Monsters: count and name, separated by commas.\n  Counts can be dice: 1 Goblin Boss, 1d6 Goblin Warrior, 2 Mire Hag\n  Names can be from the free rules or your Monsters section above.\n- Wave: reinforcements that arrive later, one line per wave.\n  Name (round N): monsters, like\n  Wave: Guards from the north door (round 3): 2 Goblin Warrior\n  The round is optional.\n- Hit points: average (the default) or rolled\n- Tags\nThe description becomes the encounter's notes (tactics, terrain, treasure).\nNames the app doesn't recognize are listed at the top of the encounter's\nnotes so nothing is lost.\n-->\n\n## Goblin toll\nMonsters: 1 Goblin Boss, 1d6 Goblin Warrior\nWave: Guards from the north door (round 3): 2 Goblin Warrior\nHit points: rolled\n\nThe goblins block the bridge and demand a toll of 10 gp per head. The boss hides behind the barricade.\n\n# Quests\n\n<!--\nLabels:\n- Status: Active, On hold, Done, or Failed\n- Given by: who offered it\n- Reward: what's promised\n- Tags\n-->\n\n## Find the lost caravan\nStatus: Active\nGiven by: Bren\nReward: 50 gp\n\nA grain caravan vanished on the north road three days ago.\n\n# Random tables\n\n<!--\nEach \"##\" is one table. List its entries with \"-\".\n- Numbers in front set the odds: \"1-4: Wolves\" covers rolls 1 to 4.\n  The highest number decides the die (20 means a d20).\n- Without numbers, every entry is equally likely.\n- Link an entry to a prepared encounter with [[Encounter name]] and it\n  gets a Run button when it's rolled. To keep the table's own wording on\n  screen, use [[Encounter name|the table's wording]].\n- Write \"No event\" for a quiet result.\n-->\n\n## Road encounters\n- 1-4: 2d4 wolves shadow the party\n- 5-8: [[Goblin toll|A goblin boss and 1d6 goblins demand a toll]]\n- 9-12: Heavy rain turns the road to mud\n- 13-16: A peddler with a limp asks for an escort\n- 17-20: No event\n";
 function openImportGuide(){
   dlgImp.innerHTML=`<h2>How to format your notes</h2>
   <div class="guide">
+    <section class="guide-tpl"><h3>Start from the template</h3>
+      <p>The easiest way to bring a whole campaign in: one Markdown file with every kind of section the app understands (places, factions, NPCs, your own monsters, ready-to-run encounters, quests, and random tables), each with an example and notes on the labels it accepts.</p>
+      <ul>
+        <li><b># Heading</b> starts a section, <b>## Heading</b> starts one entry, and lines like <i>Role: Miller</i> right under it fill in details.</li>
+        <li>Fill it in with any text editor, keep the file ending in <b>.md</b>, and pick it here. The notes in the file are never imported.</li>
+      </ul>
+      <div class="imp-pick"><button class="btn primary" data-act="imp-tpl-dl">Download the template (.md)</button></div></section>
     <section><h3>From Word or Google Docs</h3>
       <ul>
         <li><b>Use real heading styles,</b> not just big bold text. In Word or Google Docs, pick Heading 1 or Heading 2 from the style menu.</li>
@@ -4243,6 +4337,7 @@ function openImportGuide(){
   <div class="dlg-actions"><button class="btn" data-act="imp-back">Back to import</button></div>`;
 }
 async function sampleAct(act){
+  if(act==='imp-tpl-dl'){ await saveFile('dm-toolkit-import-template.md', IMPORT_TEMPLATE, 'text/markdown'); toast('Template saved. Fill it in, then import it here.'); return; }
   try{
     const blob=await sampleDocx();
     if(act==='imp-sample-dl'){ await saveFile('sample-campaign-notes.docx', blob); toast('Sample saved. Open it to see the format.'); return; }
@@ -4327,13 +4422,45 @@ async function driveUpload(c){
   const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(md)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${text}\r\n--${b}--`;
   const r = await gjson(meta ? `${DUP}/${meta.id}?uploadType=multipart&fields=id,modifiedTime` : `${DUP}?uploadType=multipart&fields=id,modifiedTime`,
     {method: meta?'PATCH':'POST', headers:{'Content-Type':`multipart/related; boundary=${b}`}, body});
-  D.files[c.id]={id:r.id, syncedAt:c.updatedAt||0, remoteMod:r.modifiedTime}; saveD();
+  D.files[c.id]={id:r.id, syncedAt:c.updatedAt||0, remoteMod:r.modifiedTime}; D.lastOk=Date.now(); saveD();
 }
 async function driveDownload(f){
   const o=await gjson(`${DAPI}/${f.id}?alt=media`);
   if(!o || o.format!=='dm-toolkit-campaign' || !o.campaign) throw {code:'bad'};
   return normalize(o.campaign);
 }
+/* safety copies: whenever sync or a file replaces or removes a campaign on this device, keep the old version for 30 days */
+const BAK_KEY='dmmt.replaced', BAK_DAYS=30, BAK_MAX=10;
+const bakList = () => { const L=lsGet(BAK_KEY); return Array.isArray(L) ? L : []; };
+function bakSave(c, why){
+  if(!c || !(c.updatedAt>0)) return;
+  const L=bakList(), key=uid();
+  campSet('bak.'+key, c);
+  L.unshift({key, name:c.name||'Untitled campaign', at:Date.now(), edited:c.updatedAt||0, why});
+  L.slice(BAK_MAX).forEach(x=>campDel('bak.'+x.key));
+  lsSet(BAK_KEY, L.slice(0,BAK_MAX));
+}
+function bakPrune(){
+  const cut=Date.now()-BAK_DAYS*864e5, L=bakList(), keep=L.filter(x=>x.at>=cut && campGet('bak.'+x.key));
+  L.filter(x=>!keep.includes(x)).forEach(x=>campDel('bak.'+x.key));
+  if(keep.length!==L.length) lsSet(BAK_KEY, keep);
+}
+const dlgBak=document.createElement('dialog'); dlgBak.id='dlg-bak'; document.body.appendChild(dlgBak);
+function openBak(){
+  bakPrune(); const L=bakList();
+  dlgBak.innerHTML=`<h2>Recently replaced</h2><p class="muted small">When syncing or opening a file replaces or removes a campaign on this device, the old version is kept here for ${BAK_DAYS} days. Restoring adds it back as its own campaign, so nothing current is overwritten.</p>
+  ${L.length ? `<ul class="bak-list">${L.map(x=>`<li><div><b>${esc(x.name)}</b><div class="muted small">${esc(x.why)} · ${ago(x.at)}${x.edited?` · last edited ${ago(x.edited)}`:''}</div></div><span class="bak-btns"><button class="btn sm primary" data-act="bak-restore" data-id="${x.key}">Restore</button><button class="btn sm quiet" data-act="bak-del" data-id="${x.key}">Delete</button></span></li>`).join('')}</ul>` : '<p>Nothing here.</p>'}
+  <div class="dlg-actions"><button class="btn" data-act="close-dlg">Close</button></div>`;
+  if(!dlgBak.open) dlgBak.showModal();
+}
+function bakRestore(key){
+  const L=bakList(), x=L.find(y=>y.key===key), c=x && campGet('bak.'+key); if(!c){ toast('That copy is no longer on this device.'); return; }
+  c.id=uid(); c.createdAt=Date.now();
+  if(G.campaigns.some(e=>e.name===c.name)) c.name+=' (restored)';
+  campDel('bak.'+key); lsSet(BAK_KEY, L.filter(y=>y.key!==key));
+  dlgBak.close(); activate(c, `Restored ${c.name}.`, true);
+}
+function bakDel(key){ campDel('bak.'+key); lsSet(BAK_KEY, bakList().filter(y=>y.key!==key)); openBak(); }
 function storeCampaign(c){
   campSet((c.id), c);
   const i=G.campaigns.findIndex(x=>x.id===c.id); if(i>=0) G.campaigns[i]=indexEntry(c); else G.campaigns.push(indexEntry(c));
@@ -4380,8 +4507,13 @@ async function driveSyncAll(first){
       if(rChanged && lChanged){
         const rc=await driveDownload(f);
         if(sameContent(rc, local)){ D.files[cid]={id:f.id, syncedAt:local.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); continue; }
-        const ch=await ask(`${local.name} changed in two places`, `This device has changes from ${ago(local.updatedAt)}, and the copy in Google Drive was saved ${ago(f.modifiedTime)}. Which version should win?`, ['Keep both', 'Use Drive’s', {label:'Keep this device’s', primary:true}]);
-        if(ch===1){ D.files[cid]={id:f.id, syncedAt:rc.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); storeCampaign(rc); }
+        const renamed = rc.name!==local.name;
+        const ch=await ask(renamed ? `“${local.name}” and “${rc.name}” are the same campaign` : `${local.name} changed in two places`,
+          (renamed ? `On this device it’s called “${local.name}” (last edited ${ago(local.updatedAt)}). In Google Drive it’s “${rc.name}” (saved ${ago(f.modifiedTime)}). One was probably renamed.`
+                   : `This device has changes from ${ago(local.updatedAt)}, and the copy in Google Drive was saved ${ago(f.modifiedTime)}.`)
+          + ` Which version should win? “Keep both” keeps each as its own campaign. If you choose Drive’s, this device’s version is kept for ${BAK_DAYS} days under Recently replaced in the campaign menu.`,
+          ['Keep both', renamed?`Use Drive’s (“${rc.name}”)`:'Use Drive’s', {label:renamed?`Keep this device’s (“${local.name}”)`:'Keep this device’s', primary:true}]);
+        if(ch===1){ bakSave(local, `Replaced by Google Drive’s version${rc.name!==local.name?` (“${rc.name}”)`:''}`); D.files[cid]={id:f.id, syncedAt:rc.updatedAt||0, remoteMod:f.modifiedTime}; saveD(); storeCampaign(rc); }
         else if(ch===2){ D.files[cid]={id:f.id, syncedAt:-1, remoteMod:f.modifiedTime}; await driveUpload(local); }
         else if(ch===0){
           D.files[cid]={id:f.id, syncedAt:-1, remoteMod:f.modifiedTime}; await driveUpload(local);
@@ -4398,7 +4530,7 @@ async function driveSyncAll(first){
       const local=campGet((e.id)); if(!local) continue;
       if(D.files[e.id]){
         const ch=await ask(`${local.name} isn’t in Google Drive anymore`, 'It may have been closed on another device, or its file was deleted from Drive. Remove it from this device too, or put it back in Drive?', ['Not now', {label:'Remove it here', danger:true}, {label:'Put it back in Drive', primary:true}]);
-        if(ch===1){ delete D.files[e.id]; saveD(); removeLocalOnly(e.id); }
+        if(ch===1){ bakSave(local, 'Removed during sync (no longer in Google Drive)'); delete D.files[e.id]; saveD(); removeLocalOnly(e.id); }
         else if(ch===2){ delete D.files[e.id]; saveD(); await driveUpload(local); }
       } else if(!(local.updatedAt>0)){
         if(Object.keys(remote).length) removeLocalOnly(e.id);
@@ -4437,13 +4569,18 @@ function driveErr(e){
   else { setDrive('error'); if(!navigator.onLine) toast('You’re offline. Changes are saved on this device and will go to Drive when you reconnect.'); }
 }
 const DRIVE_LBL={needtoken:'Drive · tap to sync', pending:'Drive · tap to save', syncing:'Drive · syncing…', saving:'Drive · saving…', synced:'Drive · synced', error:'Drive · tap to retry'};
+let drivePendingWarned=false;
 function setDrive(state){
+  if(state==='synced'){ D.lastOk=Date.now(); saveD(); drivePendingWarned=false; }
+  if(state==='pending' && !drivePendingWarned && driveOK && D.connected){ drivePendingWarned=true; setTimeout(()=>toast('Google sign-in has expired, so changes are only saved on this device. Tap the red Drive button to reconnect.'), 400); }
   driveState=state;
   const b=$('#drive-pill'); if(!b) return;
   b.hidden = !driveOK || !D.connected || state==='idle';
   b.className='drive-pill s-'+state;
-  b.querySelector('.lbl').textContent = DRIVE_LBL[state]||'Drive';
-  b.title = state==='synced' ? 'Everything is saved to Google Drive' : state==='pending' ? 'Changes are waiting to be saved to Google Drive. Tap to sign in.' : state==='needtoken' ? 'Tap to sign in to Google and sync' : '';
+  const since = D.lastOk ? ago(D.lastOk) : '';
+  const short = D.lastOk ? (new Date(D.lastOk).toDateString()===new Date().toDateString() ? new Date(D.lastOk).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}) : new Date(D.lastOk).toLocaleDateString(undefined,{month:'short',day:'numeric'})) : '';
+  b.querySelector('.lbl').textContent = state==='pending' ? (short ? `Not in Drive since ${short}` : 'Not saved to Drive') : (DRIVE_LBL[state]||'Drive');
+  b.title = state==='synced' ? 'Everything is saved to Google Drive' : state==='pending' ? `Changes since ${since||'you connected'} are only on this device. Tap to sign in to Google and save them to Drive.` : state==='needtoken' ? 'Tap to sign in to Google and sync' : '';
 }
 function drivePill(btn){
   if(['needtoken','pending','error'].includes(driveState)){ tokenOK() ? driveSyncAll() : driveConnect(); return; }
@@ -4505,13 +4642,15 @@ function onClick(e){
   if(act==='imp-docx'){ impDocx.click(); return; }
   if(act==='imp-guide'){ openImportGuide(); return; }
   if(act==='imp-back'){ openImport(); return; }
-  if(act==='imp-sample-dl'||act==='imp-sample-try'){ sampleAct(act); return; }
+  if(act==='imp-sample-dl'||act==='imp-sample-try'||act==='imp-tpl-dl'){ sampleAct(act); return; }
   if(act==='imp-go'){ impApply(); return; }
   switch(act){
     case 'toggle-notes': $('#notes').classList.toggle('open'); if($('#notes').classList.contains('open')) $('#scratch-rte .rte-body')?.focus(); break;
     case 'more': moreMenu(el); break;
     case 'camp-menu': campMenu(el); break;
     case 'drive-pill': drivePill(el); break;
+    case 'bak-restore': bakRestore(el.dataset.id); break;
+    case 'bak-del': bakDel(el.dataset.id); break;
     case 'camp-save': saveCampDlg(); break;
     case 'pick-hit': openHit(id); results.hidden=true; break;
     case 'pin': e.preventDefault(); pinRule(id); break;
@@ -4607,6 +4746,7 @@ function renderAll(){ applyLook(); renderCampBtn(); renderScratch(); renderLog()
 (async ()=>{
   await storageInit();
   loadLocal();
+  try{ bakPrune(); }catch(e){}
   renderAll();
   initRemote();
   try{ if(!SANDBOX && !localStorage.getItem('dmmt.toured') && G.campaigns.length===1 && !(S.updatedAt>0)) setTimeout(openTour, 600); }catch(e){}

@@ -501,7 +501,7 @@ const TESTS=[
  }],
  ['Import: the built-in sample document', async()=>{
    await click('[data-tab=campaign]'); await click('.camp-tools [data-act=cx-import]');
-   await click('[data-act=imp-guide]'); expect(D.querySelectorAll('.guide h3').length===3, 'Guide didn’t open');
+   await click('[data-act=imp-guide]'); expect(D.querySelectorAll('.guide h3').length===4 && D.querySelector('[data-act=imp-tpl-dl]'), 'Guide or template button missing');
    const f=await fileFromBlob(await app('sampleDocx()'), 'Sample.docx');
    await app('impLoad')([f]);
    const sum=await waitFor(()=>D.querySelector('.imp-sum'), 15000, 'the review screen');
@@ -516,6 +516,68 @@ const TESTS=[
    const sum=await waitFor(()=>D.querySelector('.imp-sum'), 15000, 'the review screen');
    expect(/0 new/.test(sum.textContent) && /unchanged/.test(sum.textContent), 'Re-import wasn’t recognized: '+sum.textContent);
    await click('#dlg-imp [data-act=close-dlg]');
+ }],
+ ['Import: the Markdown template', async()=>{
+   const first=app('S.id');
+   app("sampleAct('imp-tpl-dl')"); await wait(30);
+   const dl=app('window.__downloads[window.__downloads.length-1]');
+   expect(dl && dl.filename==='dm-toolkit-import-template.md' && dl.data===app('IMPORT_TEMPLATE'), 'Template download wrong');
+   await click('#camp-btn'); await click('[data-menu=cp-new]'); setVal('#cp-name','Template test'); await click('[data-act=camp-save]');
+   app("S.party=[{id:'tp1',name:'Ana',level:3},{id:'tp2',name:'Bo',level:3}]; commit();");
+   await click('[data-tab=campaign]'); await click('.camp-tools [data-act=cx-import]');
+   const md=app('IMPORT_TEMPLATE');
+   await app('impLoad')([new W.File([md], 'Spine.md', {type:'text/markdown'})]);
+   const sum=await waitFor(()=>D.querySelector('.imp-sum'), 5000, 'the review screen');
+   expect(/7 notes/.test(sum.textContent), 'Expected 7 notes (one per example), got: '+sum.textContent);
+   const dests=app("Object.fromEntries(Object.entries(IMP.folders).map(([f,o])=>[f,o.dest]))");
+   expect(dests.Monsters==='library' && /^new:encounters:/.test(dests.Encounters) && dests.NPCs==='npcs' && /^new:tables:/.test(dests['Random tables']) && /^new:quests:/.test(dests.Quests), 'Sections not routed: '+JSON.stringify(dests));
+   await click('[data-act=imp-go]');
+   const hag=app("S.library.find(m=>m.name==='Mire Hag')");
+   expect(hag && hag.hpExpr==='6d8+18' && hag.ac===15 && hag.initBonus===2 && hag.cr==='3' && hag.recharge[0].min===5 && hag.day.length===2 && /Claws/.test(hag.notes), 'Custom monster not imported right: '+JSON.stringify(hag));
+   const enc=app("S.sections.find(s=>s.type==='encounters').items[0]");
+   expect(enc.title==='Goblin toll' && enc.mons.length===2 && enc.mons[1].count==='1d6' && enc.waves.length===1 && enc.waves[0].round===3 && enc.hp==='roll', 'Encounter not imported right: '+JSON.stringify(enc));
+   expect(enc.fromTable && enc.fromTable===app("S.sections.find(s=>s.type==='tables').items[0].id"), 'Encounter not grouped under the table that links to it');
+   const bren=app("S.npcs.find(n=>n.name==='Bren')");
+   expect(bren && bren.role==='Miller' && bren.attitude==='Friendly' && bren.where==='Ashford', 'NPC labels not read');
+   const q=app("S.sections.find(s=>s.type==='quests').items[0]");
+   expect(q.giver==='Bren' && q.reward==='50 gp' && !/^<br>/.test(q.html), 'Quest labels not read, or a stray blank line');
+   expect(app("S.sections.find(s=>s.title==='Places').items[0].tags.includes('river')"), 'Tags not read');
+   expect(!/DM TOOLKIT IMPORT TEMPLATE|How this file works/.test(JSON.stringify(app('S'))), 'Template guidance comments were imported');
+   // Unrecognized monster names are kept, and re-importing an unchanged file changes nothing
+   const md2=md.replace('Monsters: 1 Goblin Boss, 1d6 Goblin Warrior','Monsters: 1 Goblin Boss, 1d6 Goblin Warrior, 2 Swamp Thing');
+   await click('.camp-tools [data-act=cx-import]'); await app('impLoad')([new W.File([md2], 'Spine.md')]);
+   const sum2=await waitFor(()=>D.querySelector('.imp-sum'), 5000, 'the second review');
+   expect(/1 updated/.test(sum2.textContent) && /6 unchanged/.test(sum2.textContent), 'Re-import should update only the encounter: '+sum2.textContent);
+   await click('[data-act=imp-go]');
+   const enc2=app("S.sections.find(s=>s.type==='encounters').items[0]");
+   expect(/Not found[^]*Swamp Thing/.test(enc2.text) && enc2.mons.length===2, 'Unrecognized monster not noted on the encounter');
+   await click('#camp-btn'); await click(`[data-menu="cp-${first}"]`);
+ }],
+ ['Safety copies: replaced campaigns can be restored', async()=>{
+   const first=app('S.id'), n0=app('G.campaigns.length');
+   app("lsSet(BAK_KEY, []);");
+   // Opening a file that replaces a campaign keeps the old version
+   const cur=app('JSON.parse(JSON.stringify(S))'); app("S.party.push({id:'sc1',name:'Only here'}); commit();");
+   const file=JSON.stringify({format:'dm-toolkit-campaign', version:2, campaign:cur});
+   const inp=el('#import-file'), dt=new W.DataTransfer(); dt.items.add(new W.File([file], 'camp.dmtoolkit.json', {type:'application/json'})); inp.files=dt.files; inp.dispatchEvent(new W.Event('change',{bubbles:true}));
+   await waitFor(()=>dialogOpen('dlg-confirm'), 3000, 'the replace question');
+   await click([...D.querySelectorAll('#cf-actions button')].find(b=>b.textContent==='Replace'));
+   expect(!app("S.party.some(p=>p.name==='Only here')"), 'File didn’t replace the campaign');
+   expect(app('bakList().length')===1 && /opened campaign file/.test(app('bakList()[0].why')), 'No safety copy kept');
+   // The campaign menu offers it, and restoring adds it back as its own campaign
+   await click('#camp-btn'); expect(D.querySelector('[data-menu=cp-bak]'), 'No “Recently replaced” in the campaign menu'); await click('[data-menu=cp-bak]');
+   expect(dialogOpen('dlg-bak') && D.querySelectorAll('#dlg-bak .bak-list li').length===1, 'Recently replaced list didn’t open');
+   await click('#dlg-bak [data-act=bak-restore]');
+   expect(app('G.campaigns.length')===n0+1 && app('S.id')!==first && app("S.party.some(p=>p.name==='Only here')") && / \(restored\)$/.test(app('S.name')), 'Restore didn’t add it back as a separate campaign');
+   expect(app('bakList().length')===0, 'Restored copy still listed');
+   // Delete, and expiry after 30 days
+   app("bakSave(S, 'test'); bakSave(S, 'old');"); app("const L=bakList(); L[0].at=Date.now()-31*864e5; lsSet(BAK_KEY,L); bakPrune();");
+   expect(app('bakList().length')===1 && app("bakList()[0].why")==='test', 'Old copies not cleared after 30 days');
+   app('openBak()'); await click('#dlg-bak [data-act=bak-del]'); expect(app('bakList().length')===0, 'Delete didn’t remove the copy');
+   await click('#dlg-bak [data-act=close-dlg]');
+   const restored=app('S.id'); app(`G.campaigns=G.campaigns.filter(c=>c.id!=='${restored}'); campDel('${restored}'); lsSet(G_KEY,G);`);
+   await click('#camp-btn'); await click(`[data-menu="cp-${first}"]`);
+   expect(app('S.id')===first, 'Couldn’t switch back');
  }],
  ['Export to Word and back', async()=>{
    const before=app("S.sections.reduce((n,s)=>n+(s.items||[]).length,0)");
